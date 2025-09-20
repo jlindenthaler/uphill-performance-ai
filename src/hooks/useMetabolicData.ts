@@ -5,7 +5,6 @@ import { useSportMode } from '@/contexts/SportModeContext';
 interface MetabolicMetrics {
   vo2max: { value: number; percentile: number };
   vlamax: { value: number; percentile: number };
-  efficiency: { value: number; percentile: number };
   fatMax: { value: number; percentile: number; unit: string };
 }
 

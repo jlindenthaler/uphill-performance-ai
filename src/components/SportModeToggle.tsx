@@ -34,14 +34,14 @@ export function SportModeToggle() {
     label: 'Swimming',
     icon: Waves
   }] as const;
-  return <div className="flex items-center gap-1 p-1 bg-muted rounded-lg mx-0 px-[45px]">
+  return <div className="flex items-center p-1 bg-muted rounded-lg">
       {sports.map(({
       key,
       label,
       icon: Icon
-    }) => <Button key={key} variant={sportMode === key ? "default" : "ghost"} size="sm" onClick={() => setSportMode(key)} className={`flex items-center gap-2 transition-all ${sportMode === key ? 'bg-background shadow-sm text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
+    }) => <Button key={key} variant={sportMode === key ? "default" : "ghost"} size="sm" onClick={() => setSportMode(key)} className={`flex-1 flex items-center justify-center gap-2 transition-all px-4 py-2 ${sportMode === key ? 'bg-background shadow-sm text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
           <Icon className="w-4 h-4" />
-          
+          {label}
         </Button>)}
     </div>;
 }

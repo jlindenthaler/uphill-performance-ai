@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useSupabase";
-import { User, Mail, Lock, Globe, Ruler, Clock } from "lucide-react";
+import { User, Mail, Lock, Globe, Ruler, Clock, Activity } from "lucide-react";
 
 export function UserSettings() {
   const { user } = useAuth();
@@ -185,6 +185,78 @@ export function UserSettings() {
               Coming Soon
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Lab Test Results */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-green-500" />
+            Lab Test Results
+          </CardTitle>
+          <CardDescription>
+            Input your laboratory test results for accurate metabolic profiling
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="lab_vo2max">VO2 Max (ml/kg/min)</Label>
+              <Input
+                id="lab_vo2max"
+                placeholder="58.5"
+                type="number"
+                step="0.1"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="lab_vlamax">VLaMax (mmol/L/s)</Label>
+              <Input
+                id="lab_vlamax"
+                placeholder="0.35"
+                type="number"
+                step="0.01"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lab_fat_max">Fat Max (g/min/kg)</Label>
+              <Input
+                id="lab_fat_max"
+                placeholder="0.42"
+                type="number"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="crossover_point">Crossover Point (Watts)</Label>
+              <Input
+                id="crossover_point"
+                placeholder="195"
+                type="number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fat_max_intensity">Fat Max Intensity (%VO2max)</Label>
+              <Input
+                id="fat_max_intensity"
+                placeholder="65"
+                type="number"
+                max="100"
+                min="40"
+              />
+            </div>
+          </div>
+
+          <Button className="w-full">
+            Save Lab Results
+          </Button>
         </CardContent>
       </Card>
 

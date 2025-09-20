@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { Heart, Zap, Activity, Flame, Settings, ToggleLeft, ToggleRight, Wheat, Droplets } from "lucide-react";
+import { Heart, Zap, Activity, Flame, Settings, ToggleLeft, ToggleRight, Wheat } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { RecoverySection } from "@/components/RecoverySection";
@@ -465,7 +465,7 @@ export function PhysiologyForm() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fatMax" className="flex items-center gap-1">
-                      <Droplets className="w-3 h-3 text-blue-500" />
+                      <Flame className="w-3 h-3 text-orange-500" />
                       Fat Max {isCycling ? '(Watts)' : isRunning ? '(Pace /km)' : '(Pace /100m)'}
                     </Label>
                     <Input
@@ -538,7 +538,7 @@ export function PhysiologyForm() {
                             />
                           </div>
                           <div className="relative">
-                            <Droplets className="absolute left-2 top-2 w-3 h-3 text-blue-500" />
+                            <Flame className="absolute left-2 top-2 w-3 h-3 text-orange-500" />
                             <Input
                               value={data.fatPercentages[intensity]}
                               onChange={(e) => {

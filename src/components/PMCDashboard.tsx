@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame } from "lucide-react";
 import { useMetabolicData } from "@/hooks/useMetabolicData";
 import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
@@ -37,7 +37,6 @@ export function PMCDashboard() {
   const displayMetrics = metabolicMetrics || {
     vo2max: { value: 0, percentile: 0 },
     vlamax: { value: 0, percentile: 0 },
-    efficiency: { value: 0, percentile: 0 },
     fatMax: { value: 0, percentile: 0, unit: 'g/min/kg' }
   };
 
@@ -215,7 +214,7 @@ export function PMCDashboard() {
         </TabsContent>
 
         <TabsContent value="metabolic" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="card-gradient">
               <CardContent className="pt-6">
                 <div className="space-y-2">
@@ -269,32 +268,10 @@ export function PMCDashboard() {
             <Card className="card-gradient">
               <CardContent className="pt-6">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Efficiency</p>
-                  <div className="flex items-baseline gap-1">
-                    <p className="text-2xl font-bold">
-                      {metabolicLoading ? '--' : displayMetrics.efficiency.value.toFixed(1)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">%</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-zone-1 to-zone-4 h-2 rounded-full" 
-                        style={{ width: `${displayMetrics.efficiency.percentile}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {displayMetrics.efficiency.percentile}%
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-gradient">
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Fat Max</p>
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    Fat Max
+                  </p>
                   <div className="flex items-baseline gap-1">
                     <p className="text-2xl font-bold">
                       {metabolicLoading ? '--' : displayMetrics.fatMax.value.toFixed(2)}
