@@ -12,6 +12,7 @@ import { useLabResults } from "@/hooks/useLabResults";
 import { useTimeAvailability } from "@/hooks/useTimeAvailability";
 import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSportMode } from "@/contexts/SportModeContext";
 
 export function UserSettings() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export function UserSettings() {
   const { labResults, saveLabResults } = useLabResults();
   const { timeAvailability, saveTimeAvailability } = useTimeAvailability();
   const { toast } = useToast();
+  const { sportMode, isCycling, isRunning, isSwimming } = useSportMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -32,7 +34,17 @@ export function UserSettings() {
     vla_max: labResults?.vla_max?.toString() || '',
     fat_max: labResults?.fat_max?.toString() || '',
     crossover_point: labResults?.crossover_point?.toString() || '',
-    fat_max_intensity: labResults?.fat_max_intensity?.toString() || ''
+    fat_max_intensity: labResults?.fat_max_intensity?.toString() || '',
+    aerobic_threshold: '',
+    aet_hr: '',
+    glycolytic_threshold: '',
+    gt_hr: '',
+    map: '',
+    max_hr: '',
+    resting_hr: '',
+    body_weight: '',
+    critical_power: '',
+    w_prime: ''
   });
   
   const [timeData, setTimeData] = useState({
@@ -288,85 +300,251 @@ export function UserSettings() {
         </CardContent>
       </Card>
 
-      {/* Lab Test Results */}
+      {/* Sport-Specific Lab Test Results */}
       <Card className="card-gradient">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-green-500" />
-            Lab Test Results
+            <Activity className="w-5 h-5 text-primary" />
+            Lab Test Results - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}
           </CardTitle>
           <CardDescription>
-            Input your laboratory test results for accurate metabolic profiling
+            Enter your laboratory test results for {sportMode} for more accurate training zones
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <form onSubmit={handleLabResultsSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="lab_vo2max">VO2 Max (ml/kg/min)</Label>
+                <Label htmlFor="vo2_max">VO2 Max (ml/kg/min)</Label>
                 <Input
-                  id="lab_vo2max"
-                  placeholder="58.5"
+                  id="vo2_max"
                   type="number"
                   step="0.1"
-                  value={labData.vo2_max}
-                  onChange={(e) => setLabData(prev => ({ ...prev, vo2_max: e.target.value }))}
+                  value={labData.vo2_max || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    vo2_max: e.target.value
+                  }))}
+                  placeholder="58.5"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="lab_vlamax">VLaMax (mmol/L/s)</Label>
+                <Label htmlFor="vla_max">VLaMax (mmol/L/s)</Label>
                 <Input
-                  id="lab_vlamax"
+                  id="vla_max"
+                  type="number"
+                  step="0.01"
+                  value={labData.vla_max || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    vla_max: e.target.value
+                  }))}
                   placeholder="0.35"
-                  type="number"
-                  step="0.01"
-                  value={labData.vla_max}
-                  onChange={(e) => setLabData(prev => ({ ...prev, vla_max: e.target.value }))}
                 />
               </div>
-
+              
               <div className="space-y-2">
-                <Label htmlFor="lab_fat_max">Fat Max (g/min/kg)</Label>
+                <Label htmlFor="fat_max">Fat Max (g/min/kg)</Label>
                 <Input
-                  id="lab_fat_max"
-                  placeholder="0.42"
+                  id="fat_max"
                   type="number"
                   step="0.01"
-                  value={labData.fat_max}
-                  onChange={(e) => setLabData(prev => ({ ...prev, fat_max: e.target.value }))}
+                  value={labData.fat_max || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    fat_max: e.target.value
+                  }))}
+                  placeholder="0.42"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
               <div className="space-y-2">
-                <Label htmlFor="crossover_point">Crossover Point (Watts)</Label>
+                <Label htmlFor="crossover_point">
+                  Crossover Point ({isCycling ? 'Watts' : isRunning ? 'min:sec /km' : 'min:sec /100m'})
+                </Label>
                 <Input
                   id="crossover_point"
-                  placeholder="195"
+                  type={isCycling ? "number" : "text"}
+                  value={labData.crossover_point || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    crossover_point: e.target.value
+                  }))}
+                  placeholder={isCycling ? "195" : isRunning ? "4:30" : "1:35"}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="fat_max_intensity">Fat Max Intensity (%)</Label>
+                <Input
+                  id="fat_max_intensity"
                   type="number"
-                  value={labData.crossover_point}
-                  onChange={(e) => setLabData(prev => ({ ...prev, crossover_point: e.target.value }))}
+                  step="0.1"
+                  value={labData.fat_max_intensity || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    fat_max_intensity: e.target.value
+                  }))}
+                  placeholder="65.5"
+                />
+              </div>
+
+              {/* Additional sport-specific metrics */}
+              <div className="space-y-2">
+                <Label htmlFor="aerobic_threshold">
+                  Aerobic Threshold (AeT) ({isCycling ? 'Watts' : isRunning ? 'min:sec /km' : 'min:sec /100m'})
+                </Label>
+                <Input
+                  id="aerobic_threshold"
+                  type={isCycling ? "number" : "text"}
+                  value={labData.aerobic_threshold || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    aerobic_threshold: e.target.value
+                  }))}
+                  placeholder={isCycling ? "195" : isRunning ? "5:00" : "1:45"}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="fat_max_intensity">Fat Max Intensity (%VO2max)</Label>
+                <Label htmlFor="aet_hr">AeT Heart Rate (bpm)</Label>
                 <Input
-                  id="fat_max_intensity"
-                  placeholder="65"
+                  id="aet_hr"
                   type="number"
-                  max="100"
-                  min="40"
-                  value={labData.fat_max_intensity}
-                  onChange={(e) => setLabData(prev => ({ ...prev, fat_max_intensity: e.target.value }))}
+                  value={labData.aet_hr || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    aet_hr: e.target.value
+                  }))}
+                  placeholder="150"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="glycolytic_threshold">
+                  Glycolytic Threshold (GT) ({isCycling ? 'Watts' : isRunning ? 'min:sec /km' : 'min:sec /100m'})
+                </Label>
+                <Input
+                  id="glycolytic_threshold"
+                  type={isCycling ? "number" : "text"}
+                  value={labData.glycolytic_threshold || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    glycolytic_threshold: e.target.value
+                  }))}
+                  placeholder={isCycling ? "280" : isRunning ? "4:15" : "1:25"}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gt_hr">GT Heart Rate (bpm)</Label>
+                <Input
+                  id="gt_hr"
+                  type="number"
+                  value={labData.gt_hr || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    gt_hr: e.target.value
+                  }))}
+                  placeholder="175"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="map">
+                  MAP ({isCycling ? 'Watts' : isRunning ? 'min:sec /km' : 'min:sec /100m'})
+                </Label>
+                <Input
+                  id="map"
+                  type={isCycling ? "number" : "text"}
+                  value={labData.map || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    map: e.target.value
+                  }))}
+                  placeholder={isCycling ? "320" : isRunning ? "3:45" : "1:20"}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_hr">Max Heart Rate (bpm)</Label>
+                <Input
+                  id="max_hr"
+                  type="number"
+                  value={labData.max_hr || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    max_hr: e.target.value
+                  }))}
+                  placeholder="188"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="resting_hr">Resting Heart Rate (bpm)</Label>
+                <Input
+                  id="resting_hr"
+                  type="number"
+                  value={labData.resting_hr || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    resting_hr: e.target.value
+                  }))}
+                  placeholder="48"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="body_weight">Body Weight (kg)</Label>
+                <Input
+                  id="body_weight"
+                  type="number"
+                  step="0.1"
+                  value={labData.body_weight || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    body_weight: e.target.value
+                  }))}
+                  placeholder="72.0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="critical_power">
+                  {isCycling ? 'Critical Power (W)' : isRunning ? 'Critical Speed (min:sec /km)' : 'Critical Speed (min:sec /100m)'}
+                </Label>
+                <Input
+                  id="critical_power"
+                  type={isCycling ? "number" : "text"}
+                  value={labData.critical_power || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    critical_power: e.target.value
+                  }))}
+                  placeholder={isCycling ? "290" : isRunning ? "4:10" : "1:22"}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="w_prime">
+                  {isCycling ? "W' (kJ)" : isRunning ? "D' (m)" : "D' (m)"}
+                </Label>
+                <Input
+                  id="w_prime"
+                  type="number"
+                  value={labData.w_prime || ''}
+                  onChange={(e) => setLabData(prev => ({ 
+                    ...prev, 
+                    w_prime: e.target.value
+                  }))}
+                  placeholder={isCycling ? "18.5" : "320"}
                 />
               </div>
             </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Lab Results'}
+            
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving..." : `Save ${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} Lab Results`}
             </Button>
           </form>
         </CardContent>

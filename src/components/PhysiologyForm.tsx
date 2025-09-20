@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { RecoverySection } from "@/components/RecoverySection";
 import { usePhysiologyData } from "@/hooks/useSupabase";
+import { useToast } from "@/hooks/use-toast";
 
 interface PhysiologyData {
   vo2max: string;
@@ -79,6 +80,7 @@ interface PhysiologyData {
 export function PhysiologyForm() {
   const { savePhysiologyData } = usePhysiologyData();
   const { sportMode, isCycling, isRunning, isSwimming } = useSportMode();
+  const { toast } = useToast();
   const [useLabResults, setUseLabResults] = useState<{[key: string]: boolean}>({
     cycling: false,
     running: false,
@@ -164,9 +166,17 @@ export function PhysiologyForm() {
     try {
       // Use the proper hook method with upsert
       await savePhysiologyData(data, sportMode);
-      console.log(`${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} physiology data saved successfully`);
+      toast({
+        title: "Success",
+        description: `${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} physiology data saved successfully`,
+      });
     } catch (error) {
       console.error('Error saving physiology data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save physiology data. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
