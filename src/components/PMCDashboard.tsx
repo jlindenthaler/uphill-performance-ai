@@ -349,6 +349,126 @@ export function PMCDashboard() {
         <TabsContent value="trends" className="space-y-6">
           <Card className="card-gradient">
             <CardHeader>
+              <CardTitle>{isRunning ? 'Pace' : 'Power'} Trends Analysis</CardTitle>
+              <CardDescription>
+                AeT (Aerobic Threshold), GT (Glycolytic Threshold), and MAP progression over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={[
+                    { date: '2024-01-01', aet: isRunning ? 4.8 : 220, gt: isRunning ? 4.2 : 280, map: isRunning ? 3.5 : 320 },
+                    { date: '2024-02-01', aet: isRunning ? 4.7 : 225, gt: isRunning ? 4.1 : 285, map: isRunning ? 3.4 : 325 },
+                    { date: '2024-03-01', aet: isRunning ? 4.6 : 230, gt: isRunning ? 4.0 : 290, map: isRunning ? 3.3 : 330 },
+                    { date: '2024-04-01', aet: isRunning ? 4.5 : 235, gt: isRunning ? 3.9 : 295, map: isRunning ? 3.2 : 335 },
+                    { date: '2024-05-01', aet: isRunning ? 4.4 : 240, gt: isRunning ? 3.8 : 300, map: isRunning ? 3.1 : 340 },
+                    { date: '2024-06-01', aet: isRunning ? 4.3 : 245, gt: isRunning ? 3.7 : 305, map: isRunning ? 3.0 : 345 },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short' })}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                      formatter={(value, name) => [
+                        `${value}${isRunning ? ' min/km' : 'W'}`, 
+                        name === 'aet' ? 'AeT' : name === 'gt' ? 'GT' : 'MAP'
+                      ]}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="aet" 
+                      stroke="hsl(var(--zone-2))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-2))', strokeWidth: 2, r: 4 }}
+                      name="AeT"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="gt" 
+                      stroke="hsl(var(--zone-3))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-3))', strokeWidth: 2, r: 4 }}
+                      name="GT"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="map" 
+                      stroke="hsl(var(--zone-4))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-4))', strokeWidth: 2, r: 4 }}
+                      name="MAP"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="card-gradient">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-zone-2 to-zone-2"></div>
+                    <p className="text-sm font-medium">AeT (Aerobic Threshold)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Steady improvement in aerobic power over the last 6 months. 
+                    {isRunning ? ' Pace improving by ~2s/km per month.' : ' Power increasing by ~5W per month.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-gradient">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-zone-3 to-zone-3"></div>
+                    <p className="text-sm font-medium">GT (Glycolytic Threshold)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Strong progression in lactate threshold power. 
+                    {isRunning ? ' Sustainable pace improving significantly.' : ' FTP equivalent showing consistent gains.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-gradient">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-zone-4 to-zone-4"></div>
+                    <p className="text-sm font-medium">MAP (Maximal Aerobic Power)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Peak aerobic capacity showing excellent development. 
+                    {isRunning ? ' VO2max pace trending upward.' : ' Maximum sustainable power at VO2max improving.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="card-gradient">
+            <CardHeader>
               <CardTitle>Training Stress Score Trends</CardTitle>
               <CardDescription>Daily TSS over the last 30 days</CardDescription>
             </CardHeader>

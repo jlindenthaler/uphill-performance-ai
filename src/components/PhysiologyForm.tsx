@@ -171,12 +171,12 @@ export function PhysiologyForm() {
       </div>
 
       <Tabs defaultValue="physiology" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 h-12">
-          <TabsTrigger value="physiology" className="flex items-center gap-2 h-10">
+        <TabsList className="grid w-full grid-cols-2 h-16">
+          <TabsTrigger value="physiology" className="flex items-center gap-2 h-12">
             <Activity className="w-4 h-4" />
             Physiology
           </TabsTrigger>
-          <TabsTrigger value="recovery" className="flex items-center gap-2 h-10">
+          <TabsTrigger value="recovery" className="flex items-center gap-2 h-12">
             <Settings className="w-4 h-4" />
             Recovery
           </TabsTrigger>
@@ -208,15 +208,17 @@ export function PhysiologyForm() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="vo2max">VO2 Max (ml/kg/min)</Label>
-                    <Input
-                      id="vo2max"
-                      value={data.vo2max}
-                      onChange={(e) => handleInputChange('vo2max', e.target.value)}
-                      placeholder="58"
-                    />
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="vo2max">VO2 Max (ml/kg/min)</Label>
+                     <Input
+                       id="vo2max"
+                       value={data.vo2max}
+                       onChange={(e) => handleInputChange('vo2max', e.target.value)}
+                       placeholder="58"
+                       disabled={!useLabResults}
+                       className={!useLabResults ? "opacity-60" : ""}
+                     />
+                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="map">MAP (Watts)</Label>
                     <Input
@@ -336,26 +338,26 @@ export function PhysiologyForm() {
                     <Label htmlFor="ftp">
                       {isCycling ? 'FTP (Watts)' : isRunning ? 'Threshold Pace (/km)' : 'CSS Pace (/100m)'}
                     </Label>
-                    <Input
-                      id="ftp"
-                      value={data.ftp}
-                      onChange={(e) => handleInputChange('ftp', e.target.value)}
-                      placeholder={isCycling ? "285" : isRunning ? "4:15" : "1:25"}
-                      disabled={useLabResults}
-                      className={useLabResults ? "opacity-60" : ""}
+                     <Input
+                       id="ftp"
+                       value={data.ftp}
+                       onChange={(e) => handleInputChange('ftp', e.target.value)}
+                       placeholder={isCycling ? "285" : isRunning ? "4:15" : "1:25"}
+                       disabled={!useLabResults}
+                       className={!useLabResults ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="ftpHr">
                       {isCycling ? 'FTP HR (bpm)' : isRunning ? 'Threshold HR (bpm)' : 'CSS HR (bpm)'}
                     </Label>
-                    <Input
-                      id="ftpHr"
-                      value={data.ftpHr}
-                      onChange={(e) => handleInputChange('ftpHr', e.target.value)}
-                      placeholder="172"
-                      disabled={useLabResults}
-                      className={useLabResults ? "opacity-60" : ""}
+                     <Input
+                       id="ftpHr"
+                       value={data.ftpHr}
+                       onChange={(e) => handleInputChange('ftpHr', e.target.value)}
+                       placeholder="172"
+                       disabled={!useLabResults}
+                       className={!useLabResults ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">
