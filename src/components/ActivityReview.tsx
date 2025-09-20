@@ -8,12 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { ActivityDetail } from './ActivityDetail';
 
 export function ActivityReview() {
-  const { activities, loading } = useActivities();
+  const { activities, loading, deleteActivity } = useActivities();
   const { sportMode } = useSportMode();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
 
@@ -60,11 +61,36 @@ export function ActivityReview() {
     }
   };
 
+  const handleActivityClick = (activity: any) => {
+    setSelectedActivity(activity);
+  };
+
+  const handleBackToList = () => {
+    setSelectedActivity(null);
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (confirm('Are you sure you want to delete this activity?')) {
+      await deleteActivity(activityId);
+      setSelectedActivity(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
+    );
+  }
+
+  if (selectedActivity) {
+    return (
+      <ActivityDetail 
+        activity={selectedActivity}
+        onBack={handleBackToList}
+        onDelete={handleDeleteActivity}
+      />
     );
   }
 
@@ -127,7 +153,7 @@ export function ActivityReview() {
       ) : (
         <div className="grid gap-4">
           {filteredActivities.map((activity) => (
-            <Card key={activity.id} className="cursor-pointer hover:shadow-md transition-shadow">
+            <Card key={activity.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleActivityClick(activity)}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">

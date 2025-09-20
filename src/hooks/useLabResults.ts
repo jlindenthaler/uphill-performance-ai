@@ -47,6 +47,8 @@ export function useLabResults() {
         user_id: user.id,
         sport_mode: sportMode,
         ...results,
+      }, {
+        onConflict: 'user_id,sport_mode'
       });
 
     if (error) throw error;
