@@ -486,7 +486,7 @@ export function PhysiologyForm() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="crossover" className="flex items-center gap-1">
-                      <Wheat className="w-3 h-3 text-orange-500" />
+                      <Wheat className="w-3 h-3 text-amber-500" />
                       Crossover {isCycling ? '(Watts)' : isRunning ? '(Pace /km)' : '(Pace /100m)'}
                     </Label>
                     <Input
