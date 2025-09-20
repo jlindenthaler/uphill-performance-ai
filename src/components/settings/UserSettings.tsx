@@ -108,6 +108,10 @@ export function UserSettings() {
         crossover_point: parseFloat(labData.crossover_point) || undefined,
         fat_max_intensity: parseFloat(labData.fat_max_intensity) || undefined,
       });
+      toast({
+        title: "Lab results saved",
+        description: "Your laboratory test results have been updated successfully.",
+      });
     } catch (error: any) {
       toast({
         title: "Error saving lab results",

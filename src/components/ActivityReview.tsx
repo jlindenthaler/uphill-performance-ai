@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Map as MapIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,11 +86,40 @@ export function ActivityReview() {
 
   if (selectedActivity) {
     return (
-      <ActivityDetail 
-        activity={selectedActivity}
-        onBack={handleBackToList}
-        onDelete={handleDeleteActivity}
-      />
+      <div className="space-y-6">
+        <Tabs defaultValue="details">
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="map">Map</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
+            <ActivityDetail 
+              activity={selectedActivity}
+              onBack={handleBackToList}
+              onDelete={handleDeleteActivity}
+            />
+          </TabsContent>
+          <TabsContent value="map">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapIcon className="w-5 h-5" />
+                  Activity Map - {selectedActivity.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-96 bg-muted rounded-lg flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <MapIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Activity map will be displayed here</p>
+                    <p className="text-sm">Integration with mapping service coming soon</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     );
   }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ActivityUpload } from './ActivityUpload';
+import { ActivityUploadNew } from './ActivityUploadNew';
 import { ActivityReview } from './ActivityReview';
 
 export function Activities() {
@@ -24,7 +24,7 @@ export function Activities() {
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
-          <ActivityUpload />
+          <ActivityUploadNew />
         </TabsContent>
       </Tabs>
     </div>

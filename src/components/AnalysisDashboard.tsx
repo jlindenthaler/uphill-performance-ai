@@ -1,18 +1,21 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame, Calendar } from "lucide-react";
 import { useMetabolicData } from "@/hooks/useMetabolicData";
 import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { useState } from "react";
 
 export function AnalysisDashboard() {
   const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
   const { powerProfile, loading: powerLoading } = usePowerProfile();
   const { trainingHistory, loading: historyLoading } = useTrainingHistory();
   const { isRunning } = useSportMode();
+  const [dateRange, setDateRange] = useState('30');
 
   const currentCTL = trainingHistory[trainingHistory.length - 1]?.ctl || 0;
   const currentATL = trainingHistory[trainingHistory.length - 1]?.atl || 0;
@@ -50,15 +53,34 @@ export function AnalysisDashboard() {
             {isRunning ? ' - Running Mode' : ' - Cycling Mode'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="secondary" className="bg-primary/20 text-primary">
-            <Crown className="w-3 h-3 mr-1" />
-            Coach Features
-          </Badge>
-          <Badge className={`${tsbStatus.color} bg-background`}>
-            <tsbStatus.icon className="w-3 h-3 mr-1" />
-            {tsbStatus.status}
-          </Badge>
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="14">Last 14 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 3 months</SelectItem>
+                <SelectItem value="180">Last 6 months</SelectItem>
+                <SelectItem value="365">Last year</SelectItem>
+                <SelectItem value="custom">Custom range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Badge variant="secondary" className="bg-primary/20 text-primary">
+              <Crown className="w-3 h-3 mr-1" />
+              Coach Features
+            </Badge>
+            <Badge className={`${tsbStatus.color} bg-background`}>
+              <tsbStatus.icon className="w-3 h-3 mr-1" />
+              {tsbStatus.status}
+            </Badge>
+          </div>
         </div>
       </div>
 

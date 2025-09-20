@@ -105,6 +105,8 @@ export function useUserProfile() {
       .upsert({ 
         user_id: user.id, 
         avatar_url: data.publicUrl 
+      }, {
+        onConflict: 'user_id'
       })
 
     if (updateError) throw updateError
