@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
+
+// Debug logging to understand the integration state
+console.log('Supabase URL:', supabaseUrl)
+console.log('Supabase Anon Key:', supabaseAnonKey ? 'Present' : 'Missing')
+
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.error('Supabase environment variables are missing. Please ensure the Supabase integration is properly connected.')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
