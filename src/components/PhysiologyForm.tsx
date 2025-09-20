@@ -378,8 +378,8 @@ export function PhysiologyForm() {
                        value={data.ftp}
                        onChange={(e) => handleInputChange('ftp', e.target.value)}
                        placeholder={isCycling ? "285" : isRunning ? "4:15" : "1:25"}
-                       disabled={!useLabResults[sportMode]}
-                       className={!useLabResults[sportMode] ? "opacity-60" : ""}
+                        disabled={useLabResults[sportMode]}
+                        className={useLabResults[sportMode] ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">
@@ -391,8 +391,8 @@ export function PhysiologyForm() {
                        value={data.ftpHr}
                        onChange={(e) => handleInputChange('ftpHr', e.target.value)}
                        placeholder="172"
-                       disabled={!useLabResults[sportMode]}
-                       className={!useLabResults[sportMode] ? "opacity-60" : ""}
+                        disabled={useLabResults[sportMode]}
+                        className={useLabResults[sportMode] ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">

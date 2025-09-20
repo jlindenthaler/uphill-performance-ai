@@ -314,8 +314,8 @@ export function PMCDashboard() {
                     <XAxis dataKey="intensity" />
                     <YAxis />
                     <Tooltip formatter={(value) => [`${value}%`, '']} />
-                    <Area type="monotone" dataKey="fat" stackId="1" stroke="hsl(var(--zone-2))" fill="hsl(var(--zone-2))" />
-                    <Area type="monotone" dataKey="cho" stackId="1" stroke="hsl(var(--zone-4))" fill="hsl(var(--zone-4))" />
+                    <Area type="monotone" dataKey="fat" stackId="1" stroke="#f97316" fill="#f97316" />
+                    <Area type="monotone" dataKey="cho" stackId="1" stroke="#22c55e" fill="#22c55e" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
