@@ -22,14 +22,6 @@ import {
 } from "lucide-react";
 
 const providerConfigs = {
-  strava: {
-    name: 'Strava',
-    icon: Activity,
-    color: 'text-orange-500',
-    description: 'Connect with the world\'s largest community of athletes',
-    features: ['Activity Import', 'Segment Analysis', 'Social Features'],
-    type: 'data' as const
-  },
   trainingpeaks: {
     name: 'TrainingPeaks',
     icon: BarChart3,
