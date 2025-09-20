@@ -7,6 +7,7 @@ import { AnalysisDashboard } from "@/components/AnalysisDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
 import { Calendar } from "@/components/Calendar";
+import { Activities } from "@/components/Activities";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -25,6 +26,8 @@ const Index = () => {
         return <PhysiologyForm />;
       case 'calendar':
         return <Calendar />;
+      case 'activities':
+        return <Activities />;
       case 'workouts':
         return <WorkoutLibrary />;
       case 'analysis':

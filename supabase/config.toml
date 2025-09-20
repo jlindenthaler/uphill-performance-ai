@@ -1,1 +1,7 @@
 project_id = "srwuprrcbfuzvkehvgyt"
+
+[functions.ai-training-analysis]
+verify_jwt = true
+
+[functions.process-activity]
+verify_jwt = true

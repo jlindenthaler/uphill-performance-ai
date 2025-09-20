@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          avg_heart_rate: number | null
+          avg_pace_per_km: number | null
+          avg_power: number | null
+          avg_speed_kmh: number | null
+          calories: number | null
+          created_at: string
+          date: string
+          distance_meters: number | null
+          duration_seconds: number
+          elevation_gain_meters: number | null
+          file_path: string | null
+          file_type: string | null
+          gps_data: Json | null
+          id: string
+          intensity_factor: number | null
+          lap_data: Json | null
+          max_heart_rate: number | null
+          max_power: number | null
+          name: string
+          normalized_power: number | null
+          notes: string | null
+          original_filename: string | null
+          sport_mode: string
+          tss: number | null
+          updated_at: string
+          user_id: string
+          variability_index: number | null
+          weather_conditions: Json | null
+        }
+        Insert: {
+          avg_heart_rate?: number | null
+          avg_pace_per_km?: number | null
+          avg_power?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          date: string
+          distance_meters?: number | null
+          duration_seconds?: number
+          elevation_gain_meters?: number | null
+          file_path?: string | null
+          file_type?: string | null
+          gps_data?: Json | null
+          id?: string
+          intensity_factor?: number | null
+          lap_data?: Json | null
+          max_heart_rate?: number | null
+          max_power?: number | null
+          name: string
+          normalized_power?: number | null
+          notes?: string | null
+          original_filename?: string | null
+          sport_mode?: string
+          tss?: number | null
+          updated_at?: string
+          user_id: string
+          variability_index?: number | null
+          weather_conditions?: Json | null
+        }
+        Update: {
+          avg_heart_rate?: number | null
+          avg_pace_per_km?: number | null
+          avg_power?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          date?: string
+          distance_meters?: number | null
+          duration_seconds?: number
+          elevation_gain_meters?: number | null
+          file_path?: string | null
+          file_type?: string | null
+          gps_data?: Json | null
+          id?: string
+          intensity_factor?: number | null
+          lap_data?: Json | null
+          max_heart_rate?: number | null
+          max_power?: number | null
+          name?: string
+          normalized_power?: number | null
+          notes?: string | null
+          original_filename?: string | null
+          sport_mode?: string
+          tss?: number | null
+          updated_at?: string
+          user_id?: string
+          variability_index?: number | null
+          weather_conditions?: Json | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           auto_sync: boolean | null

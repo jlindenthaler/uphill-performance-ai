@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SportModeToggle } from "@/components/SportModeToggle";
-import { Home, Calendar, Activity, Target, Heart, Download, Settings, Zap, TrendingUp, BookOpen } from "lucide-react";
+import { Home, Calendar, Activity, Target, Heart, Download, Settings, Zap, TrendingUp, BookOpen, Upload } from "lucide-react";
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
@@ -18,6 +18,10 @@ export function Navigation({
     id: 'calendar',
     label: 'Calendar',
     icon: Calendar
+  }, {
+    id: 'activities',
+    label: 'Activities',
+    icon: Upload
   }, {
     id: 'workouts',
     label: 'Workouts',
