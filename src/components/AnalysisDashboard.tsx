@@ -8,7 +8,7 @@ import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { useSportMode } from "@/contexts/SportModeContext";
 
-export function PMCDashboard() {
+export function AnalysisDashboard() {
   const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
   const { powerProfile, loading: powerLoading } = usePowerProfile();
   const { trainingHistory, loading: historyLoading } = useTrainingHistory();

@@ -3,7 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
 import { PhysiologyForm } from "@/components/PhysiologyForm";
 import { WorkoutLibrary } from "@/components/WorkoutLibrary";
-import { PMCDashboard } from "@/components/PMCDashboard";
+import { AnalysisDashboard } from "@/components/AnalysisDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
 import { Calendar } from "@/components/Calendar";
@@ -22,7 +22,7 @@ const Index = () => {
       case 'workouts':
         return <WorkoutLibrary />;
       case 'analysis':
-        return <PMCDashboard />;
+        return <AnalysisDashboard />;
       case 'goals':
         return <div className="p-8 text-center text-muted-foreground">Goal Setting - Coming Soon</div>;
       case 'research':
