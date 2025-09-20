@@ -195,6 +195,154 @@ export function PhysiologyForm() {
 
         <TabsContent value="physiology" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Laboratory Data */}
+            <Card className="card-gradient shadow-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-zone-4" />
+                      Laboratory Results - {isCycling ? 'Cycling' : isRunning ? 'Running' : 'Swimming'}
+                    </CardTitle>
+                    <CardDescription>
+                      Gold standard physiological markers from laboratory testing
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Use Lab Data</span>
+                    <Switch
+                      checked={useLabResults[sportMode]}
+                      onCheckedChange={(checked) => 
+                        setUseLabResults(prev => ({ ...prev, [sportMode]: checked }))
+                      }
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className={`space-y-4 ${!useLabResults[sportMode] ? 'opacity-40' : ''}`}>
+                <div className="grid grid-cols-3 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="vo2max">VO2 Max (ml/kg/min)</Label>
+                     <Input
+                       id="vo2max"
+                       value={data.vo2max}
+                       onChange={(e) => handleInputChange('vo2max', e.target.value)}
+                       placeholder="58"
+                       disabled={!useLabResults[sportMode]}
+                     />
+                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="map">MAP (Watts)</Label>
+                    <Input
+                      id="map"
+                      value={data.map}
+                      onChange={(e) => handleInputChange('map', e.target.value)}
+                      placeholder="320"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mapHr">MAP/VO2max HR (bpm)</Label>
+                    <Input
+                      id="mapHr"
+                      value={data.mapHr}
+                      onChange={(e) => handleInputChange('mapHr', e.target.value)}
+                      placeholder="188"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="vt1">VT1 (Watts)</Label>
+                    <Input
+                      id="vt1"
+                      value={data.vt1}
+                      onChange={(e) => handleInputChange('vt1', e.target.value)}
+                      placeholder="200"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vt1Hr">VT1 HR (bpm)</Label>
+                    <Input
+                      id="vt1Hr"
+                      value={data.vt1Hr}
+                      onChange={(e) => handleInputChange('vt1Hr', e.target.value)}
+                      placeholder="150"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vt2">VT2 (Watts)</Label>
+                    <Input
+                      id="vt2"
+                      value={data.vt2}
+                      onChange={(e) => handleInputChange('vt2', e.target.value)}
+                      placeholder="285"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vt2Hr">VT2 HR (bpm)</Label>
+                    <Input
+                      id="vt2Hr"
+                      value={data.vt2Hr}
+                      onChange={(e) => handleInputChange('vt2Hr', e.target.value)}
+                      placeholder="175"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lt1">LT1 (Watts)</Label>
+                    <Input
+                      id="lt1"
+                      value={data.lt1}
+                      onChange={(e) => handleInputChange('lt1', e.target.value)}
+                      placeholder="195"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lt1Hr">LT1 HR (bpm)</Label>
+                    <Input
+                      id="lt1Hr"
+                      value={data.lt1Hr}
+                      onChange={(e) => handleInputChange('lt1Hr', e.target.value)}
+                      placeholder="148"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lt2">LT2 (Watts)</Label>
+                    <Input
+                      id="lt2"
+                      value={data.lt2}
+                      onChange={(e) => handleInputChange('lt2', e.target.value)}
+                      placeholder="280"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lt2Hr">LT2 HR (bpm)</Label>
+                    <Input
+                      id="lt2Hr"
+                      value={data.lt2Hr}
+                      onChange={(e) => handleInputChange('lt2Hr', e.target.value)}
+                      placeholder="172"
+                      disabled={!useLabResults[sportMode]}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Performance Data */}
             <Card className="card-gradient shadow-card">
               <CardHeader>

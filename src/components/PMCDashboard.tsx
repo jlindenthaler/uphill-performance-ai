@@ -69,7 +69,7 @@ export function PMCDashboard() {
           <TabsTrigger value="power">{isRunning ? 'Pace Profile' : 'Power Profile'}</TabsTrigger>
           <TabsTrigger value="metabolic">Metabolic</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="analysis">Overview</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pmc" className="space-y-6">
@@ -501,7 +501,7 @@ export function PMCDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="card-gradient">
               <CardHeader>
-                <CardTitle>Training Analysis</CardTitle>
+                <CardTitle>Training Overview</CardTitle>
                 <CardDescription>Current training status and recommendations</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
