@@ -143,7 +143,7 @@ export function PhysiologyDashboard() {
               </div>
               
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Gas Exchange Threshold</Label>
+                <Label className="text-sm text-muted-foreground">Glycolitic Threshold</Label>
                 <p className="text-lg font-semibold">
                   {formatValue(performanceData.gt, isCycling ? 'W' : '/km')}
                 </p>
