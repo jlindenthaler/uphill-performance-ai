@@ -61,12 +61,13 @@ export function useAuth() {
 export function usePhysiologyData() {
   const { user } = useAuth()
 
-  const savePhysiologyData = async (data: any) => {
+  const savePhysiologyData = async (data: any, sportMode: string) => {
     if (!user) throw new Error('User not authenticated')
 
     // Transform the physiology form data to match database schema
     const physiologyData = {
       user_id: user.id,
+      sport_mode: sportMode,
       body_weight: parseFloat(data.bodyWeight) || null,
       vo2_max: parseFloat(data.vo2max) || null,
       lactate_threshold: parseFloat(data.lt1) || null,
@@ -94,18 +95,22 @@ export function usePhysiologyData() {
 
     const { error } = await supabase
       .from('physiology_data')
-      .upsert(physiologyData)
+      .upsert(physiologyData, { 
+        onConflict: 'user_id,sport_mode',
+        ignoreDuplicates: false 
+      })
 
     if (error) throw error
   }
 
-  const getPhysiologyData = async () => {
+  const getPhysiologyData = async (sportMode?: string) => {
     if (!user) return null
 
     const { data, error } = await supabase
       .from('physiology_data')
       .select('*')
       .eq('user_id', user.id)
+      .eq('sport_mode', sportMode || 'cycling')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()

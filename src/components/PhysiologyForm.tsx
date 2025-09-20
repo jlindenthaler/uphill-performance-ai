@@ -82,77 +82,86 @@ export function PhysiologyForm() {
   const { savePhysiologyData } = usePhysiologyData();
   const { sportMode, isCycling, isRunning, isSwimming } = useSportMode();
   const [useLabResults, setUseLabResults] = useState(false);
-  const [data, setData] = useState<PhysiologyData>({
-    vo2max: '58',
-    map: '320',
-    mapHr: '188',
-    vt1: '200',
-    vt1Hr: '150',
-    vt2: '285',
-    vt2Hr: '175',
-    lt1: '195',
-    lt1Hr: '148',
-    lt2: '280',
-    lt2Hr: '172',
-    rmr: '1850',
-    ftp: '285',
-    ftpHr: '172',
-    maxHr: '188',
-    restingHr: '48',
-    bodyWeight: '72',
-    fatPercentage: '12',
-    criticalPower: '290',
-    wPrime: '18500',
-    fatMax: '180',
-    fatMaxHr: '142',
-    crossover: '195',
-    crossoverHr: '148',
-    choPercentages: { '180': '45', '220': '65', '260': '85', '300': '95' },
-    fatPercentages: { '180': '55', '220': '35', '260': '15', '300': '5' },
-    runnerMode: false,
-    criticalSpeed: '4.2',
-    dPrime: '320',
-    recovery: {
-      availableModalities: {
-        infraredSauna: false,
-        dryTrueSauna: false,
-        steamRoom: false,
-        iceBath: false,
-        coldPlunge: false,
-        pool: false,
-        hotTub: false,
-        pneumaticCompression: false,
-        massageGun: false,
-        estim: false,
-        massage: false,
-        stretching: true,
-        yoga: false,
-        meditation: false,
-        sleepTracking: false,
-        hrv: false,
-        redLightTherapy: false,
-        cryotherapy: false,
-        hyperbaricChamber: false,
-        floatTank: false,
-      },
-      frequency: {},
-      preferences: '',
-      constraints: '',
-      sleepHours: '7.5',
-      sleepQuality: '8',
-      hrvBaseline: '',
-      restingHRBaseline: '48',
+  const [sportData, setSportData] = useState<{[key: string]: PhysiologyData}>({
+    cycling: {
+      vo2max: '58', map: '320', mapHr: '188', vt1: '200', vt1Hr: '150', vt2: '285', vt2Hr: '175',
+      lt1: '195', lt1Hr: '148', lt2: '280', lt2Hr: '172', rmr: '1850', ftp: '285', ftpHr: '172',
+      maxHr: '188', restingHr: '48', bodyWeight: '72', fatPercentage: '12', criticalPower: '290',
+      wPrime: '18500', fatMax: '180', fatMaxHr: '142', crossover: '195', crossoverHr: '148',
+      choPercentages: { '180': '45', '220': '65', '260': '85', '300': '95' },
+      fatPercentages: { '180': '55', '220': '35', '260': '15', '300': '5' },
+      runnerMode: false, criticalSpeed: '4.2', dPrime: '320',
+      recovery: {
+        availableModalities: {
+          infraredSauna: false, dryTrueSauna: false, steamRoom: false, iceBath: false,
+          coldPlunge: false, pool: false, hotTub: false, pneumaticCompression: false,
+          massageGun: false, estim: false, massage: false, stretching: true, yoga: false,
+          meditation: false, sleepTracking: false, hrv: false, redLightTherapy: false,
+          cryotherapy: false, hyperbaricChamber: false, floatTank: false,
+        },
+        frequency: {}, preferences: '', constraints: '', sleepHours: '7.5',
+        sleepQuality: '8', hrvBaseline: '', restingHRBaseline: '48',
+      }
+    },
+    running: {
+      vo2max: '62', map: '18', mapHr: '188', vt1: '20', vt1Hr: '150', vt2: '17', vt2Hr: '175',
+      lt1: '21', lt1Hr: '148', lt2: '18', lt2Hr: '172', rmr: '1850', ftp: '4:15', ftpHr: '172',
+      maxHr: '188', restingHr: '48', bodyWeight: '70', fatPercentage: '10', criticalPower: '4:10',
+      wPrime: '320', fatMax: '5:30', fatMaxHr: '142', crossover: '4:45', crossoverHr: '148',
+      choPercentages: { '180': '45', '220': '65', '260': '85', '300': '95' },
+      fatPercentages: { '180': '55', '220': '35', '260': '15', '300': '5' },
+      runnerMode: true, criticalSpeed: '4.2', dPrime: '320',
+      recovery: {
+        availableModalities: {
+          infraredSauna: false, dryTrueSauna: false, steamRoom: false, iceBath: false,
+          coldPlunge: false, pool: false, hotTub: false, pneumaticCompression: false,
+          massageGun: false, estim: false, massage: false, stretching: true, yoga: false,
+          meditation: false, sleepTracking: false, hrv: false, redLightTherapy: false,
+          cryotherapy: false, hyperbaricChamber: false, floatTank: false,
+        },
+        frequency: {}, preferences: '', constraints: '', sleepHours: '7.5',
+        sleepQuality: '8', hrvBaseline: '', restingHRBaseline: '48',
+      }
+    },
+    swimming: {
+      vo2max: '55', map: '1:20', mapHr: '188', vt1: '1:35', vt1Hr: '150', vt2: '1:25', vt2Hr: '175',
+      lt1: '1:38', lt1Hr: '148', lt2: '1:28', lt2Hr: '172', rmr: '1850', ftp: '1:25', ftpHr: '172',
+      maxHr: '188', restingHr: '48', bodyWeight: '72', fatPercentage: '12', criticalPower: '1:22',
+      wPrime: '200', fatMax: '1:45', fatMaxHr: '142', crossover: '1:30', crossoverHr: '148',
+      choPercentages: { '180': '45', '220': '65', '260': '85', '300': '95' },
+      fatPercentages: { '180': '55', '220': '35', '260': '15', '300': '5' },
+      runnerMode: false, criticalSpeed: '1:25', dPrime: '200',
+      recovery: {
+        availableModalities: {
+          infraredSauna: false, dryTrueSauna: false, steamRoom: false, iceBath: false,
+          coldPlunge: false, pool: false, hotTub: false, pneumaticCompression: false,
+          massageGun: false, estim: false, massage: false, stretching: true, yoga: false,
+          meditation: false, sleepTracking: false, hrv: false, redLightTherapy: false,
+          cryotherapy: false, hyperbaricChamber: false, floatTank: false,
+        },
+        frequency: {}, preferences: '', constraints: '', sleepHours: '7.5',
+        sleepQuality: '8', hrvBaseline: '', restingHRBaseline: '48',
+      }
     }
   });
 
+  // Get current sport data
+  const data = sportData[sportMode] || sportData.cycling;
+
   const handleInputChange = (field: keyof PhysiologyData, value: string) => {
-    setData(prev => ({ ...prev, [field]: value }));
+    setSportData(prev => ({
+      ...prev,
+      [sportMode]: {
+        ...prev[sportMode],
+        [field]: value
+      }
+    }));
   };
 
   const handleSave = async () => {
     try {
-      await savePhysiologyData(data);
-      console.log('Physiology data saved successfully');
+      await savePhysiologyData(data, sportMode);
+      console.log(`${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} physiology data saved successfully`);
     } catch (error) {
       console.error('Error saving physiology data:', error);
     }
@@ -490,7 +499,13 @@ export function PhysiologyForm() {
                               onChange={(e) => {
                                 const newCho = { ...data.choPercentages };
                                 newCho[intensity] = e.target.value;
-                                setData(prev => ({ ...prev, choPercentages: newCho }));
+                                setSportData(prev => ({ 
+                                  ...prev, 
+                                  [sportMode]: { 
+                                    ...prev[sportMode], 
+                                    choPercentages: newCho 
+                                  } 
+                                }));
                               }}
                               placeholder="CHO%"
                               className="text-xs pl-8"
@@ -503,8 +518,14 @@ export function PhysiologyForm() {
                               onChange={(e) => {
                                 const newFat = { ...data.fatPercentages };
                                 newFat[intensity] = e.target.value;
-                              setData(prev => ({ ...prev, fatPercentages: newFat }));
-                            }}
+                                setSportData(prev => ({ 
+                                  ...prev, 
+                                  [sportMode]: { 
+                                    ...prev[sportMode], 
+                                    fatPercentages: newFat 
+                                  } 
+                                }));
+                              }}
                             placeholder="Fat%"
                             className="text-xs pl-8"
                           />
@@ -562,7 +583,13 @@ export function PhysiologyForm() {
                       type="button"
                       variant={data.runnerMode ? "default" : "outline"}
                       className="w-full"
-                      onClick={() => setData(prev => ({ ...prev, runnerMode: !prev.runnerMode }))}
+                      onClick={() => setSportData(prev => ({ 
+                        ...prev, 
+                        [sportMode]: { 
+                          ...prev[sportMode], 
+                          runnerMode: !prev[sportMode].runnerMode 
+                        } 
+                      }))}
                     >
                       {data.runnerMode ? 'Speed/Pace' : 'Power'}
                     </Button>
@@ -576,7 +603,13 @@ export function PhysiologyForm() {
         <TabsContent value="recovery" className="space-y-6">
           <RecoverySection 
             data={data.recovery} 
-            onChange={(recoveryData) => setData(prev => ({ ...prev, recovery: recoveryData }))}
+            onChange={(recoveryData) => setSportData(prev => ({ 
+              ...prev, 
+              [sportMode]: { 
+                ...prev[sportMode], 
+                recovery: recoveryData 
+              } 
+            }))}
           />
         </TabsContent>
       </Tabs>
