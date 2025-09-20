@@ -33,6 +33,23 @@ export function PhysiologyDashboard() {
     return `-- ${unit}`;
   };
 
+  const formatPace = (seconds: number) => {
+    if (!seconds) return '--:-- /km';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')} /km`;
+  };
+
+  const formatRunningValue = (value: any) => {
+    // Convert watts to approximate pace (this is a rough conversion for demo)
+    if (typeof value === 'number') {
+      // Rough conversion: higher watts = faster pace (lower time)
+      const paceInSeconds = 300 - (value - 150) * 0.5; // Example conversion
+      return formatPace(Math.max(180, paceInSeconds)); // Min 3:00 /km
+    }
+    return formatPace(300); // Default 5:00 /km
+  };
+
   const getPerformanceLevel = (value: number, thresholds: number[]) => {
     if (value >= thresholds[3]) return { level: 'Elite', color: 'text-green-500', progress: 95 };
     if (value >= thresholds[2]) return { level: 'Excellent', color: 'text-blue-500', progress: 80 };
@@ -135,7 +152,7 @@ export function PhysiologyDashboard() {
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Aerobic Threshold (AeT)</Label>
                 <p className="text-lg font-semibold">
-                  {formatValue(performanceData.aet, isCycling ? 'W' : '/km')}
+                  {isRunning ? formatRunningValue(performanceData.aet) : formatValue(performanceData.aet, isCycling ? 'W' : '/km')}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   @ {formatValue(performanceData.aetHr, 'bpm')}
