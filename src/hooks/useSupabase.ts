@@ -122,6 +122,8 @@ export function useAIAnalysis() {
     recommendWorkout: (preferences: any) => 
       callAIFunction('recommend_workout', preferences),
     adjustTrainingLoad: (feedback: any) => 
-      callAIFunction('adjust_training_load', feedback)
+      callAIFunction('adjust_training_load', feedback),
+    fetchResearchUpdates: () =>
+      callAIFunction('fetch_research_updates')
   }
 }

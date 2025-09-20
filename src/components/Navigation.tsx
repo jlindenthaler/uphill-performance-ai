@@ -9,7 +9,8 @@ import {
   Download,
   Settings,
   Zap,
-  TrendingUp
+  TrendingUp,
+  BookOpen
 } from "lucide-react";
 
 interface NavigationProps {
@@ -24,6 +25,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: 'workouts', label: 'Workouts', icon: Activity },
     { id: 'physiology', label: 'Physiology', icon: Heart },
     { id: 'pmc', label: 'PMC', icon: TrendingUp },
+    { id: 'research', label: 'Research', icon: BookOpen },
     { id: 'export', label: 'Export', icon: Download },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -63,9 +65,9 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               >
                 <Icon className="w-4 h-4" />
                 {item.label}
-                {item.id === 'workouts' && (
+                {(item.id === 'workouts' || item.id === 'research') && (
                   <Badge variant="secondary" className="ml-auto text-xs">
-                    New
+                    {item.id === 'research' ? 'AI' : 'New'}
                   </Badge>
                 )}
               </Button>

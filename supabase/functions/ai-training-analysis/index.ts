@@ -30,8 +30,8 @@ serve(async (req) => {
         return await analyzePerformance(supabaseClient, user.id)
       case 'recommend_workout':
         return await recommendWorkout(supabaseClient, user.id, data)
-      case 'adjust_training_load':
-        return await adjustTrainingLoad(supabaseClient, user.id, data)
+      case 'fetch_research_updates':
+        return await fetchResearchUpdates(supabaseClient, user.id)
       default:
         throw new Error('Invalid action')
     }
@@ -237,4 +237,44 @@ function calculateLoadAdjustment(feedback: any) {
   // Adjust intensity based on RPE and completion
   const rpeAdjustment = feedback.rpe > 8 ? -0.05 : feedback.rpe < 6 ? 0.03 : 0
   return { intensity_multiplier: 1 + rpeAdjustment }
+}
+
+async function fetchResearchUpdates(supabaseClient: any, userId: string) {
+  // This would integrate with research databases or web scraping
+  // For now, return mock data structure that would be populated by real research API
+  const mockUpdates = [
+    {
+      id: '1',
+      title: 'Heat Acclimation and Mitochondrial Adaptations in Endurance Athletes',
+      summary: 'Recent research shows that heat acclimation protocols can enhance mitochondrial efficiency and plasma volume expansion beyond traditional altitude training.',
+      category: 'training',
+      source: 'Journal of Applied Physiology',
+      date: '2024-09-15',
+      relevanceScore: 9.2,
+      keyFindings: [
+        'Heat acclimation increases mitochondrial respiratory capacity by 15-20%',
+        'Plasma volume expansion occurs within 5-7 days of heat exposure',
+        'Combined heat/altitude training shows synergistic effects'
+      ],
+      practicalApplications: [
+        'Incorporate sauna sessions 3-4x/week during base training',
+        'Combine with altitude training for enhanced adaptations',
+        'Monitor core temperature and hydration status'
+      ]
+    }
+  ];
+
+  // Store research updates for the user
+  await supabaseClient
+    .from('research_updates')
+    .upsert({
+      user_id: userId,
+      updates: mockUpdates,
+      last_updated: new Date().toISOString()
+    })
+
+  return new Response(
+    JSON.stringify({ updates: mockUpdates }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
 }

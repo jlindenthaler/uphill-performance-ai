@@ -4,6 +4,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { PhysiologyForm } from "@/components/PhysiologyForm";
 import { WorkoutLibrary } from "@/components/WorkoutLibrary";
 import { PMCDashboard } from "@/components/PMCDashboard";
+import { ResearchUpdates } from "@/components/ResearchUpdates";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -22,6 +23,8 @@ const Index = () => {
         return <PMCDashboard />;
       case 'goals':
         return <div className="p-8 text-center text-muted-foreground">Goal Setting - Coming Soon</div>;
+      case 'research':
+        return <ResearchUpdates />;
       case 'export':
         return <div className="p-8 text-center text-muted-foreground">Export to Devices - Coming Soon</div>;
       case 'settings':
