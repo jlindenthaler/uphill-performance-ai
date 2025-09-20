@@ -25,7 +25,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'workouts', label: 'Workouts', icon: Activity },
     { id: 'physiology', label: 'Physiology', icon: Heart },
-    { id: 'pmc', label: 'PMC', icon: TrendingUp },
+    { id: 'analysis', label: 'Analysis', icon: TrendingUp },
     { id: 'research', label: 'Research', icon: BookOpen },
     { id: 'export', label: 'Export', icon: Download },
     { id: 'settings', label: 'Settings', icon: Settings },

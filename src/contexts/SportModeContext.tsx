@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type SportMode = 'cycling' | 'running';
+type SportMode = 'cycling' | 'running' | 'swimming';
 
 interface SportModeContextType {
   sportMode: SportMode;
   setSportMode: (mode: SportMode) => void;
   isRunning: boolean;
   isCycling: boolean;
+  isSwimming: boolean;
 }
 
 const SportModeContext = createContext<SportModeContextType | undefined>(undefined);
@@ -17,7 +18,7 @@ export function SportModeProvider({ children }: { children: React.ReactNode }) {
   // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('sportMode') as SportMode;
-    if (saved === 'cycling' || saved === 'running') {
+    if (saved === 'cycling' || saved === 'running' || saved === 'swimming') {
       setSportModeState(saved);
     }
   }, []);
@@ -30,13 +31,15 @@ export function SportModeProvider({ children }: { children: React.ReactNode }) {
 
   const isRunning = sportMode === 'running';
   const isCycling = sportMode === 'cycling';
+  const isSwimming = sportMode === 'swimming';
 
   return (
     <SportModeContext.Provider value={{
       sportMode,
       setSportMode,
       isRunning,
-      isCycling
+      isCycling,
+      isSwimming
     }}>
       {children}
     </SportModeContext.Provider>

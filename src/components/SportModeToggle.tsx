@@ -1,38 +1,43 @@
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Bike, PersonStanding } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bike, PersonStanding, Waves } from "lucide-react";
 import { useSportMode } from "@/contexts/SportModeContext";
 
 export function SportModeToggle() {
-  const { sportMode, setSportMode, isRunning, isCycling } = useSportMode();
+  const { sportMode, setSportMode, isRunning, isCycling, isSwimming } = useSportMode();
+
+  const getSportIcon = (sport: string) => {
+    switch (sport) {
+      case 'cycling': return Bike;
+      case 'running': return PersonStanding;
+      case 'swimming': return Waves;
+      default: return Bike;
+    }
+  };
+
+  const sports = [
+    { key: 'cycling', label: 'Cycling', icon: Bike },
+    { key: 'running', label: 'Running', icon: PersonStanding },
+    { key: 'swimming', label: 'Swimming', icon: Waves },
+  ] as const;
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <Bike className={`w-4 h-4 ${isCycling ? 'text-primary' : 'text-muted-foreground'}`} />
-        <Label htmlFor="sport-mode" className="text-sm font-medium">
-          Cycling
-        </Label>
-      </div>
-      
-      <Switch
-        id="sport-mode"
-        checked={isRunning}
-        onCheckedChange={(checked) => setSportMode(checked ? 'running' : 'cycling')}
-        className="data-[state=checked]:bg-primary"
-      />
-      
-      <div className="flex items-center gap-2">
-        <Label htmlFor="sport-mode" className="text-sm font-medium">
-          Running
-        </Label>
-        <PersonStanding className={`w-4 h-4 ${isRunning ? 'text-primary' : 'text-muted-foreground'}`} />
-      </div>
-      
-      <Badge variant={isCycling ? "default" : "secondary"} className="ml-2">
-        {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} Mode
-      </Badge>
+    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+      {sports.map(({ key, label, icon: Icon }) => (
+        <Button
+          key={key}
+          variant={sportMode === key ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setSportMode(key)}
+          className={`flex items-center gap-2 transition-all ${
+            sportMode === key 
+              ? 'bg-background shadow-sm text-primary font-semibold' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Icon className="w-4 h-4" />
+          <span className="text-sm">{label}</span>
+        </Button>
+      ))}
     </div>
   );
 }
