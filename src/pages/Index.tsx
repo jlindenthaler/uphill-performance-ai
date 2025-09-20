@@ -5,6 +5,7 @@ import { PhysiologyForm } from "@/components/PhysiologyForm";
 import { WorkoutLibrary } from "@/components/WorkoutLibrary";
 import { PMCDashboard } from "@/components/PMCDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
+import { Settings } from "@/components/Settings";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -28,7 +29,7 @@ const Index = () => {
       case 'export':
         return <div className="p-8 text-center text-muted-foreground">Export to Devices - Coming Soon</div>;
       case 'settings':
-        return <div className="p-8 text-center text-muted-foreground">Settings - Coming Soon</div>;
+        return <Settings />;
       default:
         return <Dashboard onNavigate={setActiveSection} />;
     }

@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          auto_sync: boolean | null
+          created_at: string
+          data_sharing: boolean | null
+          default_sport: string | null
+          email_notifications: boolean | null
+          id: string
+          notifications_enabled: boolean | null
+          privacy_mode: boolean | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+          workout_reminders: boolean | null
+        }
+        Insert: {
+          auto_sync?: boolean | null
+          created_at?: string
+          data_sharing?: boolean | null
+          default_sport?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          notifications_enabled?: boolean | null
+          privacy_mode?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+          workout_reminders?: boolean | null
+        }
+        Update: {
+          auto_sync?: boolean | null
+          created_at?: string
+          data_sharing?: boolean | null
+          default_sport?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          notifications_enabled?: boolean | null
+          privacy_mode?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+          workout_reminders?: boolean | null
+        }
+        Relationships: []
+      }
+      external_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_sync: string | null
+          provider: string
+          provider_user_id: string | null
+          refresh_token: string | null
+          sync_settings: Json | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          provider: string
+          provider_user_id?: string | null
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          provider?: string
+          provider_user_id?: string | null
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       physiology_data: {
         Row: {
           anaerobic_capacity: number | null
@@ -145,6 +235,39 @@ export type Database = {
           pace_per_km?: number | null
           power_watts?: number | null
           sport?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          timezone: string | null
+          units: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          timezone?: string | null
+          units?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          timezone?: string | null
+          units?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
