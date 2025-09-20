@@ -17,6 +17,7 @@ export type Database = {
       physiology_data: {
         Row: {
           anaerobic_capacity: number | null
+          body_weight: number | null
           carb_max_rate: number | null
           created_at: string
           critical_power: number | null
@@ -33,10 +34,13 @@ export type Database = {
           neuromuscular_power: number | null
           notes: string | null
           nutrition_strategy: string | null
+          pace_zones: Json | null
           recovery_methods: string[] | null
+          respiratory_exchange_ratio: number | null
           resting_hr: number | null
           sleep_hours: number | null
           sleep_quality: number | null
+          sport_mode: string | null
           stress_level: number | null
           tags: string[] | null
           updated_at: string
@@ -46,6 +50,7 @@ export type Database = {
         }
         Insert: {
           anaerobic_capacity?: number | null
+          body_weight?: number | null
           carb_max_rate?: number | null
           created_at?: string
           critical_power?: number | null
@@ -62,10 +67,13 @@ export type Database = {
           neuromuscular_power?: number | null
           notes?: string | null
           nutrition_strategy?: string | null
+          pace_zones?: Json | null
           recovery_methods?: string[] | null
+          respiratory_exchange_ratio?: number | null
           resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
+          sport_mode?: string | null
           stress_level?: number | null
           tags?: string[] | null
           updated_at?: string
@@ -75,6 +83,7 @@ export type Database = {
         }
         Update: {
           anaerobic_capacity?: number | null
+          body_weight?: number | null
           carb_max_rate?: number | null
           created_at?: string
           critical_power?: number | null
@@ -91,16 +100,94 @@ export type Database = {
           neuromuscular_power?: number | null
           notes?: string | null
           nutrition_strategy?: string | null
+          pace_zones?: Json | null
           recovery_methods?: string[] | null
+          respiratory_exchange_ratio?: number | null
           resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
+          sport_mode?: string | null
           stress_level?: number | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string
           vo2_max?: number | null
           w_prime?: number | null
+        }
+        Relationships: []
+      }
+      power_profile: {
+        Row: {
+          created_at: string
+          date_achieved: string
+          duration_seconds: number
+          id: string
+          pace_per_km: number | null
+          power_watts: number | null
+          sport: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_achieved: string
+          duration_seconds: number
+          id?: string
+          pace_per_km?: number | null
+          power_watts?: number | null
+          sport: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_achieved?: string
+          duration_seconds?: number
+          id?: string
+          pace_per_km?: number | null
+          power_watts?: number | null
+          sport?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      training_history: {
+        Row: {
+          atl: number | null
+          created_at: string
+          ctl: number | null
+          date: string
+          duration_minutes: number | null
+          id: string
+          sport: string
+          tsb: number | null
+          tss: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          atl?: number | null
+          created_at?: string
+          ctl?: number | null
+          date: string
+          duration_minutes?: number | null
+          id?: string
+          sport: string
+          tsb?: number | null
+          tss?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          atl?: number | null
+          created_at?: string
+          ctl?: number | null
+          date?: string
+          duration_minutes?: number | null
+          id?: string
+          sport?: string
+          tsb?: number | null
+          tss?: number | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
