@@ -372,69 +372,9 @@ export function UserSettings() {
         </CardContent>
       </Card>
 
-      {/* Time Constraints */}
-      <Card className="card-gradient">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-500" />
-            Time Availability
-          </CardTitle>
-          <CardDescription>
-            Set daily time constraints for AI training and recovery planning
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleTimeAvailabilitySubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="training_hours">Training Hours per Day</Label>
-                <Select
-                  value={timeData.training_hours_per_day}
-                  onValueChange={(value) => setTimeData(prev => ({ ...prev, training_hours_per_day: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.5">30 minutes</SelectItem>
-                    <SelectItem value="1">1 hour</SelectItem>
-                    <SelectItem value="1.5">1.5 hours</SelectItem>
-                    <SelectItem value="2">2 hours</SelectItem>
-                    <SelectItem value="2.5">2.5 hours</SelectItem>
-                    <SelectItem value="3">3 hours</SelectItem>
-                    <SelectItem value="4">4 hours</SelectItem>
-                    <SelectItem value="5">5+ hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* Lab Test Results - REMOVED - Now in Settings/User Settings */}
 
-              <div className="space-y-2">
-                <Label htmlFor="recovery_hours">Recovery Hours per Day</Label>
-                <Select
-                  value={timeData.recovery_hours_per_day}
-                  onValueChange={(value) => setTimeData(prev => ({ ...prev, recovery_hours_per_day: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.25">15 minutes</SelectItem>
-                    <SelectItem value="0.5">30 minutes</SelectItem>
-                    <SelectItem value="1">1 hour</SelectItem>
-                    <SelectItem value="1.5">1.5 hours</SelectItem>
-                    <SelectItem value="2">2 hours</SelectItem>
-                    <SelectItem value="3">3+ hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Time Preferences'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Time Constraints - REMOVED - Now in Settings/Time & Schedule */}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserSettings } from "@/components/settings/UserSettings";
 import { AppSettings } from "@/components/settings/AppSettings";
+import { EnhancedTimeSettings } from "@/components/settings/EnhancedTimeSettings";
 
 import { User, Settings as SettingsIcon } from "lucide-react";
 
@@ -15,10 +16,14 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="user" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="user" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             User Settings
+          </TabsTrigger>
+          <TabsTrigger value="time" className="flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4" />
+            Time & Schedule
           </TabsTrigger>
           <TabsTrigger value="app" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -28,6 +33,10 @@ export function Settings() {
 
         <TabsContent value="user">
           <UserSettings />
+        </TabsContent>
+
+        <TabsContent value="time">
+          <EnhancedTimeSettings />
         </TabsContent>
 
         <TabsContent value="app">

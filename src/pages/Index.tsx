@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
-import { PhysiologyForm } from "@/components/PhysiologyForm";
+import { PhysiologyDashboard } from "@/components/PhysiologyDashboard";
 import { WorkoutLibrary } from "@/components/WorkoutLibrary";
 import { AnalysisDashboard } from "@/components/AnalysisDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
@@ -23,7 +23,7 @@ const Index = () => {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveSection} />;
       case 'physiology':
-        return <PhysiologyForm />;
+        return <PhysiologyDashboard />;
       case 'calendar':
         return <Calendar />;
       case 'activities':

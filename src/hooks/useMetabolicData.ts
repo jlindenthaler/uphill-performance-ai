@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth, usePhysiologyData, useAIAnalysis } from './useSupabase';
+import { useAuth, usePhysiologyData } from './useSupabase';
 import { useSportMode } from '@/contexts/SportModeContext';
 
 interface MetabolicMetrics {
@@ -11,32 +11,31 @@ interface MetabolicMetrics {
 export function useMetabolicData() {
   const { user } = useAuth();
   const { getPhysiologyData } = usePhysiologyData();
-  const { calculateZones } = useAIAnalysis();
   const { sportMode } = useSportMode();
+  const [physiologyData, setPhysiologyData] = useState<any>(null);
   const [metabolicMetrics, setMetabolicMetrics] = useState<MetabolicMetrics | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const calculateMetabolicMetrics = async () => {
+  const fetchPhysiologyData = async () => {
     if (!user) return null;
     
     setLoading(true);
     try {
-      const physiologyData = await getPhysiologyData();
-      if (!physiologyData) return null;
-
-      // Call AI function to calculate metabolic metrics
-      const result = await calculateZones({
-        ...physiologyData,
-        sport_mode: sportMode
-      });
-
-      if (result?.metabolic_metrics) {
-        setMetabolicMetrics(result.metabolic_metrics);
+      const data = await getPhysiologyData(sportMode);
+      setPhysiologyData(data);
+      
+      // Mock metabolic metrics calculation
+      if (data) {
+        setMetabolicMetrics({
+          vo2max: { value: data.vo2_max || 58, percentile: 75 },
+          vlamax: { value: 0.35, percentile: 65 },
+          fatMax: { value: 0.42, percentile: 80, unit: 'g/min/kg' }
+        });
       }
 
-      return result?.metabolic_metrics;
+      return data;
     } catch (error) {
-      console.error('Error calculating metabolic metrics:', error);
+      console.error('Error fetching physiology data:', error);
       return null;
     } finally {
       setLoading(false);
@@ -45,13 +44,14 @@ export function useMetabolicData() {
 
   useEffect(() => {
     if (user) {
-      calculateMetabolicMetrics();
+      fetchPhysiologyData();
     }
   }, [user, sportMode]);
 
   return {
+    physiologyData,
     metabolicMetrics,
     loading,
-    calculateMetabolicMetrics
+    fetchPhysiologyData
   };
 }

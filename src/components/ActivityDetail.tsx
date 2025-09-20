@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, ArrowLeft, Edit, Trash
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MapView } from './MapView';
 import { Separator } from '@/components/ui/separator';
 
 interface Activity {
@@ -249,6 +250,18 @@ export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityD
           </CardContent>
         </Card>
       </div>
+
+      {/* GPS Route Map */}
+      {activity.gps_data && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Route Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MapView gpsData={activity.gps_data} className="w-full h-80" />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activity Notes */}
       {activity.notes && (
