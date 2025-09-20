@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useSportMode } from '@/contexts/SportModeContext'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
