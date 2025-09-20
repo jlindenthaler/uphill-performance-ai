@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useSupabase";
-import { User, Mail, Lock, Globe, Ruler } from "lucide-react";
+import { User, Mail, Lock, Globe, Ruler, Clock } from "lucide-react";
 
 export function UserSettings() {
   const { user } = useAuth();
@@ -17,6 +17,10 @@ export function UserSettings() {
     full_name: profile?.full_name || '',
     timezone: profile?.timezone || 'UTC',
     units: profile?.units || 'metric'
+  });
+  const [timeConstraints, setTimeConstraints] = useState({
+    training_hours_per_day: '2',
+    recovery_hours_per_day: '1'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,6 +185,68 @@ export function UserSettings() {
               Coming Soon
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Time Constraints */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-500" />
+            Time Availability
+          </CardTitle>
+          <CardDescription>
+            Set daily time constraints for AI training and recovery planning
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="training_hours">Training Hours per Day</Label>
+              <Select
+                value={timeConstraints.training_hours_per_day}
+                onValueChange={(value) => setTimeConstraints(prev => ({ ...prev, training_hours_per_day: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.5">30 minutes</SelectItem>
+                  <SelectItem value="1">1 hour</SelectItem>
+                  <SelectItem value="1.5">1.5 hours</SelectItem>
+                  <SelectItem value="2">2 hours</SelectItem>
+                  <SelectItem value="2.5">2.5 hours</SelectItem>
+                  <SelectItem value="3">3 hours</SelectItem>
+                  <SelectItem value="4">4 hours</SelectItem>
+                  <SelectItem value="5">5+ hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="recovery_hours">Recovery Hours per Day</Label>
+              <Select
+                value={timeConstraints.recovery_hours_per_day}
+                onValueChange={(value) => setTimeConstraints(prev => ({ ...prev, recovery_hours_per_day: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.25">15 minutes</SelectItem>
+                  <SelectItem value="0.5">30 minutes</SelectItem>
+                  <SelectItem value="1">1 hour</SelectItem>
+                  <SelectItem value="1.5">1.5 hours</SelectItem>
+                  <SelectItem value="2">2 hours</SelectItem>
+                  <SelectItem value="3">3+ hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button className="w-full">
+            Save Time Preferences
+          </Button>
         </CardContent>
       </Card>
     </div>
