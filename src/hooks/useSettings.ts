@@ -21,7 +21,6 @@ interface AppSettings {
   privacy_mode: boolean;
 }
 
-
 export function useUserProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -86,6 +85,39 @@ export function useUserProfile() {
     }
   };
 
+  const uploadAvatar = async (file: File): Promise<string> => {
+    if (!user) throw new Error('User not authenticated')
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/${Math.random()}.${fileExt}`
+    const filePath = fileName
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file)
+
+    if (uploadError) throw uploadError
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+    
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .upsert({ 
+        user_id: user.id, 
+        avatar_url: data.publicUrl 
+      })
+
+    if (updateError) throw updateError
+
+    await fetchProfile()
+    toast({
+      title: "Avatar updated successfully",
+      description: "Your profile picture has been updated.",
+    })
+
+    return data.publicUrl
+  }
+
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -118,6 +150,7 @@ export function useUserProfile() {
     loading,
     updateProfile,
     resetPassword,
+    uploadAvatar,
     refetchProfile: fetchProfile
   };
 }

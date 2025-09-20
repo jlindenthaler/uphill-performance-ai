@@ -162,7 +162,12 @@ export function PhysiologyForm() {
 
   const handleSave = async () => {
     try {
-      await savePhysiologyData(data, sportMode);
+      // Include recovery data in the save
+      const dataWithRecovery = {
+        ...data,
+        recovery: data.recovery
+      };
+      await savePhysiologyData(dataWithRecovery, sportMode);
       console.log(`${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} physiology data saved successfully`);
     } catch (error) {
       console.error('Error saving physiology data:', error);

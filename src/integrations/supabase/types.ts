@@ -59,6 +59,45 @@ export type Database = {
         }
         Relationships: []
       }
+      lab_results: {
+        Row: {
+          created_at: string
+          crossover_point: number | null
+          fat_max: number | null
+          fat_max_intensity: number | null
+          id: string
+          sport_mode: string
+          updated_at: string
+          user_id: string
+          vla_max: number | null
+          vo2_max: number | null
+        }
+        Insert: {
+          created_at?: string
+          crossover_point?: number | null
+          fat_max?: number | null
+          fat_max_intensity?: number | null
+          id?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id: string
+          vla_max?: number | null
+          vo2_max?: number | null
+        }
+        Update: {
+          created_at?: string
+          crossover_point?: number | null
+          fat_max?: number | null
+          fat_max_intensity?: number | null
+          id?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id?: string
+          vla_max?: number | null
+          vo2_max?: number | null
+        }
+        Relationships: []
+      }
       physiology_data: {
         Row: {
           anaerobic_capacity: number | null
@@ -227,6 +266,33 @@ export type Database = {
         }
         Relationships: []
       }
+      time_availability: {
+        Row: {
+          created_at: string
+          id: string
+          recovery_hours_per_day: number
+          training_hours_per_day: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recovery_hours_per_day?: number
+          training_hours_per_day?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recovery_hours_per_day?: number
+          training_hours_per_day?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       training_history: {
         Row: {
           atl: number | null
@@ -263,6 +329,51 @@ export type Database = {
           id?: string
           sport?: string
           tsb?: number | null
+          tss?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workouts: {
+        Row: {
+          completed_date: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          name: string
+          scheduled_date: string | null
+          sport_mode: string
+          structure: Json
+          tss: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          name: string
+          scheduled_date?: string | null
+          sport_mode?: string
+          structure: Json
+          tss?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          name?: string
+          scheduled_date?: string | null
+          sport_mode?: string
+          structure?: Json
           tss?: number | null
           updated_at?: string
           user_id?: string
