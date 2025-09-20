@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Bike, PersonStanding, Waves } from "lucide-react";
 import { useSportMode } from "@/contexts/SportModeContext";
+
 export function SportModeToggle() {
   const {
     sportMode,
@@ -9,6 +10,7 @@ export function SportModeToggle() {
     isCycling,
     isSwimming
   } = useSportMode();
+
   const getSportIcon = (sport: string) => {
     switch (sport) {
       case 'cycling':
@@ -21,6 +23,7 @@ export function SportModeToggle() {
         return Bike;
     }
   };
+
   const sports = [{
     key: 'cycling',
     label: 'Cycling',
@@ -34,14 +37,14 @@ export function SportModeToggle() {
     label: 'Swimming',
     icon: Waves
   }] as const;
+
   return <div className="flex items-center p-1 bg-muted rounded-lg">
       {sports.map(({
       key,
       label,
       icon: Icon
-    }) => <Button key={key} variant={sportMode === key ? "default" : "ghost"} size="sm" onClick={() => setSportMode(key)} className={`flex-1 flex items-center justify-center gap-2 transition-all px-4 py-2 ${sportMode === key ? 'bg-background shadow-sm text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
-          <Icon className="w-4 h-4" />
-          {label}
+    }) => <Button key={key} variant={sportMode === key ? "default" : "ghost"} size="sm" onClick={() => setSportMode(key)} className={`flex-1 flex items-center justify-center transition-all px-4 py-2 ${sportMode === key ? 'bg-background shadow-sm text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
+          <Icon className="w-5 h-5" />
         </Button>)}
     </div>;
 }
