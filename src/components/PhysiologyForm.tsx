@@ -6,7 +6,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { Heart, Zap, Activity, Flame, Settings } from "lucide-react";
+import { Heart, Zap, Activity, Flame, Settings, ToggleLeft, ToggleRight, Wheat, Droplets } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useSportMode } from "@/contexts/SportModeContext";
 import { RecoverySection } from "@/components/RecoverySection";
 import { usePhysiologyData } from "@/hooks/useSupabase";
 
@@ -78,6 +80,8 @@ interface PhysiologyData {
 
 export function PhysiologyForm() {
   const { savePhysiologyData } = usePhysiologyData();
+  const { sportMode, isCycling, isRunning, isSwimming } = useSportMode();
+  const [useLabResults, setUseLabResults] = useState(false);
   const [data, setData] = useState<PhysiologyData>({
     vo2max: '58',
     map: '320',
@@ -167,12 +171,12 @@ export function PhysiologyForm() {
       </div>
 
       <Tabs defaultValue="physiology" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="physiology" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 h-12">
+          <TabsTrigger value="physiology" className="flex items-center gap-2 h-10">
             <Activity className="w-4 h-4" />
             Physiology
           </TabsTrigger>
-          <TabsTrigger value="recovery" className="flex items-center gap-2">
+          <TabsTrigger value="recovery" className="flex items-center gap-2 h-10">
             <Settings className="w-4 h-4" />
             Recovery
           </TabsTrigger>
@@ -183,13 +187,24 @@ export function PhysiologyForm() {
             {/* Laboratory Data */}
             <Card className="card-gradient shadow-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-zone-4" />
-                  Laboratory Results
-                </CardTitle>
-                <CardDescription>
-                  Gold standard physiological markers from laboratory testing
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-zone-4" />
+                      Laboratory Results - {isCycling ? 'Cycling' : isRunning ? 'Running' : 'Swimming'}
+                    </CardTitle>
+                    <CardDescription>
+                      Gold standard physiological markers from laboratory testing
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Use Lab Data</span>
+                    <Switch
+                      checked={useLabResults}
+                      onCheckedChange={setUseLabResults}
+                    />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
@@ -318,21 +333,29 @@ export function PhysiologyForm() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ftp">FTP (Watts)</Label>
+                    <Label htmlFor="ftp">
+                      {isCycling ? 'FTP (Watts)' : isRunning ? 'Threshold Pace (/km)' : 'CSS Pace (/100m)'}
+                    </Label>
                     <Input
                       id="ftp"
                       value={data.ftp}
                       onChange={(e) => handleInputChange('ftp', e.target.value)}
-                      placeholder="285"
+                      placeholder={isCycling ? "285" : isRunning ? "4:15" : "1:25"}
+                      disabled={useLabResults}
+                      className={useLabResults ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ftpHr">FTP HR (bpm)</Label>
+                    <Label htmlFor="ftpHr">
+                      {isCycling ? 'FTP HR (bpm)' : isRunning ? 'Threshold HR (bpm)' : 'CSS HR (bpm)'}
+                    </Label>
                     <Input
                       id="ftpHr"
                       value={data.ftpHr}
                       onChange={(e) => handleInputChange('ftpHr', e.target.value)}
                       placeholder="172"
+                      disabled={useLabResults}
+                      className={useLabResults ? "opacity-60" : ""}
                     />
                   </div>
                   <div className="space-y-2">
@@ -404,12 +427,15 @@ export function PhysiologyForm() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fatMax">Fat Max (Watts)</Label>
+                    <Label htmlFor="fatMax" className="flex items-center gap-1">
+                      <Droplets className="w-3 h-3 text-blue-500" />
+                      Fat Max {isCycling ? '(Watts)' : isRunning ? '(Pace /km)' : '(Pace /100m)'}
+                    </Label>
                     <Input
                       id="fatMax"
                       value={data.fatMax}
                       onChange={(e) => handleInputChange('fatMax', e.target.value)}
-                      placeholder="180"
+                      placeholder={isCycling ? "180" : isRunning ? "5:30" : "1:45"}
                     />
                   </div>
                   <div className="space-y-2">
@@ -422,12 +448,15 @@ export function PhysiologyForm() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="crossover">Crossover (Watts)</Label>
+                    <Label htmlFor="crossover" className="flex items-center gap-1">
+                      <Wheat className="w-3 h-3 text-orange-500" />
+                      Crossover {isCycling ? '(Watts)' : isRunning ? '(Pace /km)' : '(Pace /100m)'}
+                    </Label>
                     <Input
                       id="crossover"
                       value={data.crossover}
                       onChange={(e) => handleInputChange('crossover', e.target.value)}
-                      placeholder="195"
+                      placeholder={isCycling ? "195" : isRunning ? "4:45" : "1:35"}
                     />
                   </div>
                   <div className="space-y-2">
@@ -448,28 +477,36 @@ export function PhysiologyForm() {
                   <div className="grid grid-cols-4 gap-4">
                     {Object.keys(data.choPercentages).map((intensity) => (
                       <div key={intensity} className="space-y-2">
-                        <Label className="text-xs">@ {intensity}W</Label>
+                        <Label className="text-xs">
+                          @ {isCycling ? intensity + 'W' : isRunning ? Math.floor(parseInt(intensity) * 0.015).toString() + ':' + String(Math.floor((parseInt(intensity) * 0.015 % 1) * 60)).padStart(2, '0') + '/km' : Math.floor(parseInt(intensity) * 0.004).toString() + ':' + String(Math.floor((parseInt(intensity) * 0.004 % 1) * 60)).padStart(2, '0') + '/100m'}
+                        </Label>
                         <div className="grid grid-cols-2 gap-1">
-                          <Input
-                            value={data.choPercentages[intensity]}
-                            onChange={(e) => {
-                              const newCho = { ...data.choPercentages };
-                              newCho[intensity] = e.target.value;
-                              setData(prev => ({ ...prev, choPercentages: newCho }));
-                            }}
-                            placeholder="CHO%"
-                            className="text-xs"
-                          />
-                          <Input
-                            value={data.fatPercentages[intensity]}
-                            onChange={(e) => {
-                              const newFat = { ...data.fatPercentages };
-                              newFat[intensity] = e.target.value;
+                          <div className="relative">
+                            <Wheat className="absolute left-2 top-2 w-3 h-3 text-orange-500" />
+                            <Input
+                              value={data.choPercentages[intensity]}
+                              onChange={(e) => {
+                                const newCho = { ...data.choPercentages };
+                                newCho[intensity] = e.target.value;
+                                setData(prev => ({ ...prev, choPercentages: newCho }));
+                              }}
+                              placeholder="CHO%"
+                              className="text-xs pl-8"
+                            />
+                          </div>
+                          <div className="relative">
+                            <Droplets className="absolute left-2 top-2 w-3 h-3 text-blue-500" />
+                            <Input
+                              value={data.fatPercentages[intensity]}
+                              onChange={(e) => {
+                                const newFat = { ...data.fatPercentages };
+                                newFat[intensity] = e.target.value;
                               setData(prev => ({ ...prev, fatPercentages: newFat }));
                             }}
                             placeholder="Fat%"
-                            className="text-xs"
+                            className="text-xs pl-8"
                           />
+                          </div>
                         </div>
                       </div>
                     ))}

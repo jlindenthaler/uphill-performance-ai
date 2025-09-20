@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, BookOpen, Target, Clock, Zap, Search, Filter, Download } from "lucide-react";
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useState } from "react";
+import { useSportMode } from "@/contexts/SportModeContext";
 
 interface WorkoutData {
   id: string;
