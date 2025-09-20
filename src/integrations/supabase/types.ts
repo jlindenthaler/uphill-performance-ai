@@ -59,51 +59,6 @@ export type Database = {
         }
         Relationships: []
       }
-      external_connections: {
-        Row: {
-          access_token: string | null
-          created_at: string
-          id: string
-          is_active: boolean | null
-          last_sync: string | null
-          provider: string
-          provider_user_id: string | null
-          refresh_token: string | null
-          sync_settings: Json | null
-          token_expires_at: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token?: string | null
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          last_sync?: string | null
-          provider: string
-          provider_user_id?: string | null
-          refresh_token?: string | null
-          sync_settings?: Json | null
-          token_expires_at?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token?: string | null
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          last_sync?: string | null
-          provider?: string
-          provider_user_id?: string | null
-          refresh_token?: string | null
-          sync_settings?: Json | null
-          token_expires_at?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       physiology_data: {
         Row: {
           anaerobic_capacity: number | null
