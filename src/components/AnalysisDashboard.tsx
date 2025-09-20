@@ -8,7 +8,7 @@ import { useMetabolicData } from "@/hooks/useMetabolicData";
 import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { useSportMode } from "@/contexts/SportModeContext";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export function AnalysisDashboard() {
   const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
@@ -17,9 +17,19 @@ export function AnalysisDashboard() {
   const { isRunning } = useSportMode();
   const [dateRange, setDateRange] = useState('30');
 
-  const currentCTL = trainingHistory[trainingHistory.length - 1]?.ctl || 0;
-  const currentATL = trainingHistory[trainingHistory.length - 1]?.atl || 0;
-  const currentTSB = trainingHistory[trainingHistory.length - 1]?.tsb || 0;
+  const filteredTrainingHistory = useMemo(() => {
+    const days = parseInt(dateRange === 'custom' ? '30' : dateRange);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return trainingHistory.filter(entry => 
+      new Date(entry.date) >= cutoffDate
+    );
+  }, [trainingHistory, dateRange]);
+
+  const currentCTL = filteredTrainingHistory[filteredTrainingHistory.length - 1]?.ctl || 0;
+  const currentATL = filteredTrainingHistory[filteredTrainingHistory.length - 1]?.atl || 0;
+  const currentTSB = filteredTrainingHistory[filteredTrainingHistory.length - 1]?.tsb || 0;
 
   const getTSBStatus = (tsb: number) => {
     if (tsb > 10) return { status: 'Fresh', color: 'text-green-500', icon: TrendingUp };
@@ -148,7 +158,7 @@ export function AnalysisDashboard() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trainingHistory}>
+                    <LineChart data={filteredTrainingHistory}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis 
                         dataKey="date" 

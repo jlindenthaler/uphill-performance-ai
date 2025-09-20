@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { EnhancedMapView } from './EnhancedMapView';
 import { ActivityDetail } from './ActivityDetail';
 
 export function ActivityReview() {
@@ -108,13 +109,11 @@ export function ActivityReview() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-96 bg-muted rounded-lg flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <MapIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Activity map will be displayed here</p>
-                    <p className="text-sm">Integration with mapping service coming soon</p>
-                  </div>
-                </div>
+                <EnhancedMapView 
+                  gpsData={selectedActivity.gps_data} 
+                  activity={selectedActivity}
+                  className="w-full h-96" 
+                />
               </CardContent>
             </Card>
           </TabsContent>

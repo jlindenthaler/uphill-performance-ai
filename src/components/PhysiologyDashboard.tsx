@@ -14,17 +14,18 @@ export function PhysiologyDashboard() {
   // Mock data for demonstration - replace with actual data from hooks
   const performanceData = {
     vo2max: labResults?.vo2_max || physiologyData?.vo2_max || 58.5,
-    aet: physiologyData?.lactate_threshold || 195, // Aerobic Threshold 
+    aet: isCycling ? (physiologyData?.lactate_threshold || 195) : isRunning ? '5:00' : '1:45', // Aerobic Threshold 
     aetHr: physiologyData?.resting_hr ? physiologyData.resting_hr + 50 : 150,
-    gt: physiologyData?.lactate_threshold_2 || 280, // Gas Exchange Threshold
+    gt: isCycling ? (physiologyData?.lactate_threshold_2 || 280) : isRunning ? '4:15' : '1:25', // Gas Exchange Threshold
     gtHr: physiologyData?.max_hr ? physiologyData.max_hr * 0.88 : 175,
     map: isCycling ? 320 : isRunning ? '3:45' : '1:20', // Maximal Aerobic Power
     maxHr: physiologyData?.max_hr || 188,
     restingHr: physiologyData?.resting_hr || 48,
     bodyWeight: physiologyData?.body_weight || 72,
     metabolicEfficiency: 85, // Calculated from fat/carb utilization
-    criticalPower: physiologyData?.critical_power || (isCycling ? 290 : isRunning ? '4:10' : '1:22'),
-    wPrime: physiologyData?.w_prime || (isCycling ? 18500 : isRunning ? 320 : 200)
+    criticalPower: isCycling ? (physiologyData?.critical_power || 290) : isRunning ? '4:10' : '1:22',
+    wPrime: physiologyData?.w_prime || (isCycling ? 18500 : isRunning ? 320 : 200),
+    crossoverPoint: labResults?.crossover_point || (isCycling ? 195 : isRunning ? '4:30' : '1:35')
   };
 
   const formatValue = (value: any, unit: string, sport?: string) => {
@@ -33,21 +34,34 @@ export function PhysiologyDashboard() {
     return `-- ${unit}`;
   };
 
-  const formatPace = (seconds: number) => {
-    if (!seconds) return '--:-- /km';
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')} /km`;
+  const formatPace = (paceString: string) => {
+    // If it's already in pace format (like "4:30"), return as is
+    if (typeof paceString === 'string' && paceString.includes(':')) {
+      return `${paceString} /km`;
+    }
+    return `${paceString} /km`;
+  };
+
+  const formatSwimmingPace = (paceString: string) => {
+    // Swimming pace format
+    if (typeof paceString === 'string' && paceString.includes(':')) {
+      return `${paceString} /100m`;
+    }
+    return `${paceString} /100m`;
   };
 
   const formatRunningValue = (value: any) => {
-    // Convert watts to approximate pace (this is a rough conversion for demo)
-    if (typeof value === 'number') {
-      // Rough conversion: higher watts = faster pace (lower time)
-      const paceInSeconds = 300 - (value - 150) * 0.5; // Example conversion
-      return formatPace(Math.max(180, paceInSeconds)); // Min 3:00 /km
+    // For running, value should already be in pace format from lab results
+    if (typeof value === 'string') {
+      return formatPace(value);
     }
-    return formatPace(300); // Default 5:00 /km
+    // Fallback for numeric values - assume it's pace in seconds
+    if (typeof value === 'number') {
+      const minutes = Math.floor(value / 60);
+      const seconds = Math.round(value % 60);
+      return `${minutes}:${seconds.toString().padStart(2, '0')} /km`;
+    }
+    return '4:30 /km'; // Default running pace
   };
 
   const getPerformanceLevel = (value: number, thresholds: number[]) => {
@@ -152,7 +166,7 @@ export function PhysiologyDashboard() {
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Aerobic Threshold (AeT)</Label>
                 <p className="text-lg font-semibold">
-                  {isRunning ? formatRunningValue(performanceData.aet) : formatValue(performanceData.aet, isCycling ? 'W' : '/km')}
+                  {isCycling ? formatValue(performanceData.aet, 'W') : isRunning ? formatRunningValue(performanceData.aet) : formatSwimmingPace(performanceData.aet)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   @ {formatValue(performanceData.aetHr, 'bpm')}
@@ -162,7 +176,7 @@ export function PhysiologyDashboard() {
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Glycolitic Threshold (GT)</Label>
                 <p className="text-lg font-semibold">
-                  {formatValue(performanceData.gt, isCycling ? 'W' : '/km')}
+                  {isCycling ? formatValue(performanceData.gt, 'W') : isRunning ? formatRunningValue(performanceData.gt) : formatSwimmingPace(performanceData.gt)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   @ {formatValue(performanceData.gtHr, 'bpm')}
@@ -206,7 +220,7 @@ export function PhysiologyDashboard() {
               <div className="flex justify-between items-center">
                 <Label className="text-sm text-muted-foreground">Crossover Point</Label>
                 <p className="font-semibold">
-                  {formatValue(labResults?.crossover_point || performanceData.aet, isCycling ? 'W' : '/km')}
+                  {isCycling ? formatValue(performanceData.crossoverPoint, 'W') : isRunning ? formatRunningValue(String(performanceData.crossoverPoint)) : formatSwimmingPace(String(performanceData.crossoverPoint))}
                 </p>
               </div>
               <div className="flex justify-between items-center">

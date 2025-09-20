@@ -89,7 +89,19 @@ export function UserSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile(formData);
+    try {
+      await updateProfile(formData);
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -551,6 +563,86 @@ export function UserSettings() {
               {loading ? "Saving..." : `Save ${sportMode.charAt(0).toUpperCase() + sportMode.slice(1)} Lab Results`}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Recovery Tools & Services */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-green-500" />
+            Recovery Tools & Services - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}
+          </CardTitle>
+          <CardDescription>
+            Track your recovery methods and services for {sportMode}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="massage_sessions">Massage Sessions / Week</Label>
+              <Input
+                id="massage_sessions"
+                type="number"
+                placeholder="2"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ice_baths">Ice Baths / Week</Label>
+              <Input
+                id="ice_baths"
+                type="number"
+                placeholder="3"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sauna_sessions">Sauna Sessions / Week</Label>
+              <Input
+                id="sauna_sessions"
+                type="number"
+                placeholder="2"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="compression_therapy">Compression Therapy</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="stretching_time">Stretching (minutes/day)</Label>
+              <Input
+                id="stretching_time"
+                type="number"
+                placeholder="20"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="foam_rolling">Foam Rolling (minutes/day)</Label>
+              <Input
+                id="foam_rolling"
+                type="number"
+                placeholder="15"
+              />
+            </div>
+          </div>
+          
+          <Button type="submit" className="w-full">
+            Save Recovery Settings
+          </Button>
         </CardContent>
       </Card>
 
