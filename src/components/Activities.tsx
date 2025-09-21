@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useActivities } from '@/hooks/useActivities';
@@ -21,6 +21,7 @@ export function Activities() {
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -80,6 +81,14 @@ export function Activities() {
       if (expandedActivity === activityId) {
         setExpandedActivity(null);
       }
+    }
+  };
+
+  const handleUploadSuccess = (activityId?: string) => {
+    setUploadModalOpen(false);
+    if (activityId) {
+      // Expand the newly uploaded activity
+      setExpandedActivity(activityId);
     }
   };
 
@@ -281,196 +290,202 @@ export function Activities() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Training</h1>
-        <p className="text-muted-foreground mt-2">
-          Review activities and upload new training data
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Training</h1>
+          <p className="text-muted-foreground mt-2">
+            Review activities and upload new training data
+          </p>
+        </div>
+        <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Upload Activity
+        </Button>
       </div>
 
-      <Tabs defaultValue="activities" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="activities">Activities</TabsTrigger>
-          <TabsTrigger value="upload">Upload Activity</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="activities" className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Recent Activities</h2>
-              <p className="text-muted-foreground">
-                {activities.length} activities • {filterSport !== 'all' ? filterSport : 'all sports'}
-              </p>
-            </div>
-            
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search activities..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                />
-              </div>
-              <Select value={filterSport} onValueChange={setFilterSport}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sports</SelectItem>
-                  <SelectItem value="cycling">Cycling</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="swimming">Swimming</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="distance">Distance</SelectItem>
-                  <SelectItem value="duration">Duration</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Recent Activities</h2>
+          <p className="text-muted-foreground">
+            {activities.length} activities • {filterSport !== 'all' ? filterSport : 'all sports'}
+          </p>
+        </div>
+        
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search activities..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-64"
+            />
           </div>
+          <Select value={filterSport} onValueChange={setFilterSport}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border">
+              <SelectItem value="all">All Sports</SelectItem>
+              <SelectItem value="cycling">Cycling</SelectItem>
+              <SelectItem value="running">Running</SelectItem>
+              <SelectItem value="swimming">Swimming</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border">
+              <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="distance">Distance</SelectItem>
+              <SelectItem value="duration">Duration</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-          {activities.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No activities yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Upload your first activity to start tracking your progress
-                </p>
-                <Button>Upload Activity</Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filteredActivities.map((activity) => (
-                <Collapsible 
-                  key={activity.id} 
-                  open={expandedActivity === activity.id}
-                  onOpenChange={() => handleActivityToggle(activity.id)}
-                >
-                  <Card className="overflow-hidden">
-                    <CollapsibleTrigger asChild>
-                      <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start space-x-4 flex-1">
-                            <div className="relative">
-                              <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
-                              {activity.tss && activity.tss > 100 && (
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-zone-3 rounded-full border border-background"></div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-lg transition-colors truncate">{activity.name}</h3>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{new Date(activity.date).toLocaleDateString()}</span>
-                                </span>
-                                <Badge variant="outline" className="capitalize">
-                                  {activity.sport_mode}
-                                </Badge>
-                                {activity.tss && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Target className="h-2 w-2 mr-1" />
-                                    TSS {Math.round(activity.tss)}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center min-w-fit">
-                              <div className="px-2">
-                                <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span className="text-xs font-medium">Duration</span>
-                                </div>
-                                <div className="font-bold text-sm">{formatDuration(activity.duration_seconds)}</div>
-                              </div>
-                              
-                              <div className="px-2">
-                                <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                  <MapPin className="h-3 w-3" />
-                                  <span className="text-xs font-medium">Distance</span>
-                                </div>
-                                <div className="font-bold text-sm">{formatDistance(activity.distance_meters)}</div>
-                              </div>
-                              
-                              {activity.sport_mode === 'cycling' && activity.avg_power && (
-                                <div className="px-2">
-                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                    <Zap className="h-3 w-3" />
-                                    <span className="text-xs font-medium">Avg Power</span>
-                                  </div>
-                                  <div className="font-bold text-sm text-zone-3">{activity.avg_power}W</div>
-                                </div>
-                              )}
-                              
-                              {activity.sport_mode === 'running' && activity.avg_pace_per_km && (
-                                <div className="px-2">
-                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                    <TrendingUp className="h-3 w-3" />
-                                    <span className="text-xs font-medium">Avg Pace</span>
-                                  </div>
-                                  <div className="font-bold text-sm text-zone-2">{formatPace(activity.avg_pace_per_km)}</div>
-                                </div>
-                              )}
-                              
-                              {activity.avg_heart_rate && (
-                                <div className="px-2">
-                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                    <Heart className="h-3 w-3" />
-                                    <span className="text-xs font-medium">Avg HR</span>
-                                  </div>
-                                  <div className="font-bold text-sm text-red-400">{activity.avg_heart_rate} bpm</div>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center">
-                              {expandedActivity === activity.id ? (
-                                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
+      {activities.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No activities yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Upload your first activity to start tracking your progress
+            </p>
+            <Button onClick={() => setUploadModalOpen(true)}>Upload Activity</Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredActivities.map((activity) => (
+            <Collapsible 
+              key={activity.id} 
+              open={expandedActivity === activity.id}
+              onOpenChange={() => handleActivityToggle(activity.id)}
+            >
+              <Card className="overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start space-x-4 flex-1">
+                        <div className="relative">
+                          <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
+                          {activity.tss && activity.tss > 100 && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-zone-3 rounded-full border border-background"></div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg transition-colors truncate">{activity.name}</h3>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(activity.date).toLocaleDateString()}</span>
+                            </span>
+                            <Badge variant="outline" className="capitalize">
+                              {activity.sport_mode}
+                            </Badge>
+                            {activity.tss && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Target className="h-2 w-2 mr-1" />
+                                TSS {Math.round(activity.tss)}
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        
-                        {activity.notes && (
-                          <div className="mt-3 p-2 bg-muted/50 rounded-md border-l-2 border-primary/30">
-                            <p className="text-xs text-muted-foreground italic truncate">{activity.notes}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent>
-                      <div className="px-4 pb-4">
-                        {renderExpandedActivity(activity)}
                       </div>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center min-w-fit">
+                          <div className="px-2">
+                            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                              <Clock className="h-3 w-3" />
+                              <span className="text-xs font-medium">Duration</span>
+                            </div>
+                            <div className="font-bold text-sm">{formatDuration(activity.duration_seconds)}</div>
+                          </div>
+                          
+                          <div className="px-2">
+                            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                              <MapPin className="h-3 w-3" />
+                              <span className="text-xs font-medium">Distance</span>
+                            </div>
+                            <div className="font-bold text-sm">{formatDistance(activity.distance_meters)}</div>
+                          </div>
+                          
+                          {activity.sport_mode === 'cycling' && activity.avg_power && (
+                            <div className="px-2">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                <Zap className="h-3 w-3" />
+                                <span className="text-xs font-medium">Avg Power</span>
+                              </div>
+                              <div className="font-bold text-sm text-zone-3">{activity.avg_power}W</div>
+                            </div>
+                          )}
+                          
+                          {activity.sport_mode === 'running' && activity.avg_pace_per_km && (
+                            <div className="px-2">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                <TrendingUp className="h-3 w-3" />
+                                <span className="text-xs font-medium">Avg Pace</span>
+                              </div>
+                              <div className="font-bold text-sm text-zone-2">{formatPace(activity.avg_pace_per_km)}</div>
+                            </div>
+                          )}
+                          
+                          {activity.avg_heart_rate && (
+                            <div className="px-2">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                <Heart className="h-3 w-3" />
+                                <span className="text-xs font-medium">Avg HR</span>
+                              </div>
+                              <div className="font-bold text-sm text-red-400">{activity.avg_heart_rate} bpm</div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center">
+                          {expandedActivity === activity.id ? (
+                            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {activity.notes && (
+                      <div className="mt-3 p-2 bg-muted/50 rounded-md border-l-2 border-primary/30">
+                        <p className="text-xs text-muted-foreground italic truncate">{activity.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="px-4 pb-4">
+                    {renderExpandedActivity(activity)}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          ))}
+        </div>
+      )}
 
-        <TabsContent value="upload" className="space-y-6">
-          <ActivityUploadNew />
-        </TabsContent>
-      </Tabs>
+      {/* Upload Modal */}
+      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              Upload Activity
+            </DialogTitle>
+          </DialogHeader>
+          <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

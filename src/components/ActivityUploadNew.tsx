@@ -11,7 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 
-export function ActivityUploadNew() {
+interface ActivityUploadNewProps {
+  onUploadSuccess?: (activityId?: string) => void;
+}
+
+export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<{ file: File; progress: number; status: 'uploading' | 'processing' | 'complete' | 'error' }[]>([]);
@@ -92,15 +96,19 @@ export function ActivityUploadNew() {
         updateProgress(30, 'uploading');
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        updateProgress(60, 'processing');
-        await uploadActivity(file, activityName || undefined);
-        
         updateProgress(100, 'complete');
+        
+        const uploadedActivity = await uploadActivity(file, activityName || undefined);
         
         toast({
           title: 'Activity uploaded successfully',
           description: `${file.name} has been processed and added to your activities.`
         });
+
+        // Call success callback with activity ID
+        if (onUploadSuccess && uploadedActivity?.id) {
+          onUploadSuccess(uploadedActivity.id);
+        }
 
         // Clear completed uploads after 2 seconds
         setTimeout(() => {
@@ -132,148 +140,141 @@ export function ActivityUploadNew() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Activity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Sport Mode Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sport">Sport</Label>
-              <Select value={sportMode} onValueChange={setSportMode}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sport" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cycling">Cycling</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="swimming">Swimming</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="activityName">Activity Name (Optional)</Label>
-              <Input
-                id="activityName"
-                value={activityName}
-                onChange={(e) => setActivityName(e.target.value)}
-                placeholder="e.g., Morning Ride"
-              />
-            </div>
-          </div>
+      {/* Sport Mode Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="sport">Sport</Label>
+          <Select value={sportMode} onValueChange={setSportMode}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select sport" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border z-50">
+              <SelectItem value="cycling">Cycling</SelectItem>
+              <SelectItem value="running">Running</SelectItem>
+              <SelectItem value="swimming">Swimming</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="activityName">Activity Name (Optional)</Label>
+          <Input
+            id="activityName"
+            value={activityName}
+            onChange={(e) => setActivityName(e.target.value)}
+            placeholder="e.g., Morning Ride"
+          />
+        </div>
+      </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about your activity..."
-              rows={3}
-            />
-          </div>
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes (Optional)</Label>
+        <Textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add any notes about your activity..."
+          rows={3}
+        />
+      </div>
 
-          {/* File Upload Area */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive 
-                ? 'border-primary bg-primary/10' 
-                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <div>
-              <p className="text-lg font-medium mb-2">
-                Drop your activity files here
-              </p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Supports GPX, TCX, and FIT files
-              </p>
-              <input
-                type="file"
-                multiple
-                accept=".gpx,.tcx,.fit"
-                onChange={handleFileInput}
-                className="hidden"
-                id="file-upload"
-              />
-              <Button asChild variant="outline">
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  Browse Files
-                </label>
+      {/* File Upload Area */}
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          dragActive 
+            ? 'border-primary bg-primary/10' 
+            : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <div>
+          <p className="text-lg font-medium mb-2">
+            Drop your activity files here
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Supports GPX, TCX, and FIT files
+          </p>
+          <input
+            type="file"
+            multiple
+            accept=".gpx,.tcx,.fit"
+            onChange={handleFileInput}
+            className="hidden"
+            id="file-upload"
+          />
+          <Button asChild variant="outline">
+            <label htmlFor="file-upload" className="cursor-pointer">
+              Browse Files
+            </label>
+          </Button>
+        </div>
+      </div>
+
+      {/* Selected Files */}
+      {selectedFiles.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-medium">Selected Files</h4>
+          {selectedFiles.map((file, index) => (
+            <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(file.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeFile(file)}
+              >
+                <X className="h-4 w-4" />
               </Button>
             </div>
-          </div>
+          ))}
+          <Button onClick={handleUpload} disabled={loading} className="w-full">
+            {loading ? 'Uploading...' : `Upload ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}`}
+          </Button>
+        </div>
+      )}
 
-          {/* Selected Files */}
-          {selectedFiles.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium">Selected Files</h4>
-              {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(file)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+      {/* Upload Progress */}
+      {uploadingFiles.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-medium">Uploading Files</h4>
+          {uploadingFiles.map((item, index) => (
+            <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+              <File className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{item.file.name}</p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <Progress value={item.progress} className="flex-1" />
+                  <span className="text-xs text-muted-foreground">
+                    {item.status === 'uploading' ? 'Uploading...' : 
+                     item.status === 'processing' ? 'Processing...' : 
+                     item.status === 'complete' ? 'Complete' : 'Error'}
+                  </span>
                 </div>
-              ))}
-              <Button onClick={handleUpload} disabled={loading} className="w-full">
-                {loading ? 'Uploading...' : `Upload ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}`}
-              </Button>
+              </div>
+              {item.status === 'complete' ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : item.status === 'error' ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeUploadingFile(item.file)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : null}
             </div>
-          )}
-
-          {/* Upload Progress */}
-          {uploadingFiles.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium">Uploading Files</h4>
-              {uploadingFiles.map((item, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-                  <File className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{item.file.name}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Progress value={item.progress} className="flex-1" />
-                      <span className="text-xs text-muted-foreground">
-                        {item.status === 'uploading' ? 'Uploading...' : 
-                         item.status === 'processing' ? 'Processing...' : 
-                         item.status === 'complete' ? 'Complete' : 'Error'}
-                      </span>
-                    </div>
-                  </div>
-                  {item.status === 'complete' ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : item.status === 'error' ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeUploadingFile(item.file)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
