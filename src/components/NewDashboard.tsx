@@ -335,32 +335,97 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
         </CardContent>
       </Card>
 
-      {/* Training Goals & Progress */}
+      {/* Upcoming Goals */}
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5" />
-              Training Goals
+              Upcoming Goals
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Marathon Sub-3:00</span>
-                <span className="text-sm text-muted-foreground">12 weeks</span>
+            <div className="space-y-4">
+              {/* State Championships */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">State Championships</h3>
+                  <Badge className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1">Priority B</Badge>
+                  <Badge className="text-xs bg-blue-100 text-blue-700 px-2 py-1">criterium</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Mar 15, 2025</span>
+                  <span className="text-blue-600">(-190 days, -28w)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Local circuit</span>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground">Training Progress</span>
+                    <span className="text-sm font-medium">100%</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
+                  </div>
+                </div>
               </div>
-              <Progress value={75} className="h-2" />
-              <p className="text-sm text-muted-foreground">Current pace: 3:15/km average</p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">FTP Improvement</span>
-                <span className="text-sm text-muted-foreground">6 weeks</span>
+
+              {/* Local Criterium Series */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">Local Criterium Series</h3>
+                  <Badge className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1">Priority B</Badge>
+                  <Badge className="text-xs bg-blue-100 text-blue-700 px-2 py-1">criterium</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Feb 15, 2025</span>
+                  <span className="text-blue-600">(-218 days, -32w)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Local venue</span>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground">Training Progress</span>
+                    <span className="text-sm font-medium">100%</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
+                  </div>
+                </div>
               </div>
-              <Progress value={60} className="h-2" />
-              <p className="text-sm text-muted-foreground">Target: 300W (Current: 275W)</p>
+
+              {/* National Championships Road Race */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">National Championships Road Race</h3>
+                  <Badge className="text-xs bg-red-100 text-red-700 px-2 py-1">Priority A</Badge>
+                  <Badge className="text-xs bg-green-100 text-green-700 px-2 py-1">road race</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Jan 28, 2025</span>
+                  <span className="text-blue-600">(-236 days, -34w)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Perth, Australia</span>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground">Training Progress</span>
+                    <span className="text-sm font-medium">100%</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

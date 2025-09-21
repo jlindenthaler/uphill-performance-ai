@@ -23,6 +23,10 @@ export function Navigation({
     label: 'Activities',
     icon: Upload
   }, {
+    id: 'goals',
+    label: 'Goals',
+    icon: Target
+  }, {
     id: 'workouts',
     label: 'Workouts',
     icon: Activity

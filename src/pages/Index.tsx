@@ -8,6 +8,7 @@ import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
 import { Calendar } from "@/components/Calendar";
 import { Activities } from "@/components/Activities";
+import { Goals } from "@/components/Goals";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -33,7 +34,7 @@ const Index = () => {
       case 'analysis':
         return <AnalysisDashboard />;
       case 'goals':
-        return <div className="p-8 text-center text-muted-foreground">Goal Setting - Coming Soon</div>;
+        return <Goals />;
       case 'research':
         return <ResearchUpdates />;
       case 'export':
