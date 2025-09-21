@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Map as MapIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { EnhancedMapView } from './EnhancedMapView';
 import { ActivityDetail } from './ActivityDetail';
+import { PowerProfileChart } from './PowerProfileChart';
 
 export function ActivityReview() {
   const { activities, loading, deleteActivity } = useActivities();
@@ -87,46 +86,22 @@ export function ActivityReview() {
 
   if (selectedActivity) {
     return (
-      <div className="space-y-6">
-        <Tabs defaultValue="details">
-          <TabsList>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="map">Map</TabsTrigger>
-          </TabsList>
-          <TabsContent value="details">
-            <ActivityDetail 
-              activity={selectedActivity}
-              onBack={handleBackToList}
-              onDelete={handleDeleteActivity}
-            />
-          </TabsContent>
-          <TabsContent value="map">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapIcon className="w-5 h-5" />
-                  Activity Map - {selectedActivity.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EnhancedMapView 
-                  gpsData={selectedActivity.gps_data} 
-                  activity={selectedActivity}
-                  className="w-full h-96" 
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+      <ActivityDetail 
+        activity={selectedActivity}
+        onBack={handleBackToList}
+        onDelete={handleDeleteActivity}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Power/Pace Profile Section */}
+      <PowerProfileChart />
+      
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Activity Review</h2>
+          <h2 className="text-2xl font-bold">Recent Activities</h2>
           <p className="text-muted-foreground">
             {activities.length} activities • {filterSport !== 'all' ? filterSport : 'all sports'}
           </p>
@@ -179,89 +154,100 @@ export function ActivityReview() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {filteredActivities.map((activity) => (
-            <Card key={activity.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleActivityClick(activity)}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{getSportIcon(activity.sport_mode)}</div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{activity.name}</h3>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center space-x-1">
+            <Card key={activity.id} className="cursor-pointer hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 group border-border/50 hover:border-primary/20" onClick={() => handleActivityClick(activity)}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start space-x-4 flex-1">
+                    <div className="relative">
+                      <div className="text-2xl group-hover:scale-110 transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
+                      {activity.tss && activity.tss > 100 && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-zone-3 rounded-full border border-background"></div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg group-hover:text-primary transition-colors truncate">{activity.name}</h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
+                        <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           <span>{new Date(activity.date).toLocaleDateString()}</span>
                         </span>
                         <Badge variant="outline" className="capitalize">
                           {activity.sport_mode}
                         </Badge>
+                        {activity.tss && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Target className="h-2 w-2 mr-1" />
+                            TSS {Math.round(activity.tss)}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center min-w-fit">
+                    <div className="px-2">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                         <Clock className="h-3 w-3" />
-                        <span className="text-xs">Duration</span>
+                        <span className="text-xs font-medium">Duration</span>
                       </div>
-                      <div className="font-semibold">{formatDuration(activity.duration_seconds)}</div>
+                      <div className="font-bold text-sm">{formatDuration(activity.duration_seconds)}</div>
                     </div>
                     
-                    <div>
-                      <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                    <div className="px-2">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                         <MapPin className="h-3 w-3" />
-                        <span className="text-xs">Distance</span>
+                        <span className="text-xs font-medium">Distance</span>
                       </div>
-                      <div className="font-semibold">{formatDistance(activity.distance_meters)}</div>
+                      <div className="font-bold text-sm">{formatDistance(activity.distance_meters)}</div>
                     </div>
                     
                     {activity.sport_mode === 'cycling' && activity.avg_power && (
-                      <div>
-                        <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                      <div className="px-2">
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                           <Zap className="h-3 w-3" />
-                          <span className="text-xs">Avg Power</span>
+                          <span className="text-xs font-medium">Avg Power</span>
                         </div>
-                        <div className="font-semibold">{activity.avg_power}W</div>
+                        <div className="font-bold text-sm text-zone-3">{activity.avg_power}W</div>
                       </div>
                     )}
                     
                     {activity.sport_mode === 'running' && activity.avg_pace_per_km && (
-                      <div>
-                        <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                      <div className="px-2">
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                           <TrendingUp className="h-3 w-3" />
-                          <span className="text-xs">Avg Pace</span>
+                          <span className="text-xs font-medium">Avg Pace</span>
                         </div>
-                        <div className="font-semibold">{formatPace(activity.avg_pace_per_km)}</div>
+                        <div className="font-bold text-sm text-zone-2">{formatPace(activity.avg_pace_per_km)}</div>
                       </div>
                     )}
                     
                     {activity.avg_heart_rate && (
-                      <div>
-                        <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                      <div className="px-2">
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                           <Heart className="h-3 w-3" />
-                          <span className="text-xs">Avg HR</span>
+                          <span className="text-xs font-medium">Avg HR</span>
                         </div>
-                        <div className="font-semibold">{activity.avg_heart_rate} bpm</div>
+                        <div className="font-bold text-sm text-red-400">{activity.avg_heart_rate} bpm</div>
                       </div>
                     )}
                     
-                    {activity.avg_speed_kmh && (
-                      <div>
-                        <div className="flex items-center justify-center space-x-1 text-muted-foreground mb-1">
+                    {activity.avg_speed_kmh && !activity.avg_pace_per_km && (
+                      <div className="px-2">
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                           <TrendingUp className="h-3 w-3" />
-                          <span className="text-xs">Avg Speed</span>
+                          <span className="text-xs font-medium">Avg Speed</span>
                         </div>
-                        <div className="font-semibold">{formatSpeed(activity.avg_speed_kmh)}</div>
+                        <div className="font-bold text-sm">{formatSpeed(activity.avg_speed_kmh)}</div>
                       </div>
                     )}
                   </div>
                 </div>
                 
                 {activity.notes && (
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">{activity.notes}</p>
+                  <div className="mt-3 p-2 bg-muted/50 rounded-md border-l-2 border-primary/30">
+                    <p className="text-xs text-muted-foreground italic truncate">{activity.notes}</p>
                   </div>
                 )}
               </CardContent>
