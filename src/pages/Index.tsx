@@ -6,7 +6,7 @@ import { WorkoutLibrary } from "@/components/WorkoutLibrary";
 import { AnalysisDashboard } from "@/components/AnalysisDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
-import { Calendar } from "@/components/Calendar";
+import { TrainingCalendar } from "@/components/TrainingCalendar";
 import { Activities } from "@/components/Activities";
 import { Goals } from "@/components/Goals";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,7 +26,7 @@ const Index = () => {
       case 'physiology':
         return <PhysiologyDashboard />;
       case 'calendar':
-        return <Calendar />;
+        return <TrainingCalendar />;
       case 'activities':
         return <Activities />;
       case 'workouts':

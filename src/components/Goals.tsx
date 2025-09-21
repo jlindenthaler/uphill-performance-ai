@@ -7,100 +7,115 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Target, Trophy, Calendar, MapPin, Crosshair, Edit, RotateCcw } from "lucide-react";
-
-interface Goal {
-  id: string;
-  name: string;
-  date: string;
-  location: string;
-  eventType: string;
-  priority: 'A' | 'B' | 'C';
-  status: 'active' | 'completed' | 'cancelled';
-  targetPerformance: string;
-  isToday?: boolean;
-}
-
-const mockGoals: Goal[] = [
-  {
-    id: '1',
-    name: 'State Championships',
-    date: 'March 15, 2025',
-    location: 'Local circuit',
-    eventType: 'criterium',
-    priority: 'A',
-    status: 'active',
-    targetPerformance: 'Podium finish',
-    isToday: true
-  },
-  {
-    id: '2',
-    name: 'Local Criterium Series',
-    date: 'February 15, 2025',
-    location: 'Local venue',
-    eventType: 'criterium',
-    priority: 'B',
-    status: 'active',
-    targetPerformance: 'Podium finish, practice race tactics',
-    isToday: true
-  },
-  {
-    id: '3',
-    name: 'National Championships - Road Race',
-    date: 'January 28, 2025',
-    location: 'Perth, Australia',
-    eventType: 'road race',
-    priority: 'A',
-    status: 'active',
-    targetPerformance: 'Top 10 finish',
-    isToday: true
-  },
-  {
-    id: '4',
-    name: 'National Championships - Time Trial',
-    date: 'January 25, 2025',
-    location: 'Perth, Australia',
-    eventType: 'time trial',
-    priority: 'A',
-    status: 'active',
-    targetPerformance: 'Sub 52 minutes',
-    isToday: true
-  }
-];
+import { useGoals, Goal } from "@/hooks/useGoals";
+import { toast } from "@/hooks/use-toast";
 
 export const Goals: React.FC = () => {
-  const [goals, setGoals] = useState<Goal[]>(mockGoals);
+  const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
   const [newGoal, setNewGoal] = useState({
     name: '',
-    date: '',
+    event_date: '',
     location: '',
-    eventType: '',
-    priority: 'A' as 'A' | 'B' | 'C',
-    status: 'active' as 'active' | 'completed' | 'cancelled',
-    targetPerformance: ''
+    event_type: '',
+    priority: 'A',
+    status: 'active' as 'active' | 'completed' | 'deferred',
+    target_performance: ''
+  });
+
+  const [editGoalData, setEditGoalData] = useState({
+    name: '',
+    event_date: '',
+    location: '',
+    event_type: '',
+    priority: 'A',
+    status: 'active' as 'active' | 'completed' | 'deferred',
+    target_performance: ''
   });
 
   const activeGoals = goals.filter(g => g.status === 'active');
   const completedGoals = goals.filter(g => g.status === 'completed');
 
-  const handleSaveGoal = () => {
-    if (newGoal.name && newGoal.date && newGoal.eventType) {
-      const goal: Goal = {
-        id: Date.now().toString(),
-        ...newGoal
-      };
-      setGoals([...goals, goal]);
-      setNewGoal({
-        name: '',
-        date: '',
-        location: '',
-        eventType: '',
-        priority: 'A',
-        status: 'active',
-        targetPerformance: ''
+  const handleSaveGoal = async () => {
+    if (newGoal.name && newGoal.event_date && newGoal.event_type) {
+      const result = await createGoal(newGoal);
+      if (result) {
+        toast({
+          title: "Goal created successfully",
+          description: "Your new goal has been added."
+        });
+        setNewGoal({
+          name: '',
+          event_date: '',
+          location: '',
+          event_type: '',
+          priority: 'A',
+          status: 'active',
+          target_performance: ''
+        });
+        setIsDialogOpen(false);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create goal. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setEditGoalData({
+      name: goal.name,
+      event_date: goal.event_date,
+      location: goal.location || '',
+      event_type: goal.event_type,
+      priority: goal.priority,
+      status: goal.status,
+      target_performance: goal.target_performance || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEditGoal = async () => {
+    if (editingGoal && editGoalData.name && editGoalData.event_date && editGoalData.event_type) {
+      const result = await updateGoal(editingGoal.id, editGoalData);
+      if (result) {
+        toast({
+          title: "Goal updated successfully",
+          description: "Your goal has been updated."
+        });
+        setIsEditDialogOpen(false);
+        setEditingGoal(null);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update goal. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleStatusChange = async (goalId: string, newStatus: 'active' | 'completed' | 'deferred') => {
+    const result = await updateGoal(goalId, { status: newStatus });
+    if (result) {
+      toast({
+        title: "Status updated",
+        description: `Goal status changed to ${newStatus}.`
       });
-      setIsDialogOpen(false);
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -121,6 +136,23 @@ export const Goals: React.FC = () => {
       default: return 'bg-gray-100 text-gray-700';
     }
   };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -158,8 +190,8 @@ export const Goals: React.FC = () => {
                   <Input
                     id="date"
                     type="date"
-                    value={newGoal.date}
-                    onChange={(e) => setNewGoal({ ...newGoal, date: e.target.value })}
+                    value={newGoal.event_date}
+                    onChange={(e) => setNewGoal({ ...newGoal, event_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -176,7 +208,7 @@ export const Goals: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="eventType">Event Type</Label>
-                  <Select value={newGoal.eventType} onValueChange={(value) => setNewGoal({ ...newGoal, eventType: value })}>
+                  <Select value={newGoal.event_type} onValueChange={(value) => setNewGoal({ ...newGoal, event_type: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select event type" />
                     </SelectTrigger>
@@ -193,7 +225,7 @@ export const Goals: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="priority">Priority Level</Label>
-                  <Select value={newGoal.priority} onValueChange={(value: 'A' | 'B' | 'C') => setNewGoal({ ...newGoal, priority: value })}>
+                  <Select value={newGoal.priority} onValueChange={(value) => setNewGoal({ ...newGoal, priority: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -206,14 +238,14 @@ export const Goals: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select value={newGoal.status} onValueChange={(value: 'active' | 'completed' | 'cancelled') => setNewGoal({ ...newGoal, status: value })}>
+                  <Select value={newGoal.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setNewGoal({ ...newGoal, status: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="deferred">Deferred</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -223,8 +255,8 @@ export const Goals: React.FC = () => {
                 <Label htmlFor="target">Target Performance</Label>
                 <Textarea
                   id="target"
-                  value={newGoal.targetPerformance}
-                  onChange={(e) => setNewGoal({ ...newGoal, targetPerformance: e.target.value })}
+                  value={newGoal.target_performance}
+                  onChange={(e) => setNewGoal({ ...newGoal, target_performance: e.target.value })}
                   placeholder="e.g., Top 10 finish, Complete in under 4 hours, Achieve 300W FTP"
                   rows={3}
                 />
@@ -236,6 +268,111 @@ export const Goals: React.FC = () => {
               </Button>
               <Button onClick={handleSaveGoal}>
                 Save Goal
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Goal Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Goal</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-name">Event Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editGoalData.name}
+                    onChange={(e) => setEditGoalData({ ...editGoalData, name: e.target.value })}
+                    placeholder="Enter event name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-date">Event Date</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editGoalData.event_date}
+                    onChange={(e) => setEditGoalData({ ...editGoalData, event_date: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-location">Event Location</Label>
+                  <Input
+                    id="edit-location"
+                    value={editGoalData.location}
+                    onChange={(e) => setEditGoalData({ ...editGoalData, location: e.target.value })}
+                    placeholder="Enter location"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-eventType">Event Type</Label>
+                  <Select value={editGoalData.event_type} onValueChange={(value) => setEditGoalData({ ...editGoalData, event_type: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="road race">Road Race</SelectItem>
+                      <SelectItem value="criterium">Criterium</SelectItem>
+                      <SelectItem value="time trial">Time Trial</SelectItem>
+                      <SelectItem value="stage race">Stage Race</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-priority">Priority Level</Label>
+                  <Select value={editGoalData.priority} onValueChange={(value) => setEditGoalData({ ...editGoalData, priority: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">A (Primary)</SelectItem>
+                      <SelectItem value="B">B (Secondary)</SelectItem>
+                      <SelectItem value="C">C (Tertiary)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select value={editGoalData.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setEditGoalData({ ...editGoalData, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="deferred">Deferred</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-target">Target Performance</Label>
+                <Textarea
+                  id="edit-target"
+                  value={editGoalData.target_performance}
+                  onChange={(e) => setEditGoalData({ ...editGoalData, target_performance: e.target.value })}
+                  placeholder="e.g., Top 10 finish, Complete in under 4 hours, Achieve 300W FTP"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditGoal}>
+                Update Goal
               </Button>
             </div>
           </DialogContent>
@@ -299,41 +436,76 @@ export const Goals: React.FC = () => {
                     <Badge className={`text-xs px-2 py-1 ${getPriorityColor(`Priority ${goal.priority}`)}`}>
                       {goal.status}
                     </Badge>
-                    <Badge className={`text-xs px-2 py-1 ${getEventTypeColor(goal.eventType)}`}>
-                      {goal.eventType}
+                    <Badge className={`text-xs px-2 py-1 ${getEventTypeColor(goal.event_type)}`}>
+                      {goal.event_type}
                     </Badge>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1"
+                    onClick={() => handleEditGoal(goal)}
+                  >
                     <Edit className="w-3 h-3" />
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <RotateCcw className="w-3 h-3" />
-                    Status
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <RotateCcw className="w-3 h-3" />
+                        Status
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-40 bg-popover border border-border">
+                      <DropdownMenuItem 
+                        onClick={() => handleStatusChange(goal.id, 'active')}
+                        className="cursor-pointer"
+                      >
+                        Active
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleStatusChange(goal.id, 'completed')}
+                        className="cursor-pointer"
+                      >
+                        Completed
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleStatusChange(goal.id, 'deferred')}
+                        className="cursor-pointer"
+                      >
+                        Deferred
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{goal.date}</span>
-                  {goal.isToday && (
-                    <Badge className="text-xs bg-blue-100 text-blue-700">Today!</Badge>
-                  )}
+                  <span>{formatDate(goal.event_date)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>{goal.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Crosshair className="w-4 h-4" />
-                  <span>{goal.targetPerformance}</span>
-                </div>
+                {goal.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>{goal.location}</span>
+                  </div>
+                )}
+                {goal.target_performance && (
+                  <div className="flex items-center gap-2">
+                    <Crosshair className="w-4 h-4" />
+                    <span>{goal.target_performance}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
+          {goals.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No goals set yet. Create your first goal to get started!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
