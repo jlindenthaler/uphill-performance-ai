@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BookOpen, TrendingUp, Zap, RefreshCw, ExternalLink, Calendar, Bike, PersonStanding, Waves } from "lucide-react";
+import { BookOpen, TrendingUp, Zap, RefreshCw, ExternalLink, Calendar } from "lucide-react";
 import { useAIAnalysis } from "@/hooks/useSupabase";
-import { useSportMode } from "@/contexts/SportModeContext";
 
 interface ResearchUpdate {
   id: string;
@@ -17,7 +16,6 @@ interface ResearchUpdate {
   date: string;
   url?: string;
   relevanceScore: number;
-  sports: ('cycling' | 'running' | 'swimming' | 'general')[];
   keyFindings: string[];
   practicalApplications: string[];
 }
@@ -27,7 +25,6 @@ export function ResearchUpdates() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { fetchResearchUpdates } = useAIAnalysis();
-  const { sportMode } = useSportMode();
 
   const mockUpdates: ResearchUpdate[] = [
     {
@@ -37,9 +34,8 @@ export function ResearchUpdates() {
       category: 'training',
       source: 'Journal of Applied Physiology',
       date: '2024-09-15',
-      url: 'https://journals.physiology.org/doi/full/10.1152/japplphysiol.00234.2024',
+      url: 'https://example.com/research',
       relevanceScore: 9.2,
-      sports: ['general', 'cycling', 'running'],
       keyFindings: [
         'Heat acclimation increases mitochondrial respiratory capacity by 15-20%',
         'Plasma volume expansion occurs within 5-7 days of heat exposure',
@@ -58,9 +54,7 @@ export function ResearchUpdates() {
       category: 'recovery',
       source: 'Sports Medicine Review',
       date: '2024-09-12',
-      url: 'https://link.springer.com/article/10.1007/s40279-024-02057-2',
       relevanceScore: 8.7,
-      sports: ['general', 'cycling', 'running', 'swimming'],
       keyFindings: [
         'Post-exercise CWI may blunt long-term adaptations if used consistently',
         'Pre-exercise CWI can enhance performance in hot conditions',
@@ -79,9 +73,7 @@ export function ResearchUpdates() {
       category: 'nutrition',
       source: 'International Journal of Sport Nutrition',
       date: '2024-09-10',
-      url: 'https://journals.humankinetics.com/view/journals/ijsnem/34/4/article-p234.xml',
       relevanceScore: 8.1,
-      sports: ['cycling', 'running'],
       keyFindings: [
         '3-5% improvement in 40km time trial performance',
         'Reduced IL-6 and CRP levels 24h post-exercise',
@@ -91,27 +83,6 @@ export function ResearchUpdates() {
         'Consider ketone supplementation for key events',
         'Combine with carbohydrate feeding for optimal recovery',
         'Test individual tolerance during training'
-      ]
-    },
-    {
-      id: '4',
-      title: 'Swimming Technique Analysis: Stroke Rate vs Distance Per Stroke Optimization',
-      summary: 'New research reveals optimal stroke rate-distance per stroke combinations vary significantly across race distances and individual physiology.',
-      category: 'performance',
-      source: 'International Journal of Aquatic Sports',
-      date: '2024-09-08',
-      url: 'https://link.springer.com/article/10.1007/s00421-024-05287-4',
-      relevanceScore: 9.5,
-      sports: ['swimming'],
-      keyFindings: [
-        'Optimal stroke rate increases 8-12% from 1500m to 50m events',
-        'DPS (Distance Per Stroke) correlates strongly with swimming economy',
-        'Elite swimmers show 15% better DPS efficiency than sub-elite'
-      ],
-      practicalApplications: [
-        'Focus on DPS development in base training phases',
-        'Incorporate stroke rate progression in race-specific training',
-        'Use underwater cameras for technique analysis'
       ]
     }
   ];
@@ -125,8 +96,8 @@ export function ResearchUpdates() {
   const fetchLatestResearch = async () => {
     setLoading(true);
     try {
-      // Use mock data for now - API integration to be implemented later
-      setUpdates(mockUpdates);
+      const result = await fetchResearchUpdates();
+      setUpdates(result.updates || mockUpdates);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching research updates:', error);
@@ -175,9 +146,9 @@ export function ResearchUpdates() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Research Updates - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}</h1>
+          <h1 className="text-3xl font-bold">Research Updates</h1>
           <p className="text-muted-foreground">
-            Latest endurance performance research curated for {sportMode} training
+            Latest endurance performance research curated for your training
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -196,10 +167,7 @@ export function ResearchUpdates() {
 
       <ScrollArea className="h-[800px]">
         <div className="space-y-4">
-          {updates.filter(update => 
-            update.sports.includes(sportMode as 'cycling' | 'running' | 'swimming') || 
-            update.sports.includes('general')
-          ).map((update) => {
+          {updates.map((update) => {
             const { icon: CategoryIcon, color } = getCategoryIcon(update.category);
             
             return (

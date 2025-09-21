@@ -7,9 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, BookOpen, Target, Clock, Zap, Search, Filter, Download } from "lucide-react";
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useState } from "react";
-import { useSportMode } from "@/contexts/SportModeContext";
-import { useWorkouts } from "@/hooks/useWorkouts";
-import { useToast } from "@/hooks/use-toast";
 
 interface WorkoutData {
   id: string;
@@ -36,7 +33,6 @@ interface WorkoutData {
   duration: number; // minutes
   tss: number; // Training Stress Score
   category: 'vo2max' | 'threshold' | 'tempo' | 'endurance';
-  sport: 'cycling' | 'running' | 'swimming' | 'all';
 }
 
 const workouts: WorkoutData[] = [
@@ -69,8 +65,7 @@ const workouts: WorkoutData[] = [
     zones: [4],
     duration: 90,
     tss: 95,
-    category: 'vo2max',
-    sport: 'cycling'
+    category: 'vo2max'
   },
   {
     id: "seiler-8x4",
@@ -99,8 +94,7 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 95,
     tss: 78,
-    category: 'threshold',
-    sport: 'cycling'
+    category: 'threshold'
   },
   {
     id: "laursen-4x8",
@@ -129,8 +123,7 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 105,
     tss: 82,
-    category: 'threshold',
-    sport: 'cycling'
+    category: 'threshold'
   },
   {
     id: "coggan-2x20",
@@ -158,96 +151,13 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 90,
     tss: 100,
-    category: 'threshold',
-    sport: 'cycling'
+    category: 'threshold'
   }
 ];
 
 export function WorkoutLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const { sportMode } = useSportMode();
-  const { saveWorkout, scheduleWorkout, exportWorkout } = useWorkouts();
-  const { toast } = useToast();
-
-  const handleExportWorkout = (workout: WorkoutData) => {
-    exportWorkout({
-      name: workout.name,
-      description: workout.description,
-      structure: {
-        warmup: workout.structure.warmup,
-        mainSet: workout.structure.mainSet,
-        cooldown: workout.structure.cooldown,
-        intervals: workout.intervals
-      },
-      duration_minutes: workout.duration,
-      tss: workout.tss
-    });
-    toast({
-      title: "Workout exported",
-      description: `${workout.name} has been downloaded as JSON`,
-    });
-  };
-
-  const handleAddToCalendar = async (workout: WorkoutData) => {
-    try {
-      const scheduledDate = new Date();
-      scheduledDate.setDate(scheduledDate.getDate() + 1); // Schedule for tomorrow
-      
-      await saveWorkout({
-        name: workout.name,
-        description: workout.description,
-        structure: {
-          warmup: workout.structure.warmup,
-          mainSet: workout.structure.mainSet,
-          cooldown: workout.structure.cooldown,
-          intervals: workout.intervals
-        },
-        duration_minutes: workout.duration,
-        tss: workout.tss,
-        scheduled_date: scheduledDate.toISOString()
-      });
-      
-      toast({
-        title: "Added to calendar",
-        description: `${workout.name} scheduled for tomorrow`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add workout to calendar",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateWorkout = async (workout: WorkoutData) => {
-    try {
-      await saveWorkout({
-        name: workout.name,
-        description: workout.description,
-        structure: {
-          warmup: workout.structure.warmup,
-          mainSet: workout.structure.mainSet,
-          cooldown: workout.structure.cooldown,
-          intervals: workout.intervals
-        },
-        duration_minutes: workout.duration,
-        tss: workout.tss
-      });
-      
-      toast({
-        title: "Workout created",
-        description: `${workout.name} has been saved to your library`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create workout",
-        variant: "destructive",
-      });
-    }
-  };
 
   const getZoneColor = (zone: number) => {
     switch (zone) {
@@ -269,12 +179,7 @@ export function WorkoutLibrary() {
     }
   };
 
-  // Filter workouts by sport
-  const sportSpecificWorkouts = workouts.filter(workout => 
-    workout.sport === sportMode || workout.sport === 'all'
-  );
-
-  const filteredWorkouts = sportSpecificWorkouts.filter(workout => {
+  const filteredWorkouts = workouts.filter(workout => {
     const matchesSearch = workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          workout.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          workout.research.authors.toLowerCase().includes(searchTerm.toLowerCase());
@@ -286,11 +191,11 @@ export function WorkoutLibrary() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Science-Based Workouts - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}</h1>
+          <h1 className="text-3xl font-bold">Science-Based Workouts</h1>
           <p className="text-muted-foreground">Research-backed training sessions for optimal performance</p>
         </div>
         <Badge variant="secondary" className="bg-primary/20 text-primary">
-          {filteredWorkouts.length} Workouts
+          {workouts.length} Workouts
         </Badge>
       </div>
 
@@ -411,26 +316,14 @@ export function WorkoutLibrary() {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleExportWorkout(workout)}
-                >
+                <Button variant="outline" size="sm">
                   <Download className="w-3 h-3 mr-1" />
                   Export
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleAddToCalendar(workout)}
-                >
+                <Button variant="outline" size="sm">
                   Add to Calendar
                 </Button>
-                <Button 
-                  size="sm" 
-                  className="primary-gradient"
-                  onClick={() => handleCreateWorkout(workout)}
-                >
+                <Button size="sm" className="primary-gradient">
                   Create Workout
                 </Button>
               </div>

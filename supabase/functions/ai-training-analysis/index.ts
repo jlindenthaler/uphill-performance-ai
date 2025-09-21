@@ -30,12 +30,8 @@ serve(async (req) => {
         return await analyzePerformance(supabaseClient, user.id)
       case 'recommend_workout':
         return await recommendWorkout(supabaseClient, user.id, data)
-      case 'adjust_training_load':
-        return await adjustTrainingLoad(supabaseClient, user.id, data)
       case 'fetch_research_updates':
         return await fetchResearchUpdates(supabaseClient, user.id)
-      case 'calculate_metabolic_metrics':
-        return await calculateMetabolicMetrics(supabaseClient, user.id, data)
       default:
         throw new Error('Invalid action')
     }
@@ -54,25 +50,18 @@ async function calculateTrainingZones(supabaseClient: any, userId: string, physi
     heart_rate: calculateHRZones(physiologyData),
     pace: calculatePaceZones(physiologyData)
   }
-  
-  // Calculate metabolic metrics
-  const metabolicMetrics = calculateMetabolicMetricsFromPhysiology(physiologyData);
 
-  // Store calculated zones (optional, don't fail if table doesn't exist)
-  try {
-    await supabaseClient
-      .from('training_zones')
-      .upsert({
-        user_id: userId,
-        ...zones.power,
-        zone_type: 'power'
-      })
-  } catch (error) {
-    console.log('Training zones table not found, continuing without storage');
-  }
+  // Store calculated zones
+  await supabaseClient
+    .from('training_zones')
+    .upsert({
+      user_id: userId,
+      ...zones.power,
+      zone_type: 'power'
+    })
 
   return new Response(
-    JSON.stringify({ zones, metabolic_metrics: metabolicMetrics }),
+    JSON.stringify({ zones }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
 }
@@ -143,33 +132,6 @@ async function adjustTrainingLoad(supabaseClient: any, userId: string, workoutFe
     JSON.stringify({ adjustment }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
-}
-
-async function calculateMetabolicMetrics(supabaseClient: any, userId: string, data: any) {
-  // Get physiology data if not provided
-  let physiologyData = data;
-  if (!physiologyData) {
-    const { data: dbData, error } = await supabaseClient
-      .from('physiology_data')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error || !dbData) {
-      return new Response(
-        JSON.stringify({ error: 'No physiology data found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-    physiologyData = dbData;
-  }
-  
-  const metabolicMetrics = calculateMetabolicMetricsFromPhysiology(physiologyData);
-  
-  return new Response(
-    JSON.stringify({ metabolic_metrics: metabolicMetrics }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 // Helper functions
@@ -275,55 +237,6 @@ function calculateLoadAdjustment(feedback: any) {
   // Adjust intensity based on RPE and completion
   const rpeAdjustment = feedback.rpe > 8 ? -0.05 : feedback.rpe < 6 ? 0.03 : 0
   return { intensity_multiplier: 1 + rpeAdjustment }
-}
-
-// Helper function for metabolic calculations
-function calculateMetabolicMetricsFromPhysiology(data: any) {
-  const bodyWeight = parseFloat(data.body_weight) || 70;
-  const vo2max = parseFloat(data.vo2_max) || 50;
-  const lt1 = parseFloat(data.lactate_threshold) || 200;
-  const lt2 = parseFloat(data.lactate_threshold_2) || 280;
-  const fatMaxWatts = parseFloat(data.fat_max_rate) || 150;
-  const fatMaxIntensity = parseFloat(data.fat_max_intensity) || 65;
-  const ftp = parseFloat(data.ftp) || 250;
-
-  // Calculate VLaMax (lactate accumulation rate)
-  const vlamax = calculateVLaMax(lt1, lt2, ftp);
-  
-  // Calculate Fat Max in g/min/kg
-  const fatMaxRate = calculateFatMaxRate(fatMaxWatts, vo2max, bodyWeight, fatMaxIntensity);
-  
-  // Calculate percentiles (simplified - in real app would use population databases)
-  const vo2maxPercentile = calculatePercentile(vo2max, 45, 15);
-  const vlamaxPercentile = calculatePercentile(vlamax, 0.4, 0.2);
-  const fatMaxPercentile = calculatePercentile(fatMaxRate, 0.35, 0.15);
-
-  return {
-    vo2max: { value: vo2max, percentile: vo2maxPercentile },
-    vlamax: { value: vlamax, percentile: vlamaxPercentile },
-    fatMax: { value: fatMaxRate, percentile: fatMaxPercentile, unit: 'g/min/kg' }
-  };
-}
-
-// VLaMax calculation (simplified)
-function calculateVLaMax(lt1: number, lt2: number, ftp: number) {
-  const powerDiff = lt2 - lt1;
-  const intensityRange = powerDiff / ftp;
-  return Math.max(0.1, Math.min(1.0, 0.3 + (intensityRange * 0.5)));
-}
-
-// Fat Max rate calculation (convert watts to g/min/kg)
-function calculateFatMaxRate(fatMaxWatts: number, vo2max: number, bodyWeight: number, intensity: number) {
-  const vo2AtFatMax = (vo2max * intensity / 100);
-  const fatOxidationRate = vo2AtFatMax * 0.067;
-  return Math.max(0.1, Math.min(1.2, fatOxidationRate));
-}
-
-// Percentile calculation helper
-function calculatePercentile(value: number, mean: number, stdDev: number) {
-  const zScore = (value - mean) / stdDev;
-  const percentile = 50 + (zScore * 34.13);
-  return Math.max(1, Math.min(99, Math.round(percentile)));
 }
 
 async function fetchResearchUpdates(supabaseClient: any, userId: string) {

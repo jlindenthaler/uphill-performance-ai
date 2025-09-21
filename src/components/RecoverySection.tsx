@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Snowflake, Waves, Zap, Flame, Heart, Settings } from "lucide-react";
 
@@ -31,6 +32,8 @@ interface RecoveryData {
   frequency: {
     [key: string]: string;
   };
+  preferences: string;
+  constraints: string;
   sleepHours: string;
   sleepQuality: string;
   hrvBaseline: string;
@@ -175,10 +178,10 @@ export function RecoverySection({ data, onChange }: RecoverySectionProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-zone-2" />
-            Available Recovery Methods
+            Available Recovery Modalities
           </CardTitle>
           <CardDescription>
-            Select recovery methods you have access to and their frequency - AI will recommend when to use them
+            Select all recovery methods and equipment you have access to
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -209,7 +212,7 @@ export function RecoverySection({ data, onChange }: RecoverySectionProps) {
                       </div>
                       {data.availableModalities[modality.key as keyof RecoveryData['availableModalities']] && (
                         <Input
-                          placeholder="Max frequency (e.g., 3x/week)"
+                          placeholder="Usage frequency (e.g., 3x/week)"
                           value={data.frequency[modality.key] || ''}
                           onChange={(e) => handleFrequencyChange(modality.key, e.target.value)}
                           className="text-xs ml-6"
@@ -222,6 +225,41 @@ export function RecoverySection({ data, onChange }: RecoverySectionProps) {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      {/* Recovery Preferences & Constraints */}
+      <Card className="card-gradient shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-zone-3" />
+            Recovery Preferences & Constraints
+          </CardTitle>
+          <CardDescription>
+            Additional context for AI-powered recovery recommendations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="preferences">Recovery Preferences</Label>
+            <Textarea
+              id="preferences"
+              value={data.preferences}
+              onChange={(e) => handleBasicDataChange('preferences', e.target.value)}
+              placeholder="e.g., Prefer cold therapy after hard sessions, enjoy sauna for relaxation, sensitive to heat..."
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="constraints">Time/Schedule Constraints</Label>
+            <Textarea
+              id="constraints"
+              value={data.constraints}
+              onChange={(e) => handleBasicDataChange('constraints', e.target.value)}
+              placeholder="e.g., Limited time on weekdays, gym access only evenings, avoid cold therapy in winter..."
+              rows={3}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
