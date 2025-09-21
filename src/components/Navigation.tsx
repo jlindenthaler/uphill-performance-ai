@@ -20,7 +20,7 @@ export function Navigation({
     icon: Calendar
   }, {
     id: 'activities',
-    label: 'Activities',
+    label: 'Training',
     icon: Upload
   }, {
     id: 'goals',
@@ -28,7 +28,7 @@ export function Navigation({
     icon: Target
   }, {
     id: 'workouts',
-    label: 'Training',
+    label: 'Workouts',
     icon: Activity
   }, {
     id: 'physiology',

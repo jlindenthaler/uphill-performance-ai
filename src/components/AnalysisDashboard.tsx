@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame, Calendar } from "lucide-react";
 import { useMetabolicData } from "@/hooks/useMetabolicData";
@@ -16,6 +18,7 @@ export function AnalysisDashboard() {
   const { trainingHistory, loading: historyLoading } = useTrainingHistory();
   const { isRunning } = useSportMode();
   const [dateRange, setDateRange] = useState('30');
+  const [combinedSports, setCombinedSports] = useState(false);
 
   const filteredTrainingHistory = useMemo(() => {
     const days = parseInt(dateRange === 'custom' ? '30' : dateRange);
@@ -80,6 +83,16 @@ export function AnalysisDashboard() {
                 <SelectItem value="custom">Custom range</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="combined-sports"
+              checked={combinedSports}
+              onCheckedChange={setCombinedSports}
+            />
+            <Label htmlFor="combined-sports" className="text-sm">
+              Combined Sports
+            </Label>
           </div>
           <div className="flex gap-2">
             <Badge variant="secondary" className="bg-primary/20 text-primary">
@@ -148,7 +161,10 @@ export function AnalysisDashboard() {
           <Card className="card-gradient">
             <CardHeader>
               <CardTitle>Performance Management Chart</CardTitle>
-              <CardDescription>CTL (blue), ATL (red), and TSB (yellow) over time</CardDescription>
+              <CardDescription>
+                CTL (blue), ATL (red), and TSB (yellow) over time
+                {combinedSports && " - Combined across all sports"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">

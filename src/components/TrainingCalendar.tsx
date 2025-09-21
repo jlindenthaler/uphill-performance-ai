@@ -21,39 +21,143 @@ interface WorkoutPopupProps {
   onClose: () => void;
 }
 
-const WorkoutPopup: React.FC<WorkoutPopupProps> = ({ workout, onClose }) => (
-  <Dialog open={true} onOpenChange={onClose}>
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <Dumbbell className="w-5 h-5" />
-          {workout.name}
-        </DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Duration</p>
-          <p className="font-medium">{workout.duration_minutes} minutes</p>
+const WorkoutPopup: React.FC<WorkoutPopupProps> = ({ workout, onClose }) => {
+  // Mock zone data - in a real app this would come from workout.structure
+  const zoneData = [
+    { zone: 1, label: 'Zone 1: <AeT', color: 'bg-blue-400', power: '150W', duration: '15min' },
+    { zone: 2, label: 'Zone 2: AeT-GT', color: 'bg-yellow-400', power: '100W', duration: '5min' },
+    { zone: 3, label: 'Zone 3: GT-MAP', color: 'bg-orange-400', power: '120W', duration: '10min' },
+    { zone: 4, label: 'Zone 4: >MAP', color: 'bg-red-400', power: '', duration: '' },
+  ];
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="space-y-4 pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Dumbbell className="w-4 h-4 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold">{workout.name}</h2>
+              <Badge variant="secondary" className="bg-red-500 text-white">
+                {workout.sport_mode?.toUpperCase() || 'VO2MAX'}
+              </Badge>
+            </div>
+            <Badge variant="outline" className="bg-red-500 text-white border-red-500">
+              Zone 4
+            </Badge>
+          </div>
+          
+          <p className="text-muted-foreground">
+            {workout.description || 'High-intensity interval training with short work intervals'}
+          </p>
+          
+          {/* Key Metrics */}
+          <div className="flex gap-8">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                <span className="text-xs">⏱</span>
+              </div>
+              <span className="font-medium">{workout.duration_minutes} minutes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                <span className="text-xs">⚡</span>
+              </div>
+              <span className="font-medium">TSS: {workout.tss || 95}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                <span className="text-xs">📅</span>
+              </div>
+              <span className="font-medium">{format(new Date(), 'yyyy')}</span>
+            </div>
+          </div>
         </div>
-        {workout.description && (
-          <div>
-            <p className="text-sm text-muted-foreground">Description</p>
-            <p className="font-medium">{workout.description}</p>
+
+        {/* Workout Structure Visualization */}
+        <div className="space-y-4">
+          <h3 className="font-semibold">Workout Structure</h3>
+          <div className="relative bg-gradient-to-r from-blue-400 via-blue-400 to-blue-400 rounded-lg h-16 flex items-center justify-between px-4 overflow-hidden">
+            {/* Zone segments */}
+            <div className="flex-1 h-full bg-blue-400 flex items-center justify-center">
+              <div className="text-center text-white">
+                <div className="font-semibold">150W</div>
+                <div className="text-xs">15min</div>
+              </div>
+            </div>
+            <div className="w-8 h-12 bg-red-500 mx-1 flex items-center justify-center">
+              <div className="text-center text-white text-xs leading-none">
+                <div>3x</div>
+                <div>30s</div>
+              </div>
+            </div>
+            <div className="flex-1 h-full bg-blue-400 flex items-center justify-center">
+              <div className="text-center text-white">
+                <div className="font-semibold">100W</div>
+                <div className="text-xs">5min</div>
+              </div>
+            </div>
+            <div className="w-16 h-12 bg-orange-400 mx-1 flex items-center justify-center">
+              <div className="text-center text-white text-xs">
+                <div className="font-semibold">120W</div>
+                <div>10min</div>
+              </div>
+            </div>
           </div>
-        )}
-        {workout.tss && (
-          <div>
-            <p className="text-sm text-muted-foreground">Training Stress Score</p>
-            <p className="font-medium">{workout.tss} TSS</p>
+          
+          {/* Zone Legend */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {zoneData.map((zone) => (
+              <div key={zone.zone} className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded ${zone.color}`}></div>
+                <span className="text-xs text-muted-foreground">{zone.label}</span>
+              </div>
+            ))}
           </div>
-        )}
-        <Badge variant="secondary" className="w-fit">
-          {workout.sport_mode}
-        </Badge>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+        </div>
+
+        {/* Purpose & Benefits */}
+        <div className="space-y-3">
+          <h3 className="font-semibold">Purpose & Benefits</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Improves VO2max, neuromuscular power, and anaerobic capacity. The short intervals allow for sustained
+            high power outputs at or above MAP while maintaining good form.
+          </p>
+        </div>
+
+        {/* Training Structure */}
+        <div className="space-y-3">
+          <h3 className="font-semibold">Training Structure</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">WARMUP</div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="font-medium">15min progressive build</div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">MAIN SET</div>
+              <div className="bg-primary/10 rounded-lg p-3">
+                <div className="font-medium">3 sets of 13x (30s @ 120%</div>
+                <div className="font-medium">MAP : 15s recovery), 5min</div>
+                <div className="font-medium">between sets</div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">COOLDOWN</div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="font-medium">10min easy spin</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 interface GoalPopupProps {
   goal: any;
