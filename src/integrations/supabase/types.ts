@@ -191,6 +191,48 @@ export type Database = {
         }
         Relationships: []
       }
+      goals: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_type: string
+          id: string
+          location: string | null
+          name: string
+          priority: string
+          status: string
+          target_performance: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_type: string
+          id?: string
+          location?: string | null
+          name: string
+          priority?: string
+          status?: string
+          target_performance?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          location?: string | null
+          name?: string
+          priority?: string
+          status?: string
+          target_performance?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lab_results: {
         Row: {
           aet: number | null
