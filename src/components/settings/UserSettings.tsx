@@ -6,13 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserProfile } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useSupabase";
 import { useLabResults } from "@/hooks/useLabResults";
 import { useTimeAvailability } from "@/hooks/useTimeAvailability";
-import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload } from "lucide-react";
+import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { GarminConnection } from "@/components/GarminConnection";
+import { RecoveryToolsManager } from "@/components/RecoveryToolsManager";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function UserSettings() {
   const { user } = useAuth();

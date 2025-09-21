@@ -26,8 +26,10 @@ export type Database = {
           distance_meters: number | null
           duration_seconds: number
           elevation_gain_meters: number | null
+          external_sync_source: string | null
           file_path: string | null
           file_type: string | null
+          garmin_activity_id: string | null
           gps_data: Json | null
           id: string
           intensity_factor: number | null
@@ -56,8 +58,10 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
+          external_sync_source?: string | null
           file_path?: string | null
           file_type?: string | null
+          garmin_activity_id?: string | null
           gps_data?: Json | null
           id?: string
           intensity_factor?: number | null
@@ -86,8 +90,10 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
+          external_sync_source?: string | null
           file_path?: string | null
           file_type?: string | null
+          garmin_activity_id?: string | null
           gps_data?: Json | null
           id?: string
           intensity_factor?: number | null
@@ -152,42 +158,108 @@ export type Database = {
         }
         Relationships: []
       }
+      enhanced_time_availability: {
+        Row: {
+          activity_type: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type?: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lab_results: {
         Row: {
+          aet: number | null
+          aet_hr: number | null
+          body_weight: number | null
           created_at: string
+          critical_power: number | null
           crossover_point: number | null
           fat_max: number | null
           fat_max_intensity: number | null
+          gt: number | null
+          gt_hr: number | null
           id: string
+          map_value: number | null
+          max_hr: number | null
+          metabolic_efficiency: number | null
+          resting_hr: number | null
           sport_mode: string
           updated_at: string
           user_id: string
           vla_max: number | null
           vo2_max: number | null
+          w_prime: number | null
         }
         Insert: {
+          aet?: number | null
+          aet_hr?: number | null
+          body_weight?: number | null
           created_at?: string
+          critical_power?: number | null
           crossover_point?: number | null
           fat_max?: number | null
           fat_max_intensity?: number | null
+          gt?: number | null
+          gt_hr?: number | null
           id?: string
+          map_value?: number | null
+          max_hr?: number | null
+          metabolic_efficiency?: number | null
+          resting_hr?: number | null
           sport_mode?: string
           updated_at?: string
           user_id: string
           vla_max?: number | null
           vo2_max?: number | null
+          w_prime?: number | null
         }
         Update: {
+          aet?: number | null
+          aet_hr?: number | null
+          body_weight?: number | null
           created_at?: string
+          critical_power?: number | null
           crossover_point?: number | null
           fat_max?: number | null
           fat_max_intensity?: number | null
+          gt?: number | null
+          gt_hr?: number | null
           id?: string
+          map_value?: number | null
+          max_hr?: number | null
+          metabolic_efficiency?: number | null
+          resting_hr?: number | null
           sport_mode?: string
           updated_at?: string
           user_id?: string
           vla_max?: number | null
           vo2_max?: number | null
+          w_prime?: number | null
         }
         Relationships: []
       }
@@ -331,6 +403,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string | null
+          garmin_access_token: string | null
+          garmin_connected: boolean | null
+          garmin_token_secret: string | null
           id: string
           timezone: string | null
           units: string | null
@@ -341,6 +416,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          garmin_access_token?: string | null
+          garmin_connected?: boolean | null
+          garmin_token_secret?: string | null
           id?: string
           timezone?: string | null
           units?: string | null
@@ -351,9 +429,48 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          garmin_access_token?: string | null
+          garmin_connected?: boolean | null
+          garmin_token_secret?: string | null
           id?: string
           timezone?: string | null
           units?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recovery_tools: {
+        Row: {
+          available: boolean | null
+          created_at: string
+          frequency: string | null
+          id: string
+          notes: string | null
+          sport_mode: string | null
+          tool_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          sport_mode?: string | null
+          tool_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          sport_mode?: string | null
+          tool_name?: string
           updated_at?: string
           user_id?: string
         }
