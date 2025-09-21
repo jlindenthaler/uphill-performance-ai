@@ -28,7 +28,7 @@ export function Navigation({
     icon: Target
   }, {
     id: 'workouts',
-    label: 'Workouts',
+    label: 'Training',
     icon: Activity
   }, {
     id: 'physiology',
