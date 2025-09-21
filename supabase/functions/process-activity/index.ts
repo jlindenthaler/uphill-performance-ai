@@ -440,6 +440,7 @@ async function updatePowerProfile(supabaseClient: any, userId: string, activity:
   }
 }
 
+    if (action === 'save_activity') {
       // Save the activity to the database
       const { data, error } = await supabaseClient
         .from('activities')
