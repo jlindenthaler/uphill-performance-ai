@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserSettings } from "@/components/settings/UserSettings";
 import { AppSettings } from "@/components/settings/AppSettings";
-import { EnhancedTimeSettings } from "@/components/settings/EnhancedTimeSettings";
+import { EnhancedTimeSettingsWithSliders } from "@/components/settings/EnhancedTimeSettingsWithSliders";
 
 import { User, Settings as SettingsIcon } from "lucide-react";
 
@@ -36,7 +36,7 @@ export function Settings() {
         </TabsContent>
 
         <TabsContent value="time">
-          <EnhancedTimeSettings />
+          <EnhancedTimeSettingsWithSliders />
         </TabsContent>
 
         <TabsContent value="app">
