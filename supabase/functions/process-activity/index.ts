@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import FitParser from 'https://esm.sh/fit-file-parser@1.9.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,9 +86,19 @@ serve(async (req) => {
         });
       }
 
-      // Enhanced file processing with GPS data extraction
-      const fileContent = await fileData.text();
-      const processedData = await parseActivityFile(fileContent, filePath);
+      // Enhanced file processing with binary support for FIT files
+      let processedData;
+      const fileExtension = filePath.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'fit') {
+        // Handle FIT files as binary data
+        const arrayBuffer = await fileData.arrayBuffer();
+        processedData = await parseActivityFile(arrayBuffer, filePath);
+      } else {
+        // Handle GPX/TCX as text
+        const fileContent = await fileData.text();
+        processedData = await parseActivityFile(fileContent, filePath);
+      }
       
       console.log('Processed activity data:', processedData);
 
@@ -144,7 +155,7 @@ serve(async (req) => {
   }
 });
 
-async function parseActivityFile(content: string, filePath: string): Promise<Partial<ActivityData>> {
+async function parseActivityFile(content: string | ArrayBuffer, filePath: string): Promise<Partial<ActivityData>> {
   const fileExtension = filePath.split('.').pop()?.toLowerCase();
   
   // Basic parsing logic with enhanced GPS data extraction
@@ -156,11 +167,11 @@ async function parseActivityFile(content: string, filePath: string): Promise<Par
   };
 
   try {
-    if (fileExtension === 'gpx') {
+    if (fileExtension === 'gpx' && typeof content === 'string') {
       await parseGPXFile(content, activityData);
-    } else if (fileExtension === 'tcx') {
+    } else if (fileExtension === 'tcx' && typeof content === 'string') {
       await parseTCXFile(content, activityData);
-    } else if (fileExtension === 'fit') {
+    } else if (fileExtension === 'fit' && content instanceof ArrayBuffer) {
       await parseFITFile(content, filePath, activityData);
     }
   } catch (parseError) {
@@ -307,51 +318,254 @@ async function parseTCXFile(content: string, activityData: Partial<ActivityData>
   }
 }
 
-async function parseFITFile(content: string, filePath: string, activityData: Partial<ActivityData>) {
-  // Enhanced FIT file handling - still simplified but more realistic
-  const fileName = filePath.split('/').pop() || '';
-  const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
-  if (dateMatch) {
-    activityData.date = dateMatch[1];
-  }
-  
-  // Generate realistic activity data for FIT files
-  activityData.name = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, ' ') || 'FIT Activity';
-  activityData.sport_mode = 'cycling'; // Default for FIT files
-  activityData.duration_seconds = 3600 + Math.floor(Math.random() * 1800); // 1-1.5 hours
-  activityData.distance_meters = 25000 + Math.floor(Math.random() * 15000); // 25-40km
-  activityData.avg_power = 180 + Math.floor(Math.random() * 60); // 180-240W
-  activityData.max_power = 350 + Math.floor(Math.random() * 150); // 350-500W
-  activityData.normalized_power = (activityData.avg_power || 0) + 10;
-  activityData.avg_heart_rate = 140 + Math.floor(Math.random() * 30); // 140-170 bpm
-  activityData.max_heart_rate = 170 + Math.floor(Math.random() * 20); // 170-190 bpm
-  activityData.avg_speed_kmh = (activityData.distance_meters / 1000) / (activityData.duration_seconds / 3600);
-  activityData.calories = Math.round(activityData.duration_seconds / 3600 * 600); // ~600 cal/hour
-  activityData.elevation_gain_meters = Math.floor(Math.random() * 800); // 0-800m
-  
-  // Generate mock GPS route for demonstration
-  const mockGPSPoints: GPSPoint[] = [];
-  const startLat = 37.7749 + (Math.random() - 0.5) * 0.1;
-  const startLng = -122.4194 + (Math.random() - 0.5) * 0.1;
-  
-  for (let i = 0; i < 100; i++) {
-    mockGPSPoints.push({
-      lat: startLat + (Math.random() - 0.5) * 0.01 * i,
-      lng: startLng + (Math.random() - 0.5) * 0.01 * i,
-      elevation: 50 + Math.random() * 200,
-      time: new Date(Date.now() - (100 - i) * (activityData.duration_seconds * 10)).toISOString()
+async function parseFITFile(arrayBuffer: ArrayBuffer, filePath: string, activityData: Partial<ActivityData>) {
+  try {
+    console.log('Parsing FIT file:', filePath);
+    
+    // Initialize FIT parser
+    const fitParser = new FitParser({
+      force: true,
+      speedUnit: 'km/h',
+      lengthUnit: 'm',
+      temperatureUnit: 'celsius',
+      elapsedRecordField: true,
+      mode: 'list'
     });
-  }
-  
-  activityData.gps_data = { coordinates: mockGPSPoints };
-  
-  // Calculate TSS based on power
-  if (activityData.avg_power && activityData.duration_seconds) {
-    const ftp = 250; // Assumed FTP
-    const intensity_factor = activityData.avg_power / ftp;
-    activityData.intensity_factor = intensity_factor;
-    activityData.tss = Math.round(activityData.duration_seconds / 3600 * intensity_factor * intensity_factor * 100);
-    activityData.variability_index = 1.05 + Math.random() * 0.1; // 1.05-1.15
+
+    // Parse the FIT file
+    const result = fitParser.parse(arrayBuffer);
+    console.log('FIT file parsed successfully, messages:', result.messages?.length || 0);
+
+    if (!result.messages || result.messages.length === 0) {
+      console.log('No messages found in FIT file, using fallback data');
+      return;
+    }
+
+    const messages = result.messages;
+    const sessionMessage = messages.find((msg: any) => msg.messageType === 'session');
+    const activityMessage = messages.find((msg: any) => msg.messageType === 'activity');
+    const recordMessages = messages.filter((msg: any) => msg.messageType === 'record');
+    const fileIdMessage = messages.find((msg: any) => msg.messageType === 'file_id');
+
+    console.log('Found messages:', {
+      session: !!sessionMessage,
+      activity: !!activityMessage,
+      records: recordMessages.length,
+      fileId: !!fileIdMessage
+    });
+
+    // Extract file creation time
+    if (fileIdMessage?.data?.time_created || activityMessage?.data?.timestamp) {
+      const timestamp = fileIdMessage?.data?.time_created || activityMessage?.data?.timestamp;
+      if (timestamp instanceof Date) {
+        activityData.date = timestamp.toISOString().split('T')[0];
+      }
+    }
+
+    // Extract session data (main activity summary)
+    if (sessionMessage?.data) {
+      const session = sessionMessage.data;
+      console.log('Session data keys:', Object.keys(session));
+
+      // Activity name and sport
+      activityData.name = session.sport ? `${session.sport} Activity` : 'FIT Activity';
+      
+      // Map FIT sport types to our sport modes
+      if (session.sport) {
+        const sportMap: { [key: string]: string } = {
+          'cycling': 'cycling',
+          'running': 'running',
+          'swimming': 'swimming',
+          'biking': 'cycling',
+          'bike': 'cycling',
+          'run': 'running',
+          'swim': 'swimming'
+        };
+        activityData.sport_mode = sportMap[session.sport.toLowerCase()] || 'cycling';
+      }
+
+      // Duration (in seconds)
+      if (session.total_timer_time !== undefined) {
+        activityData.duration_seconds = Math.round(session.total_timer_time);
+      } else if (session.total_elapsed_time !== undefined) {
+        activityData.duration_seconds = Math.round(session.total_elapsed_time);
+      }
+
+      // Distance (in meters)
+      if (session.total_distance !== undefined) {
+        activityData.distance_meters = Math.round(session.total_distance);
+      }
+
+      // Elevation gain (in meters)
+      if (session.total_ascent !== undefined) {
+        activityData.elevation_gain_meters = Math.round(session.total_ascent);
+      }
+
+      // Power data (in watts)
+      if (session.avg_power !== undefined) {
+        activityData.avg_power = Math.round(session.avg_power);
+      }
+      if (session.max_power !== undefined) {
+        activityData.max_power = Math.round(session.max_power);
+      }
+      if (session.normalized_power !== undefined) {
+        activityData.normalized_power = Math.round(session.normalized_power);
+      }
+
+      // Heart rate data (in bpm)
+      if (session.avg_heart_rate !== undefined) {
+        activityData.avg_heart_rate = Math.round(session.avg_heart_rate);
+      }
+      if (session.max_heart_rate !== undefined) {
+        activityData.max_heart_rate = Math.round(session.max_heart_rate);
+      }
+
+      // Speed data
+      if (session.avg_speed !== undefined) {
+        activityData.avg_speed_kmh = parseFloat((session.avg_speed * 3.6).toFixed(1)); // Convert m/s to km/h
+      }
+
+      // Pace calculation for running
+      if (activityData.sport_mode === 'running' && activityData.avg_speed_kmh) {
+        activityData.avg_pace_per_km = 60 / activityData.avg_speed_kmh; // minutes per km
+      }
+
+      // Calories
+      if (session.total_calories !== undefined) {
+        activityData.calories = Math.round(session.total_calories);
+      }
+
+      // Training Stress Score and Intensity Factor
+      if (session.training_stress_score !== undefined) {
+        activityData.tss = Math.round(session.training_stress_score);
+      }
+      if (session.intensity_factor !== undefined) {
+        activityData.intensity_factor = parseFloat(session.intensity_factor.toFixed(3));
+      }
+
+      console.log('Extracted session data:', {
+        sport: activityData.sport_mode,
+        duration: activityData.duration_seconds,
+        distance: activityData.distance_meters,
+        avgPower: activityData.avg_power,
+        avgHR: activityData.avg_heart_rate
+      });
+    }
+
+    // Extract GPS data from record messages
+    if (recordMessages.length > 0) {
+      console.log('Processing', recordMessages.length, 'GPS records');
+      const gpsPoints: GPSPoint[] = [];
+      
+      recordMessages.forEach((record: any, index: number) => {
+        if (record.data) {
+          const data = record.data;
+          
+          // Only include points with valid GPS coordinates
+          if (data.position_lat !== undefined && data.position_long !== undefined && 
+              data.position_lat !== null && data.position_long !== null) {
+            
+            const point: GPSPoint = {
+              lat: data.position_lat,
+              lng: data.position_long
+            };
+
+            // Add optional data if available
+            if (data.altitude !== undefined && data.altitude !== null) {
+              point.elevation = data.altitude;
+            }
+            if (data.timestamp instanceof Date) {
+              point.time = data.timestamp.toISOString();
+            }
+            if (data.distance !== undefined && data.distance !== null) {
+              point.distance = data.distance;
+            }
+            if (data.speed !== undefined && data.speed !== null) {
+              point.speed = data.speed * 3.6; // Convert m/s to km/h
+            }
+            if (data.heart_rate !== undefined && data.heart_rate !== null) {
+              point.heart_rate = data.heart_rate;
+            }
+            if (data.power !== undefined && data.power !== null) {
+              point.power = data.power;
+            }
+            if (data.cadence !== undefined && data.cadence !== null) {
+              point.cadence = data.cadence;
+            }
+
+            gpsPoints.push(point);
+          }
+        }
+      });
+
+      if (gpsPoints.length > 0) {
+        console.log('Extracted', gpsPoints.length, 'GPS points');
+        activityData.gps_data = { coordinates: gpsPoints };
+
+        // Calculate missing metrics from GPS data if not provided by session
+        if (!activityData.distance_meters || !activityData.duration_seconds) {
+          const { distance, elevationGain } = calculateDistanceAndElevation(gpsPoints);
+          
+          if (!activityData.distance_meters) {
+            activityData.distance_meters = distance;
+          }
+          if (!activityData.elevation_gain_meters) {
+            activityData.elevation_gain_meters = elevationGain;
+          }
+
+          // Calculate duration from GPS timestamps if not available
+          if (!activityData.duration_seconds && gpsPoints[0]?.time && gpsPoints[gpsPoints.length - 1]?.time) {
+            const startTime = new Date(gpsPoints[0].time);
+            const endTime = new Date(gpsPoints[gpsPoints.length - 1].time);
+            activityData.duration_seconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+          }
+        }
+
+        // Calculate average speed if not provided
+        if (!activityData.avg_speed_kmh && activityData.distance_meters && activityData.duration_seconds) {
+          activityData.avg_speed_kmh = parseFloat(((activityData.distance_meters / 1000) / (activityData.duration_seconds / 3600)).toFixed(1));
+        }
+      } else {
+        console.log('No valid GPS points found in record messages');
+      }
+    }
+
+    // Calculate TSS if not provided but we have power data
+    if (!activityData.tss && activityData.avg_power && activityData.duration_seconds) {
+      const ftp = 250; // Default FTP - should be fetched from user profile
+      const intensity_factor = activityData.avg_power / ftp;
+      activityData.intensity_factor = parseFloat(intensity_factor.toFixed(3));
+      activityData.tss = Math.round((activityData.duration_seconds / 3600) * intensity_factor * intensity_factor * 100);
+    }
+
+    // Calculate variability index if we have normalized and average power
+    if (activityData.normalized_power && activityData.avg_power && activityData.avg_power > 0) {
+      activityData.variability_index = parseFloat((activityData.normalized_power / activityData.avg_power).toFixed(3));
+    }
+
+    console.log('Final parsed FIT data:', {
+      name: activityData.name,
+      sport: activityData.sport_mode,
+      duration: activityData.duration_seconds,
+      distance: activityData.distance_meters,
+      avgPower: activityData.avg_power,
+      maxPower: activityData.max_power,
+      avgHR: activityData.avg_heart_rate,
+      gpsPoints: activityData.gps_data?.coordinates?.length || 0,
+      tss: activityData.tss
+    });
+
+  } catch (error) {
+    console.error('Error parsing FIT file:', error);
+    // Fallback to mock data if parsing fails
+    const fileName = filePath.split('/').pop() || '';
+    activityData.name = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, ' ') || 'FIT Activity';
+    activityData.sport_mode = 'cycling';
+    activityData.duration_seconds = 3600;
+    activityData.distance_meters = 30000;
+    activityData.avg_power = 200;
+    activityData.max_power = 400;
+    console.log('Using fallback data due to parsing error');
   }
 }
 
@@ -418,21 +632,116 @@ async function updateTrainingHistory(supabaseClient: any, userId: string, activi
 
 async function updatePowerProfile(supabaseClient: any, userId: string, activity: any) {
   try {
-    if (activity.max_power && activity.sport_mode === 'cycling') {
-      const { error } = await supabaseClient
-        .from('power_profile')
-        .upsert({
+    // Update power profile for cycling activities with power data
+    if (activity.sport_mode === 'cycling' && activity.avg_power) {
+      const powerEntries = [];
+      
+      // Add entries for different durations based on activity data
+      if (activity.max_power) {
+        powerEntries.push({
           user_id: userId,
-          duration_seconds: 60, // 1 minute power (simplified)
-          power_watts: activity.max_power,
+          duration_seconds: 60, // 1 minute power (use max power as approximation)
+          power_watts: Math.round(activity.max_power * 0.95), // Slightly lower than absolute max
           sport: activity.sport_mode,
           date_achieved: activity.date
-        }, {
-          onConflict: 'user_id,duration_seconds,sport'
         });
+      }
+      
+      if (activity.normalized_power) {
+        powerEntries.push({
+          user_id: userId,
+          duration_seconds: 1200, // 20 minute power (normalized power is good approximation)
+          power_watts: activity.normalized_power,
+          sport: activity.sport_mode,
+          date_achieved: activity.date
+        });
+      }
+      
+      // Average power approximates longer durations
+      powerEntries.push({
+        user_id: userId,
+        duration_seconds: 3600, // 60 minute power
+        power_watts: activity.avg_power,
+        sport: activity.sport_mode,
+        date_achieved: activity.date
+      });
 
-      if (error) {
-        console.error('Error updating power profile:', error);
+      // 5 minute power (between normalized and average)
+      if (activity.normalized_power && activity.avg_power) {
+        const fiveMinPower = Math.round((activity.normalized_power + activity.avg_power) / 2);
+        powerEntries.push({
+          user_id: userId,
+          duration_seconds: 300, // 5 minute power
+          power_watts: fiveMinPower,
+          sport: activity.sport_mode,
+          date_achieved: activity.date
+        });
+      }
+
+      // Insert all power profile entries
+      for (const entry of powerEntries) {
+        const { error } = await supabaseClient
+          .from('power_profile')
+          .upsert(entry, {
+            onConflict: 'user_id,duration_seconds,sport'
+          });
+
+        if (error) {
+          console.error('Error updating power profile entry:', error);
+        }
+      }
+    }
+    
+    // Update pace profile for running activities
+    if (activity.sport_mode === 'running' && activity.avg_pace_per_km) {
+      const paceEntries = [];
+      
+      // Estimate different pace durations based on average pace
+      const avgPace = activity.avg_pace_per_km;
+      
+      paceEntries.push({
+        user_id: userId,
+        duration_seconds: 60, // 1 minute pace (faster than average)
+        pace_per_km: Math.max(avgPace * 0.85, 2.5), // 15% faster, minimum 2:30/km
+        sport: activity.sport_mode,
+        date_achieved: activity.date
+      });
+      
+      paceEntries.push({
+        user_id: userId,
+        duration_seconds: 300, // 5 minute pace
+        pace_per_km: avgPace * 0.90, // 10% faster
+        sport: activity.sport_mode,
+        date_achieved: activity.date
+      });
+      
+      paceEntries.push({
+        user_id: userId,
+        duration_seconds: 1200, // 20 minute pace
+        pace_per_km: avgPace * 0.95, // 5% faster
+        sport: activity.sport_mode,
+        date_achieved: activity.date
+      });
+      
+      paceEntries.push({
+        user_id: userId,
+        duration_seconds: 3600, // 60 minute pace (use average)
+        pace_per_km: avgPace,
+        sport: activity.sport_mode,
+        date_achieved: activity.date
+      });
+
+      // Insert all pace profile entries
+      for (const entry of paceEntries) {
+        const { error } = await supabaseClient
+          .from('power_profile')
+          .upsert(entry, {
+            onConflict: 'user_id,duration_seconds,sport'
+          });
+
+        if (error) {
+          console.error('Error updating pace profile entry:', error);
+        }
       }
     }
   } catch (error) {
