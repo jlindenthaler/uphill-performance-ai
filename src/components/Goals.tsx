@@ -13,12 +13,16 @@ import { useGoals, Goal } from "@/hooks/useGoals";
 import { toast } from "@/hooks/use-toast";
 
 export const Goals: React.FC = () => {
+  // Hook to manage goals data
   const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
-  const [newGoal, setNewGoal] = useState({
+  // State for dialog management
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  
+  // State for new goal form
+  const [newGoalForm, setNewGoalForm] = useState({
     name: '',
     event_date: '',
     location: '',
@@ -28,7 +32,8 @@ export const Goals: React.FC = () => {
     target_performance: ''
   });
 
-  const [editGoalData, setEditGoalData] = useState({
+  // State for edit goal form
+  const [editGoalForm, setEditGoalForm] = useState({
     name: '',
     event_date: '',
     location: '',
@@ -38,18 +43,20 @@ export const Goals: React.FC = () => {
     target_performance: ''
   });
 
-  const activeGoals = goals.filter(g => g.status === 'active');
-  const completedGoals = goals.filter(g => g.status === 'completed');
+  // Computed values
+  const activeGoalsList = goals.filter(g => g.status === 'active');
+  const completedGoalsList = goals.filter(g => g.status === 'completed');
 
-  const handleSaveGoal = async () => {
-    if (newGoal.name && newGoal.event_date && newGoal.event_type) {
-      const result = await createGoal(newGoal);
+  // Handlers
+  const handleCreateGoal = async () => {
+    if (newGoalForm.name && newGoalForm.event_date && newGoalForm.event_type) {
+      const result = await createGoal(newGoalForm);
       if (result) {
         toast({
           title: "Goal created successfully",
           description: "Your new goal has been added."
         });
-        setNewGoal({
+        setNewGoalForm({
           name: '',
           event_date: '',
           location: '',
@@ -58,7 +65,7 @@ export const Goals: React.FC = () => {
           status: 'active',
           target_performance: ''
         });
-        setIsDialogOpen(false);
+        setIsCreateDialogOpen(false);
       } else {
         toast({
           title: "Error",
@@ -71,7 +78,7 @@ export const Goals: React.FC = () => {
 
   const handleEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
-    setEditGoalData({
+    setEditGoalForm({
       name: goal.name,
       event_date: goal.event_date,
       location: goal.location || '',
@@ -83,9 +90,9 @@ export const Goals: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEditGoal = async () => {
-    if (editingGoal && editGoalData.name && editGoalData.event_date && editGoalData.event_type) {
-      const result = await updateGoal(editingGoal.id, editGoalData);
+  const handleUpdateGoal = async () => {
+    if (editingGoal && editGoalForm.name && editGoalForm.event_date && editGoalForm.event_type) {
+      const result = await updateGoal(editingGoal.id, editGoalForm);
       if (result) {
         toast({
           title: "Goal updated successfully",
@@ -119,6 +126,7 @@ export const Goals: React.FC = () => {
     }
   };
 
+  // Utility functions
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'A': return 'bg-red-100 text-red-700 border-red-200';
@@ -163,7 +171,7 @@ export const Goals: React.FC = () => {
           <p className="text-muted-foreground mt-1">Define your targets and track your journey</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
@@ -180,8 +188,8 @@ export const Goals: React.FC = () => {
                   <Label htmlFor="name">Event Name</Label>
                   <Input
                     id="name"
-                    value={newGoal.name}
-                    onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
+                    value={newGoalForm.name}
+                    onChange={(e) => setNewGoalForm({ ...newGoalForm, name: e.target.value })}
                     placeholder="Enter event name"
                   />
                 </div>
@@ -190,8 +198,8 @@ export const Goals: React.FC = () => {
                   <Input
                     id="date"
                     type="date"
-                    value={newGoal.event_date}
-                    onChange={(e) => setNewGoal({ ...newGoal, event_date: e.target.value })}
+                    value={newGoalForm.event_date}
+                    onChange={(e) => setNewGoalForm({ ...newGoalForm, event_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -201,14 +209,14 @@ export const Goals: React.FC = () => {
                   <Label htmlFor="location">Event Location</Label>
                   <Input
                     id="location"
-                    value={newGoal.location}
-                    onChange={(e) => setNewGoal({ ...newGoal, location: e.target.value })}
+                    value={newGoalForm.location}
+                    onChange={(e) => setNewGoalForm({ ...newGoalForm, location: e.target.value })}
                     placeholder="Enter location"
                   />
                 </div>
                 <div>
                   <Label htmlFor="eventType">Event Type</Label>
-                  <Select value={newGoal.event_type} onValueChange={(value) => setNewGoal({ ...newGoal, event_type: value })}>
+                  <Select value={newGoalForm.event_type} onValueChange={(value) => setNewGoalForm({ ...newGoalForm, event_type: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select event type" />
                     </SelectTrigger>
@@ -225,7 +233,7 @@ export const Goals: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="priority">Priority Level</Label>
-                  <Select value={newGoal.priority} onValueChange={(value) => setNewGoal({ ...newGoal, priority: value })}>
+                  <Select value={newGoalForm.priority} onValueChange={(value) => setNewGoalForm({ ...newGoalForm, priority: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -238,7 +246,7 @@ export const Goals: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select value={newGoal.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setNewGoal({ ...newGoal, status: value })}>
+                  <Select value={newGoalForm.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setNewGoalForm({ ...newGoalForm, status: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -255,18 +263,18 @@ export const Goals: React.FC = () => {
                 <Label htmlFor="target">Target Performance</Label>
                 <Textarea
                   id="target"
-                  value={newGoal.target_performance}
-                  onChange={(e) => setNewGoal({ ...newGoal, target_performance: e.target.value })}
+                  value={newGoalForm.target_performance}
+                  onChange={(e) => setNewGoalForm({ ...newGoalForm, target_performance: e.target.value })}
                   placeholder="e.g., Top 10 finish, Complete in under 4 hours, Achieve 300W FTP"
                   rows={3}
                 />
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveGoal}>
+              <Button onClick={handleCreateGoal}>
                 Save Goal
               </Button>
             </div>
@@ -285,8 +293,8 @@ export const Goals: React.FC = () => {
                   <Label htmlFor="edit-name">Event Name</Label>
                   <Input
                     id="edit-name"
-                    value={editGoalData.name}
-                    onChange={(e) => setEditGoalData({ ...editGoalData, name: e.target.value })}
+                    value={editGoalForm.name}
+                    onChange={(e) => setEditGoalForm({ ...editGoalForm, name: e.target.value })}
                     placeholder="Enter event name"
                   />
                 </div>
@@ -295,8 +303,8 @@ export const Goals: React.FC = () => {
                   <Input
                     id="edit-date"
                     type="date"
-                    value={editGoalData.event_date}
-                    onChange={(e) => setEditGoalData({ ...editGoalData, event_date: e.target.value })}
+                    value={editGoalForm.event_date}
+                    onChange={(e) => setEditGoalForm({ ...editGoalForm, event_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -306,14 +314,14 @@ export const Goals: React.FC = () => {
                   <Label htmlFor="edit-location">Event Location</Label>
                   <Input
                     id="edit-location"
-                    value={editGoalData.location}
-                    onChange={(e) => setEditGoalData({ ...editGoalData, location: e.target.value })}
+                    value={editGoalForm.location}
+                    onChange={(e) => setEditGoalForm({ ...editGoalForm, location: e.target.value })}
                     placeholder="Enter location"
                   />
                 </div>
                 <div>
                   <Label htmlFor="edit-eventType">Event Type</Label>
-                  <Select value={editGoalData.event_type} onValueChange={(value) => setEditGoalData({ ...editGoalData, event_type: value })}>
+                  <Select value={editGoalForm.event_type} onValueChange={(value) => setEditGoalForm({ ...editGoalForm, event_type: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select event type" />
                     </SelectTrigger>
@@ -330,7 +338,7 @@ export const Goals: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-priority">Priority Level</Label>
-                  <Select value={editGoalData.priority} onValueChange={(value) => setEditGoalData({ ...editGoalData, priority: value })}>
+                  <Select value={editGoalForm.priority} onValueChange={(value) => setEditGoalForm({ ...editGoalForm, priority: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -343,7 +351,7 @@ export const Goals: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="edit-status">Status</Label>
-                  <Select value={editGoalData.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setEditGoalData({ ...editGoalData, status: value })}>
+                  <Select value={editGoalForm.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setEditGoalForm({ ...editGoalForm, status: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -360,8 +368,8 @@ export const Goals: React.FC = () => {
                 <Label htmlFor="edit-target">Target Performance</Label>
                 <Textarea
                   id="edit-target"
-                  value={editGoalData.target_performance}
-                  onChange={(e) => setEditGoalData({ ...editGoalData, target_performance: e.target.value })}
+                  value={editGoalForm.target_performance}
+                  onChange={(e) => setEditGoalForm({ ...editGoalForm, target_performance: e.target.value })}
                   placeholder="e.g., Top 10 finish, Complete in under 4 hours, Achieve 300W FTP"
                   rows={3}
                 />
@@ -371,7 +379,7 @@ export const Goals: React.FC = () => {
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveEditGoal}>
+              <Button onClick={handleUpdateGoal}>
                 Update Goal
               </Button>
             </div>
@@ -386,7 +394,7 @@ export const Goals: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Goals</p>
-                <p className="text-3xl font-bold">{activeGoals.length}</p>
+                <p className="text-3xl font-bold">{activeGoalsList.length}</p>
                 <p className="text-sm text-muted-foreground mt-1">Chasing greatness</p>
               </div>
               <Target className="w-8 h-8 text-blue-500" />
@@ -399,7 +407,7 @@ export const Goals: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Completed Goals</p>
-                <p className="text-3xl font-bold">{completedGoals.length}</p>
+                <p className="text-3xl font-bold">{completedGoalsList.length}</p>
                 <p className="text-sm text-muted-foreground mt-1">Achievements unlocked</p>
               </div>
               <Trophy className="w-8 h-8 text-green-500" />
