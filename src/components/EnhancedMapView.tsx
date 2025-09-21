@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Loader2, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedMapViewProps {
   gpsData?: any;
@@ -17,19 +17,42 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [tokenInput, setTokenInput] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const fetchMapboxToken = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+      
+      if (error) {
+        console.error('Error fetching Mapbox token:', error);
+        setError('Unable to load map configuration');
+        return;
+      }
+      
+      if (data?.token) {
+        setMapboxToken(data.token);
+      } else {
+        setError('Map configuration not found');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Unable to connect to mapping service');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if we have a stored token
-    const storedToken = localStorage.getItem('mapbox_token');
-    if (storedToken) {
-      setMapboxToken(storedToken);
-    }
+    fetchMapboxToken();
   }, []);
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current || !mapboxToken || loading) return;
 
     // Initialize Mapbox
     mapboxgl.accessToken = mapboxToken;
@@ -146,18 +169,18 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             }
           });
 
-            new mapboxgl.Marker({ color: '#22c55e' })
-              .setLngLat(mockRoute[0] as [number, number])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
-              .addTo(map.current);
+          new mapboxgl.Marker({ color: '#22c55e' })
+            .setLngLat(mockRoute[0] as [number, number])
+            .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
+            .addTo(map.current);
 
-            new mapboxgl.Marker({ color: '#ef4444' })
-              .setLngLat(mockRoute[mockRoute.length - 1] as [number, number])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
-              .addTo(map.current);
+          new mapboxgl.Marker({ color: '#ef4444' })
+            .setLngLat(mockRoute[mockRoute.length - 1] as [number, number])
+            .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
+            .addTo(map.current);
 
-            const bounds = new mapboxgl.LngLatBounds();
-            mockRoute.forEach(coord => bounds.extend(coord as [number, number]));
+          const bounds = new mapboxgl.LngLatBounds();
+          mockRoute.forEach(coord => bounds.extend(coord as [number, number]));
           map.current.fitBounds(bounds, { padding: 50 });
         });
       }
@@ -167,59 +190,43 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       };
     } catch (error) {
       console.error('Mapbox initialization error:', error);
+      setError('Failed to initialize map');
+      toast({
+        title: "Map Error",
+        description: "Failed to initialize the map. Please try refreshing.",
+        variant: "destructive"
+      });
     }
-  }, [gpsData, mapboxToken, activity]);
+  }, [gpsData, mapboxToken, activity, loading, toast]);
 
-  const handleTokenSave = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem('mapbox_token', tokenInput.trim());
-      setMapboxToken(tokenInput.trim());
-      setShowTokenInput(false);
-      setTokenInput('');
-    }
-  };
+  if (loading) {
+    return (
+      <div className={`${className} bg-muted/20 rounded-lg flex items-center justify-center border`}>
+        <div className="text-center space-y-2">
+          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading map...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!mapboxToken) {
+  if (error) {
     return (
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5" />
-            Map Setup Required
+            Map Unavailable
           </CardTitle>
           <CardDescription>
-            To display activity routes, please add your Mapbox public token.
-            Get one free at <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a>
+            {error}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {!showTokenInput ? (
-            <Button onClick={() => setShowTokenInput(true)} className="w-full">
-              <MapPin className="w-4 h-4 mr-2" />
-              Add Mapbox Token
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="mapbox-token">Mapbox Public Token</Label>
-                <Input
-                  id="mapbox-token"
-                  type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="pk.eyJ1IjoieW91ci11c2VybmFtZSIsImEiOiJjbG..."
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleTokenSave} className="flex-1">
-                  Save Token
-                </Button>
-                <Button variant="outline" onClick={() => setShowTokenInput(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+        <CardContent>
+          <Button onClick={fetchMapboxToken} className="w-full" variant="outline">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -240,20 +247,6 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   return (
     <div className={`${className} rounded-lg overflow-hidden border relative`}>
       <div ref={mapContainer} className="w-full h-full" />
-      {mapboxToken && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm"
-          onClick={() => {
-            setShowTokenInput(true);
-            setTokenInput('');
-          }}
-        >
-          <Eye className="w-3 h-3 mr-1" />
-          Token
-        </Button>
-      )}
     </div>
   );
 }
