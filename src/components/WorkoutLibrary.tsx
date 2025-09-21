@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, BookOpen, Target, Clock, Zap, Search, Filter, Download } from "lucide-react";
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useState } from "react";
+import { useSportMode } from "@/contexts/SportModeContext";
 
 interface WorkoutData {
   id: string;
@@ -33,6 +34,7 @@ interface WorkoutData {
   duration: number; // minutes
   tss: number; // Training Stress Score
   category: 'vo2max' | 'threshold' | 'tempo' | 'endurance';
+  sport: 'cycling' | 'running' | 'swimming' | 'all';
 }
 
 const workouts: WorkoutData[] = [
@@ -65,7 +67,8 @@ const workouts: WorkoutData[] = [
     zones: [4],
     duration: 90,
     tss: 95,
-    category: 'vo2max'
+    category: 'vo2max',
+    sport: 'cycling'
   },
   {
     id: "seiler-8x4",
@@ -94,7 +97,8 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 95,
     tss: 78,
-    category: 'threshold'
+    category: 'threshold',
+    sport: 'cycling'
   },
   {
     id: "laursen-4x8",
@@ -123,7 +127,8 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 105,
     tss: 82,
-    category: 'threshold'
+    category: 'threshold',
+    sport: 'cycling'
   },
   {
     id: "coggan-2x20",
@@ -151,13 +156,20 @@ const workouts: WorkoutData[] = [
     zones: [3],
     duration: 90,
     tss: 100,
-    category: 'threshold'
+    category: 'threshold',
+    sport: 'cycling'
   }
 ];
 
 export function WorkoutLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { sportMode } = useSportMode();
+
+  // Filter workouts by sport
+  const sportSpecificWorkouts = workouts.filter(workout => 
+    workout.sport === sportMode || workout.sport === 'all'
+  );
 
   const getZoneColor = (zone: number) => {
     switch (zone) {
@@ -179,7 +191,7 @@ export function WorkoutLibrary() {
     }
   };
 
-  const filteredWorkouts = workouts.filter(workout => {
+  const filteredWorkouts = sportSpecificWorkouts.filter(workout => {
     const matchesSearch = workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          workout.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          workout.research.authors.toLowerCase().includes(searchTerm.toLowerCase());
@@ -191,11 +203,11 @@ export function WorkoutLibrary() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Science-Based Workouts</h1>
+          <h1 className="text-3xl font-bold">Science-Based Workouts - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}</h1>
           <p className="text-muted-foreground">Research-backed training sessions for optimal performance</p>
         </div>
         <Badge variant="secondary" className="bg-primary/20 text-primary">
-          {workouts.length} Workouts
+          {filteredWorkouts.length} Workouts
         </Badge>
       </div>
 

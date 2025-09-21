@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SportModeToggle } from "@/components/SportModeToggle";
 import { 
   Home, 
   Calendar, 
@@ -24,7 +25,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'workouts', label: 'Workouts', icon: Activity },
     { id: 'physiology', label: 'Physiology', icon: Heart },
-    { id: 'pmc', label: 'PMC', icon: TrendingUp },
+    { id: 'analysis', label: 'Analysis', icon: TrendingUp },
     { id: 'research', label: 'Research', icon: BookOpen },
     { id: 'export', label: 'Export', icon: Download },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -34,7 +35,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
             <Zap className="w-6 h-6 text-primary-foreground" />
           </div>
@@ -43,6 +44,9 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <p className="text-xs text-muted-foreground">Science-based training</p>
           </div>
         </div>
+        
+        {/* Sport Mode Toggle */}
+        <SportModeToggle />
       </div>
 
       {/* Navigation */}
