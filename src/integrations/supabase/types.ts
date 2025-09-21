@@ -440,6 +440,54 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          effectiveness_rating: number
+          id: string
+          muscle_groups: string[] | null
+          notes: string | null
+          post_fatigue_level: number
+          pre_fatigue_level: number
+          recovery_tools_used: string[] | null
+          session_date: string
+          sport_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          effectiveness_rating: number
+          id?: string
+          muscle_groups?: string[] | null
+          notes?: string | null
+          post_fatigue_level: number
+          pre_fatigue_level: number
+          recovery_tools_used?: string[] | null
+          session_date?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          effectiveness_rating?: number
+          id?: string
+          muscle_groups?: string[] | null
+          notes?: string | null
+          post_fatigue_level?: number
+          pre_fatigue_level?: number
+          recovery_tools_used?: string[] | null
+          session_date?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       recovery_tools: {
         Row: {
           available: boolean | null

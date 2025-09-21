@@ -18,6 +18,10 @@ import {
   Link
 } from "lucide-react";
 import { GarminConnection } from "@/components/GarminConnection";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Wifi, Smartphone, Link as LinkIcon, Plus } from "lucide-react";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
