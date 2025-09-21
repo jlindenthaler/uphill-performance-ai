@@ -1,7 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-import FitParser from 'https://esm.sh/fit-file-parser@1.9.0';
+import { BinaryReader } from "https://deno.land/x/binary_reader@v0.1.3/mod.ts";
+import { Fit } from "https://deno.land/x/fitreader@v0.1.3/fit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -322,53 +323,39 @@ async function parseFITFile(arrayBuffer: ArrayBuffer, filePath: string, activity
   try {
     console.log('Parsing FIT file:', filePath);
     
-    // Initialize FIT parser
-    const fitParser = new FitParser({
-      force: true,
-      speedUnit: 'km/h',
-      lengthUnit: 'm',
-      temperatureUnit: 'celsius',
-      elapsedRecordField: true,
-      mode: 'list'
-    });
+    // Initialize FIT parser with Deno-compatible fitreader
+    const binaryReader = new BinaryReader(new Uint8Array(arrayBuffer));
+    const fit = new Fit(binaryReader);
+    
+    console.log('FIT file parsed successfully, sessions:', fit.sessions?.length || 0);
 
-    // Parse the FIT file
-    const result = fitParser.parse(arrayBuffer);
-    console.log('FIT file parsed successfully, messages:', result.messages?.length || 0);
-
-    if (!result.messages || result.messages.length === 0) {
-      console.log('No messages found in FIT file, using fallback data');
+    if (!fit.sessions || fit.sessions.length === 0) {
+      console.log('No sessions found in FIT file, using fallback data');
       return;
     }
 
-    const messages = result.messages;
-    const sessionMessage = messages.find((msg: any) => msg.messageType === 'session');
-    const activityMessage = messages.find((msg: any) => msg.messageType === 'activity');
-    const recordMessages = messages.filter((msg: any) => msg.messageType === 'record');
-    const fileIdMessage = messages.find((msg: any) => msg.messageType === 'file_id');
-
-    console.log('Found messages:', {
-      session: !!sessionMessage,
-      activity: !!activityMessage,
-      records: recordMessages.length,
-      fileId: !!fileIdMessage
+    const session = fit.sessions[0]; // Get the first session
+    const records = fit.records || [];
+    
+    console.log('Found FIT data:', {
+      sessions: fit.sessions.length,
+      records: records.length,
+      fileId: !!fit.fileId
     });
 
     // Extract file creation time
-    if (fileIdMessage?.data?.time_created || activityMessage?.data?.timestamp) {
-      const timestamp = fileIdMessage?.data?.time_created || activityMessage?.data?.timestamp;
-      if (timestamp instanceof Date) {
-        activityData.date = timestamp.toISOString().split('T')[0];
-      }
+    if (fit.fileId?.timeCreated) {
+      const timestamp = new Date(fit.fileId.timeCreated * 1000 + new Date('1989-12-31T00:00:00Z').getTime());
+      activityData.date = timestamp.toISOString().split('T')[0];
     }
 
     // Extract session data (main activity summary)
-    if (sessionMessage?.data) {
-      const session = sessionMessage.data;
+    if (session) {
       console.log('Session data keys:', Object.keys(session));
 
-      // Activity name and sport
-      activityData.name = session.sport ? `${session.sport} Activity` : 'FIT Activity';
+      // Activity name from filename  
+      const fileName = filePath.split('/').pop() || 'FIT Activity';
+      activityData.name = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, ' ');
       
       // Map FIT sport types to our sport modes
       if (session.sport) {
@@ -385,44 +372,44 @@ async function parseFITFile(arrayBuffer: ArrayBuffer, filePath: string, activity
       }
 
       // Duration (in seconds)
-      if (session.total_timer_time !== undefined) {
-        activityData.duration_seconds = Math.round(session.total_timer_time);
-      } else if (session.total_elapsed_time !== undefined) {
-        activityData.duration_seconds = Math.round(session.total_elapsed_time);
+      if (session.totalTimerTime !== undefined) {
+        activityData.duration_seconds = Math.round(session.totalTimerTime);
+      } else if (session.totalElapsedTime !== undefined) {
+        activityData.duration_seconds = Math.round(session.totalElapsedTime);
       }
 
       // Distance (in meters)
-      if (session.total_distance !== undefined) {
-        activityData.distance_meters = Math.round(session.total_distance);
+      if (session.totalDistance !== undefined) {
+        activityData.distance_meters = Math.round(session.totalDistance);
       }
 
-      // Elevation gain (in meters)
-      if (session.total_ascent !== undefined) {
-        activityData.elevation_gain_meters = Math.round(session.total_ascent);
+      // Elevation gain (in meters)  
+      if (session.totalAscent !== undefined) {
+        activityData.elevation_gain_meters = Math.round(session.totalAscent);
       }
 
       // Power data (in watts)
-      if (session.avg_power !== undefined) {
-        activityData.avg_power = Math.round(session.avg_power);
+      if (session.avgPower !== undefined) {
+        activityData.avg_power = Math.round(session.avgPower);
       }
-      if (session.max_power !== undefined) {
-        activityData.max_power = Math.round(session.max_power);
+      if (session.maxPower !== undefined) {
+        activityData.max_power = Math.round(session.maxPower);
       }
-      if (session.normalized_power !== undefined) {
-        activityData.normalized_power = Math.round(session.normalized_power);
+      if (session.normalizedPower !== undefined) {
+        activityData.normalized_power = Math.round(session.normalizedPower);
       }
 
       // Heart rate data (in bpm)
-      if (session.avg_heart_rate !== undefined) {
-        activityData.avg_heart_rate = Math.round(session.avg_heart_rate);
+      if (session.avgHeartRate !== undefined) {
+        activityData.avg_heart_rate = Math.round(session.avgHeartRate);
       }
-      if (session.max_heart_rate !== undefined) {
-        activityData.max_heart_rate = Math.round(session.max_heart_rate);
+      if (session.maxHeartRate !== undefined) {
+        activityData.max_heart_rate = Math.round(session.maxHeartRate);
       }
 
       // Speed data
-      if (session.avg_speed !== undefined) {
-        activityData.avg_speed_kmh = parseFloat((session.avg_speed * 3.6).toFixed(1)); // Convert m/s to km/h
+      if (session.avgSpeed !== undefined) {
+        activityData.avg_speed_kmh = parseFloat((session.avgSpeed * 3.6).toFixed(1)); // Convert m/s to km/h
       }
 
       // Pace calculation for running
@@ -431,16 +418,16 @@ async function parseFITFile(arrayBuffer: ArrayBuffer, filePath: string, activity
       }
 
       // Calories
-      if (session.total_calories !== undefined) {
-        activityData.calories = Math.round(session.total_calories);
+      if (session.totalCalories !== undefined) {
+        activityData.calories = Math.round(session.totalCalories);
       }
 
       // Training Stress Score and Intensity Factor
-      if (session.training_stress_score !== undefined) {
-        activityData.tss = Math.round(session.training_stress_score);
+      if (session.trainingStressScore !== undefined) {
+        activityData.tss = Math.round(session.trainingStressScore);
       }
-      if (session.intensity_factor !== undefined) {
-        activityData.intensity_factor = parseFloat(session.intensity_factor.toFixed(3));
+      if (session.intensityFactor !== undefined) {
+        activityData.intensity_factor = parseFloat(session.intensityFactor.toFixed(3));
       }
 
       console.log('Extracted session data:', {
@@ -452,49 +439,46 @@ async function parseFITFile(arrayBuffer: ArrayBuffer, filePath: string, activity
       });
     }
 
-    // Extract GPS data from record messages
-    if (recordMessages.length > 0) {
-      console.log('Processing', recordMessages.length, 'GPS records');
+    // Extract GPS data from records
+    if (records.length > 0) {
+      console.log('Processing', records.length, 'GPS records');
       const gpsPoints: GPSPoint[] = [];
       
-      recordMessages.forEach((record: any, index: number) => {
-        if (record.data) {
-          const data = record.data;
+      records.forEach((record: any, index: number) => {
+        // Only include points with valid GPS coordinates
+        if (record.positionLat !== undefined && record.positionLong !== undefined && 
+            record.positionLat !== null && record.positionLong !== null) {
           
-          // Only include points with valid GPS coordinates
-          if (data.position_lat !== undefined && data.position_long !== undefined && 
-              data.position_lat !== null && data.position_long !== null) {
-            
-            const point: GPSPoint = {
-              lat: data.position_lat,
-              lng: data.position_long
-            };
+          const point: GPSPoint = {
+            lat: record.positionLat,
+            lng: record.positionLong
+          };
 
-            // Add optional data if available
-            if (data.altitude !== undefined && data.altitude !== null) {
-              point.elevation = data.altitude;
-            }
-            if (data.timestamp instanceof Date) {
-              point.time = data.timestamp.toISOString();
-            }
-            if (data.distance !== undefined && data.distance !== null) {
-              point.distance = data.distance;
-            }
-            if (data.speed !== undefined && data.speed !== null) {
-              point.speed = data.speed * 3.6; // Convert m/s to km/h
-            }
-            if (data.heart_rate !== undefined && data.heart_rate !== null) {
-              point.heart_rate = data.heart_rate;
-            }
-            if (data.power !== undefined && data.power !== null) {
-              point.power = data.power;
-            }
-            if (data.cadence !== undefined && data.cadence !== null) {
-              point.cadence = data.cadence;
-            }
-
-            gpsPoints.push(point);
+          // Add optional data if available
+          if (record.altitude !== undefined && record.altitude !== null) {
+            point.elevation = record.altitude;
           }
+          if (record.timestamp !== undefined) {
+            const timestamp = new Date(record.timestamp * 1000 + new Date('1989-12-31T00:00:00Z').getTime());
+            point.time = timestamp.toISOString();
+          }
+          if (record.distance !== undefined && record.distance !== null) {
+            point.distance = record.distance;
+          }
+          if (record.speed !== undefined && record.speed !== null) {
+            point.speed = record.speed * 3.6; // Convert m/s to km/h
+          }
+          if (record.heartRate !== undefined && record.heartRate !== null) {
+            point.heart_rate = record.heartRate;
+          }
+          if (record.power !== undefined && record.power !== null) {
+            point.power = record.power;
+          }
+          if (record.cadence !== undefined && record.cadence !== null) {
+            point.cadence = record.cadence;
+          }
+
+          gpsPoints.push(point);
         }
       });
 
