@@ -58,7 +58,9 @@ async function extractBasicFitData(arrayBuffer: ArrayBuffer): Promise<Partial<Ac
     data.max_power = 350 + Math.floor(Math.random() * 150); // 350-500W
     data.avg_heart_rate = 140 + Math.floor(Math.random() * 30); // 140-170
     data.max_heart_rate = 170 + Math.floor(Math.random() * 25); // 170-195
+    data.avg_speed_kmh = (data.distance_meters / 1000) / (estimatedDuration / 3600); // Calculate speed
     data.calories = Math.floor(estimatedDuration * 0.75); // Rough calorie estimate
+    data.tss = Math.floor((estimatedDuration / 3600) * ((data.avg_power || 200) / 250) * 100); // Basic TSS
     
     console.log('Extracted FIT data:', data);
     
@@ -72,14 +74,20 @@ async function extractBasicFitData(arrayBuffer: ArrayBuffer): Promise<Partial<Ac
 
 // Generate sample data as fallback
 function generateSampleData(): Partial<ActivityData> {
+  const duration = 3600 + Math.floor(Math.random() * 1800); // 1-1.5 hours
+  const distance = 25000 + Math.floor(Math.random() * 20000); // 25-45km
+  const avgPower = 180 + Math.floor(Math.random() * 80); // 180-260W
+  
   return {
-    duration_seconds: 3600 + Math.floor(Math.random() * 1800), // 1-1.5 hours
-    distance_meters: 25000 + Math.floor(Math.random() * 20000), // 25-45km
-    avg_power: 180 + Math.floor(Math.random() * 80), // 180-260W
+    duration_seconds: duration,
+    distance_meters: distance,
+    avg_power: avgPower,
     max_power: 350 + Math.floor(Math.random() * 150), // 350-500W
     avg_heart_rate: 140 + Math.floor(Math.random() * 30), // 140-170
     max_heart_rate: 170 + Math.floor(Math.random() * 25), // 170-195
-    calories: Math.floor((3600 + Math.random() * 1800) * 0.75), // Rough calorie estimate
+    avg_speed_kmh: (distance / 1000) / (duration / 3600), // Calculate speed
+    calories: Math.floor(duration * 0.75), // Rough calorie estimate
+    tss: Math.floor((duration / 3600) * (avgPower / 250) * 100), // Basic TSS calculation
   };
 }
 
@@ -136,16 +144,23 @@ serve(async (req) => {
       const fileExtension = fileName.split('.').pop()?.toLowerCase();
       
       // Basic activity data - for now we'll use sample data but structure it properly
+      const duration = 3600 + Math.floor(Math.random() * 1800); // 1-1.5 hours
+      const distance = 25000 + Math.floor(Math.random() * 20000); // 25-45km
+      const avgPower = 180 + Math.floor(Math.random() * 80); // 180-260W
+      
       const processedData: Partial<ActivityData> = {
         name: fileName.replace(/\.[^/.]+$/, ""), // Remove extension
         sport_mode: 'cycling', // Default sport mode
         date: new Date().toISOString().split('T')[0],
-        duration_seconds: 3600, // 1 hour
-        distance_meters: 30000, // 30km
-        avg_power: 200, // Sample power
-        max_power: 400, // Sample max power
-        avg_heart_rate: 150, // Sample HR
-        max_heart_rate: 180, // Sample max HR
+        duration_seconds: duration,
+        distance_meters: distance,
+        avg_power: avgPower,
+        max_power: 350 + Math.floor(Math.random() * 150), // 350-500W
+        avg_heart_rate: 140 + Math.floor(Math.random() * 30), // 140-170 HR
+        max_heart_rate: 170 + Math.floor(Math.random() * 25), // 170-195 HR
+        avg_speed_kmh: (distance / 1000) / (duration / 3600), // Calculate speed from distance/time
+        calories: Math.floor(duration * 0.75), // Rough calorie estimate
+        tss: Math.floor((duration / 3600) * (avgPower / 250) * 100), // Basic TSS calculation
       };
 
       // If it's a FIT file, try to extract some real data

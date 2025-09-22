@@ -46,8 +46,13 @@ export function Activities() {
   };
 
   const formatSpeed = (kmh?: number) => {
-    if (!kmh) return 'N/A';
+    if (!kmh || kmh === 0) return 'N/A';
     return `${kmh.toFixed(1)} km/h`;
+  };
+
+  const calculateSpeed = (distanceMeters?: number, durationSeconds?: number) => {
+    if (!distanceMeters || !durationSeconds || durationSeconds === 0) return undefined;
+    return (distanceMeters / 1000) / (durationSeconds / 3600); // km/h
   };
 
   const formatPace = (pacePerKm?: number) => {
@@ -145,15 +150,15 @@ export function Activities() {
           </CardContent>
         </Card>
         
-        {activity.avg_speed_kmh && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <div className="text-2xl font-bold">{formatSpeed(activity.avg_speed_kmh)}</div>
-              <div className="text-sm text-muted-foreground">Avg Speed</div>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardContent className="p-4 text-center">
+            <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+            <div className="text-2xl font-bold">
+              {formatSpeed(activity.avg_speed_kmh || calculateSpeed(activity.distance_meters, activity.duration_seconds))}
+            </div>
+            <div className="text-sm text-muted-foreground">Avg Speed</div>
+          </CardContent>
+        </Card>
         
         {activity.avg_heart_rate && (
           <Card>
@@ -236,12 +241,12 @@ export function Activities() {
             <CardTitle>Training Load</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activity.tss && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Training Stress Score</span>
-                <span className="font-medium">{Math.round(activity.tss)}</span>
-              </div>
-            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Training Stress Score</span>
+              <span className="font-medium">
+                {activity.tss ? Math.round(activity.tss) : 'Calculating...'}
+              </span>
+            </div>
             
             {activity.intensity_factor && (
               <div className="flex justify-between">

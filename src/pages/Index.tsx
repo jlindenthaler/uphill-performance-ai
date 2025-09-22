@@ -55,19 +55,7 @@ const Index = () => {
     }
   };
 
-  // Listen for activity uploads to refresh the Training tab
-  useEffect(() => {
-    const handleActivityUploaded = () => {
-      if (activeSection === 'activities') {
-        // Force a refresh by briefly switching to another section and back
-        setActiveSection('dashboard');
-        setTimeout(() => setActiveSection('activities'), 100);
-      }
-    };
-
-    window.addEventListener('activity-uploaded', handleActivityUploaded);
-    return () => window.removeEventListener('activity-uploaded', handleActivityUploaded);
-  }, [activeSection]);
+  // Remove the problematic tab switching - let the Activities component handle its own refresh
 
   return (
     <div className="flex min-h-screen bg-background">
