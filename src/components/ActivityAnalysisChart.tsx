@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { Activity, Clock, Heart, Zap, BarChart3 } from 'lucide-react';
+import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
 
 interface ActivityAnalysisChartProps {
   activity?: any;
@@ -14,6 +15,7 @@ interface ActivityAnalysisChartProps {
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
   const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp', 'elevation']);
+  const [xAxisMode, setXAxisMode] = useState<'time' | 'distance'>('time');
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -23,17 +25,37 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     
     const trackPoints = activity.gps_data.trackPoints;
     const startTime = trackPoints[0]?.timestamp;
+    let cumulativeDistance = 0;
     
     return trackPoints.map((point: any, index: number) => {
       const timeElapsed = point.timestamp && startTime ? 
         (new Date(point.timestamp).getTime() - new Date(startTime).getTime()) / 1000 : 
         index;
+
+      // Calculate cumulative distance
+      if (index > 0) {
+        const prevPoint = trackPoints[index - 1];
+        if (point.position_lat && point.position_long && prevPoint.position_lat && prevPoint.position_long) {
+          // Simple distance calculation (for better accuracy, use Haversine formula)
+          const distanceDelta = Math.sqrt(
+            Math.pow(point.position_lat - prevPoint.position_lat, 2) + 
+            Math.pow(point.position_long - prevPoint.position_long, 2)
+          ) * 111320; // Rough conversion to meters
+          cumulativeDistance += distanceDelta;
+        }
+      }
+
       const hours = Math.floor(timeElapsed / 3600);
       const minutes = Math.floor((timeElapsed % 3600) / 60);
       const seconds = Math.floor(timeElapsed % 60);
       const timeFormatted = hours > 0 
         ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
         : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      const distanceKm = cumulativeDistance / 1000;
+      const distanceFormatted = distanceKm < 10 ? 
+        `${distanceKm.toFixed(1)}km` : 
+        `${Math.round(distanceKm)}km`;
       
       // Convert speed from m/s to km/h if needed
       const speedKmh = point.speed ? (point.speed * 3.6) : 0;
@@ -43,7 +65,10 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       
       return {
         time: timeFormatted,
+        distance: distanceFormatted,
+        xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
         timeSeconds: timeElapsed,
+        distanceMeters: cumulativeDistance,
         cadence: point.cadence || 0,
         hr: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
@@ -54,7 +79,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         power: point.power || 0
       };
     });
-  }, [activity]);
+  }, [activity, xAxisMode]);
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {
@@ -234,12 +259,28 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Activity Timeline</CardTitle>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Time
-              </div>
-              <div>Dist</div>
+            <div className="flex items-center gap-2">
+              <ToggleGroup 
+                type="single" 
+                value={xAxisMode} 
+                onValueChange={(value) => value && setXAxisMode(value as 'time' | 'distance')}
+                className="flex gap-1"
+              >
+                <ToggleGroupItem 
+                  value="time" 
+                  className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all"
+                >
+                  <Clock className="w-3 h-3 mr-1" />
+                  Time
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="distance" 
+                  className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all"
+                >
+                  <MapPin className="w-3 h-3 mr-1" />
+                  Dist
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </CardHeader>
@@ -249,7 +290,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               <ComposedChart data={timelineData} margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
-                  dataKey="time"
+                  dataKey="xValue"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                   interval="preserveStartEnd"
                 />
