@@ -5,9 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   Calendar, 
@@ -32,10 +29,7 @@ import { useGoals } from '@/hooks/useGoals';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
-import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { ActivityUploadNew } from './ActivityUploadNew';
-import { RecoverySessionModal } from './RecoverySessionModal';
-import { toast } from '@/hooks/use-toast';
 
 interface DashboardProps {
   onNavigate: (section: string, openDialog?: boolean) => void;
@@ -44,9 +38,8 @@ interface DashboardProps {
 export function NewDashboard({ onNavigate }: DashboardProps) {
   const { trainingHistory } = useTrainingHistory();
   const { activities, loading: activitiesLoading } = useActivities();
-  const { goals, createGoal } = useGoals();
+  const { goals } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
-  const { tools } = useRecoveryTools();
 
   // Get the closest dated Priority A goal
   const activeGoal = useMemo(() => {
@@ -68,57 +61,11 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { isPopulating } = usePMCPopulation();
   const [combinedSports, setCombinedSports] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-
-  // Goal form state
-  const [goalForm, setGoalForm] = useState({
-    name: '',
-    event_date: '',
-    location: '',
-    event_type: '',
-    priority: 'A',
-    status: 'active' as 'active' | 'completed' | 'deferred',
-    target_performance: ''
-  });
 
   const handleUploadSuccess = (activityId?: string) => {
     console.log('handleUploadSuccess called with activityId:', activityId);
+    // Close the modal immediately
     setUploadModalOpen(false);
-  };
-
-  const handleCreateGoal = async () => {
-    if (goalForm.name && goalForm.event_date && goalForm.event_type) {
-      const result = await createGoal(goalForm);
-      if (result) {
-        toast({
-          title: "Goal created successfully",
-          description: "Your new goal has been added."
-        });
-        setGoalForm({
-          name: '',
-          event_date: '',
-          location: '',
-          event_type: '',
-          priority: 'A',
-          status: 'active',
-          target_performance: ''
-        });
-        setGoalModalOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to create goal. Please try again.",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
-  const handleRecoverySessionSaved = () => {
-    toast({
-      title: "Recovery session logged",
-      description: "Your recovery session has been recorded."
-    });
   };
 
   // Calculate current week metrics
@@ -355,19 +302,14 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
               <ChevronRight className="w-4 h-4" />
             </Button>
             
-            <RecoverySessionModal
-              recoveryTools={tools}
-              onSessionSaved={handleRecoverySessionSaved}
-            />
-            
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => setGoalModalOpen(true)}
+              onClick={() => onNavigate('recovery')}
             >
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Set New Goal
+                <Heart className="w-4 h-4" />
+                Log Recovery Session
               </div>
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -375,11 +317,11 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => setUploadModalOpen(true)}
+              onClick={() => onNavigate('goals')}
             >
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Upload Activity
+                <Target className="w-4 h-4" />
+                Set New Goal
               </div>
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -602,118 +544,6 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             </DialogDescription>
           </DialogHeader>
           <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Goal Creation Modal */}
-      <Dialog open={goalModalOpen} onOpenChange={setGoalModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Set New Goal
-            </DialogTitle>
-            <DialogDescription>
-              Define a new training or racing goal to track your progress.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Event Name</Label>
-                <Input
-                  id="name"
-                  value={goalForm.name}
-                  onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
-                  placeholder="Enter event name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="date">Event Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={goalForm.event_date}
-                  onChange={(e) => setGoalForm({ ...goalForm, event_date: e.target.value })}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="location">Event Location</Label>
-                <Input
-                  id="location"
-                  value={goalForm.location}
-                  onChange={(e) => setGoalForm({ ...goalForm, location: e.target.value })}
-                  placeholder="Enter location"
-                />
-              </div>
-              <div>
-                <Label htmlFor="eventType">Event Type</Label>
-                <Select value={goalForm.event_type} onValueChange={(value) => setGoalForm({ ...goalForm, event_type: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select event type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="road race">Road Race</SelectItem>
-                    <SelectItem value="criterium">Criterium</SelectItem>
-                    <SelectItem value="time trial">Time Trial</SelectItem>
-                    <SelectItem value="stage race">Stage Race</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="priority">Priority Level</Label>
-                <Select value={goalForm.priority} onValueChange={(value) => setGoalForm({ ...goalForm, priority: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">A (Primary)</SelectItem>
-                    <SelectItem value="B">B (Secondary)</SelectItem>
-                    <SelectItem value="C">C (Tertiary)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select value={goalForm.status} onValueChange={(value: 'active' | 'completed' | 'deferred') => setGoalForm({ ...goalForm, status: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="deferred">Deferred</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="target">Target Performance</Label>
-              <Textarea
-                id="target"
-                value={goalForm.target_performance}
-                onChange={(e) => setGoalForm({ ...goalForm, target_performance: e.target.value })}
-                placeholder="e.g., Top 10 finish, Complete in under 4 hours, Achieve 300W FTP"
-                rows={3}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setGoalModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateGoal}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Goal
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
     </div>
