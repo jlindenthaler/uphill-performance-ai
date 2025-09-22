@@ -24,7 +24,7 @@ export function Navigation({
     icon: Calendar
   }, {
     id: 'activities',
-    label: 'Training',
+    label: 'Activities',
     icon: Upload
   }, {
     id: 'goals',
