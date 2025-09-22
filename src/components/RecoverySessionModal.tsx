@@ -40,7 +40,18 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
   const [duration, setDuration] = useState(30);
   const [preFatigue, setPreFatigue] = useState([5]);
   const [postFatigue, setPostFatigue] = useState([5]);
-  const [effectiveness, setEffectiveness] = useState([3]);
+  
+  // Auto-calculate effectiveness based on fatigue improvement
+  const calculateEffectiveness = () => {
+    const improvement = preFatigue[0] - postFatigue[0];
+    if (improvement >= 3) return 5; // Excellent
+    if (improvement >= 2) return 4; // Very Good
+    if (improvement >= 1) return 3; // Good
+    if (improvement >= 0) return 2; // Fair
+    return 1; // Poor (fatigue increased)
+  };
+  
+  const effectiveness = calculateEffectiveness();
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -75,7 +86,7 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
           duration_minutes: duration,
           pre_fatigue_level: preFatigue[0],
           post_fatigue_level: postFatigue[0],
-          effectiveness_rating: effectiveness[0],
+          effectiveness_rating: effectiveness,
           muscle_groups: selectedMuscles,
           recovery_tools_used: selectedTools,
           notes: notes || null,
@@ -93,7 +104,6 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
       setDuration(30);
       setPreFatigue([5]);
       setPostFatigue([5]);
-      setEffectiveness([3]);
       setSelectedTools([]);
       setSelectedMuscles([]);
       setNotes('');
@@ -198,24 +208,31 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
             </div>
           </div>
 
-          {/* Effectiveness Rating */}
+          {/* Auto-calculated Effectiveness Rating */}
           <div className="space-y-3">
-            <Label>Session Effectiveness</Label>
+            <Label>Session Effectiveness (Auto-calculated)</Label>
             <div className="px-2">
-              <Slider
-                value={effectiveness}
-                onValueChange={setEffectiveness}
-                max={5}
-                min={1}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>Poor (1)</span>
-                <span className="font-medium flex items-center gap-1">
-                  {effectiveness[0]} <Star className="w-3 h-3 fill-current" />
-                </span>
-                <span>Excellent (5)</span>
+              <div className="flex items-center justify-center py-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary mb-2">
+                    {effectiveness}/5
+                  </div>
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < effectiveness ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {effectiveness === 5 && "Excellent recovery"}
+                    {effectiveness === 4 && "Very good recovery"}
+                    {effectiveness === 3 && "Good recovery"}
+                    {effectiveness === 2 && "Fair recovery"}
+                    {effectiveness === 1 && "Poor recovery"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Based on fatigue improvement ({preFatigue[0]} → {postFatigue[0]})
+                  </p>
+                </div>
               </div>
             </div>
           </div>
