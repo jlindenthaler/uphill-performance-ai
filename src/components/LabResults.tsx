@@ -444,8 +444,43 @@ export function LabResults() {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lab Test History */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Performance Trends - First on mobile */}
+        <div className="space-y-4 lg:order-2">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Performance Trends
+          </h2>
+          
+          <div className="space-y-3">
+            {performanceTrends.map((trend, index) => (
+              <Card key={index}>
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{trend.metric}</p>
+                      <div className="flex items-center gap-1">
+                        {trend.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
+                        {trend.trend === 'down' && <TrendingUp className="w-4 h-4 text-red-500 rotate-180" />}
+                        {trend.trend === 'stable' && <div className="w-4 h-0.5 bg-gray-400"></div>}
+                        <span className={`text-sm ${
+                          trend.trend === 'up' ? 'text-green-500' : 
+                          trend.trend === 'down' ? 'text-red-500' : 
+                          'text-gray-500'
+                        }`}>
+                          {trend.change > 0 ? '+' : ''}{trend.change}%
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold">{trend.value} <span className="text-sm font-normal text-muted-foreground">{trend.unit}</span></p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Lab Test History - Second on mobile */}
+        <div className="lg:col-span-2 space-y-4 lg:order-1">
           <h2 className="text-xl font-semibold">Laboratory Test History</h2>
           
           {recentTests.map((test, index) => (
@@ -515,41 +550,6 @@ export function LabResults() {
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* Performance Trends */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Performance Trends
-          </h2>
-          
-          <div className="space-y-3">
-            {performanceTrends.map((trend, index) => (
-              <Card key={index}>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{trend.metric}</p>
-                      <div className="flex items-center gap-1">
-                        {trend.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
-                        {trend.trend === 'down' && <TrendingUp className="w-4 h-4 text-red-500 rotate-180" />}
-                        {trend.trend === 'stable' && <div className="w-4 h-0.5 bg-gray-400"></div>}
-                        <span className={`text-sm ${
-                          trend.trend === 'up' ? 'text-green-500' : 
-                          trend.trend === 'down' ? 'text-red-500' : 
-                          'text-gray-500'
-                        }`}>
-                          {trend.change > 0 ? '+' : ''}{trend.change}%
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-2xl font-bold">{trend.value} <span className="text-sm font-normal text-muted-foreground">{trend.unit}</span></p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
       </div>
     </div>

@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Calendar, 
   Target, 
@@ -54,6 +56,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   }, [goals]);
   const { sportMode } = useSportMode();
   const { isPopulating } = usePMCPopulation();
+  const [combinedSports, setCombinedSports] = useState(false);
 
   // Calculate current week metrics
   const currentWeek = trainingHistory.slice(-7);
@@ -117,13 +120,25 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             Track your progress and optimize your training
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className={`${tsbStatus.color} ${tsbStatus.bgColor} border-current`}>
-            Form: {tsbStatus.status}
-          </Badge>
-          <Badge variant="outline" className="capitalize">
-            {sportMode} Mode
-          </Badge>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="combined-sports"
+              checked={combinedSports}
+              onCheckedChange={setCombinedSports}
+            />
+            <Label htmlFor="combined-sports" className="text-sm">
+              Combined Sports
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={`${tsbStatus.color} ${tsbStatus.bgColor} border-current`}>
+              Form: {tsbStatus.status}
+            </Badge>
+            <Badge variant="outline" className="capitalize">
+              {sportMode} Mode
+            </Badge>
+          </div>
         </div>
       </div>
 

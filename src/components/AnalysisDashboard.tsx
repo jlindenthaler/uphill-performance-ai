@@ -62,7 +62,7 @@ export function AnalysisDashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Performance Management Chart</h1>
+          <h1 className="text-3xl font-bold">Analysis</h1>
           <p className="text-muted-foreground">
             Advanced performance analytics and training load monitoring 
             {isRunning ? ' - Running Mode' : ' - Cycling Mode'}
