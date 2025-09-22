@@ -26,11 +26,28 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     const trackPoints = activity.gps_data.trackPoints;
     const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
+    let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
     
     return trackPoints.map((point: any, index: number) => {
-      const timeElapsed = point.timestamp && startTime ? 
-        (new Date(point.timestamp).getTime() - new Date(startTime).getTime()) / 1000 : 
-        index;
+      let timeElapsed;
+      
+      if (index === 0) {
+        timeElapsed = 0;
+      } else {
+        const prevPoint = trackPoints[index - 1];
+        const timeInterval = point.timestamp && prevPoint.timestamp ? 
+          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+        
+        // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
+        // Larger gaps indicate pauses and should create natural breaks in the timeline
+        if (timeInterval <= 10) {
+          cumulativeRecordingTime += timeInterval;
+        } else {
+          // For large gaps, create a null data point to break the line
+          cumulativeRecordingTime += timeInterval;
+        }
+        timeElapsed = cumulativeRecordingTime;
+      }
 
       // Calculate cumulative distance by integrating speed over time
       if (index > 0 && point.speed) {
@@ -183,11 +200,12 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               return '';
             };
 
-            // Calculate L:R balance for R Power display
-            if (entry.name === 'R Power') {
-              const dataPoint = timelineData.find(d => d.xValue === label);
-              if (dataPoint && dataPoint.power > 0) {
-                const rightPercent = Math.round((dataPoint.rPower / dataPoint.power) * 100);
+            // Calculate L:R balance for R Power display using payload data directly
+            if (entry.name === 'R Power' && entry.payload) {
+              const totalPower = entry.payload.power;
+              const rPower = entry.payload.rPower;
+              if (totalPower > 0 && rPower > 0) {
+                const rightPercent = Math.round((rPower / totalPower) * 100);
                 const leftPercent = 100 - rightPercent;
                 return (
                   <p key={index} style={{ color: entry.color }}>
