@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
 import { PhysiologyDashboard } from "@/components/PhysiologyDashboard";
@@ -54,6 +54,20 @@ const Index = () => {
       setSidebarOpen(false);
     }
   };
+
+  // Listen for activity uploads to refresh the Training tab
+  useEffect(() => {
+    const handleActivityUploaded = () => {
+      if (activeSection === 'activities') {
+        // Force a refresh by briefly switching to another section and back
+        setActiveSection('dashboard');
+        setTimeout(() => setActiveSection('activities'), 100);
+      }
+    };
+
+    window.addEventListener('activity-uploaded', handleActivityUploaded);
+    return () => window.removeEventListener('activity-uploaded', handleActivityUploaded);
+  }, [activeSection]);
 
   return (
     <div className="flex min-h-screen bg-background">

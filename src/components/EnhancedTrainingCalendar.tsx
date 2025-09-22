@@ -30,21 +30,55 @@ export const EnhancedTrainingCalendar: React.FC = () => {
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  // Calculate weekly summary data
+  // Calculate weekly summary data for current and next week
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const currentWeekEnd = endOfWeek(new Date(), { weekStartsOn:1 });
+  const currentWeekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  const nextWeekStart = addDays(currentWeekEnd, 1);
+  const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
   
+  // Calculate current week stats from activities
+  const currentWeekActivities = activities.filter(activity => {
+    const activityDate = new Date(activity.date);
+    return activityDate >= currentWeekStart && activityDate <= currentWeekEnd;
+  });
+
+  // Calculate next week planned workouts
+  const nextWeekWorkouts = workouts.filter(workout => {
+    if (!workout.scheduled_date) return false;
+    const workoutDate = new Date(workout.scheduled_date);
+    return workoutDate >= nextWeekStart && workoutDate <= nextWeekEnd;
+  });
+
+  const currentWeekStats = {
+    duration: currentWeekActivities.reduce((sum, a) => sum + (a.duration_seconds || 0), 0),
+    distance: currentWeekActivities.reduce((sum, a) => sum + (a.distance_meters || 0), 0) / 1000,
+    tss: currentWeekActivities.reduce((sum, a) => sum + (a.tss || 0), 0),
+    elevation: currentWeekActivities.reduce((sum, a) => sum + (a.elevation_gain_meters || 0), 0),
+    work: currentWeekActivities.reduce((sum, a) => sum + ((a.avg_power || 0) * (a.duration_seconds || 0) / 1000), 0)
+  };
+
+  const nextWeekStats = {
+    plannedWorkouts: nextWeekWorkouts.length,
+    plannedDuration: nextWeekWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) * 60
+  };
+
   const weeklyStats = {
-    duration: '3:22', // hours:minutes
-    distance: '59.5', // km
-    tss: '166',
-    atpFitness: '12',
-    atpFatigue: '17',
-    atpForm: '0',
-    bikeDistance: '59.5',
-    elevationGain: '813',
-    work: '1624', // kJ
-    atpPeriod: 'Base 1 - Week 2',
+    // Current week (completed)
+    duration: `${Math.floor(currentWeekStats.duration / 3600)}:${Math.floor((currentWeekStats.duration % 3600) / 60).toString().padStart(2, '0')}`,
+    distance: currentWeekStats.distance.toFixed(1),
+    tss: Math.round(currentWeekStats.tss).toString(),
+    elevationGain: Math.round(currentWeekStats.elevation).toString(),
+    work: Math.round(currentWeekStats.work).toString(),
+    
+    // Next week (planned)
+    nextWeekWorkouts: nextWeekStats.plannedWorkouts,
+    nextWeekDuration: `${Math.floor(nextWeekStats.plannedDuration / 3600)}:${Math.floor((nextWeekStats.plannedDuration % 3600) / 60).toString().padStart(2, '0')}`,
+    
+    // Static data (would come from user profile/settings)
+    atpFitness: '42',
+    atpFatigue: '35',
+    atpForm: '7',
+    atpPeriod: 'Base 1 - Week 3',
     limiters: ['Endurance', 'Speed Skill']
   };
 
@@ -278,8 +312,9 @@ export const EnhancedTrainingCalendar: React.FC = () => {
 
               <hr className="my-4" />
 
-              {/* Weekly Stats */}
+              {/* Current Week Stats */}
               <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-blue-600 mb-2">This Week (Completed)</h4>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Duration</span>
                   <span className="font-medium">{weeklyStats.duration} hrs</span>
@@ -290,11 +325,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">TSS</span>
-                  <span className="font-medium">{weeklyStats.tss} TSS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Bike</span>
-                  <span className="font-medium">{weeklyStats.bikeDistance} km</span>
+                  <span className="font-medium">{weeklyStats.tss}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">El. Gain</span>
@@ -304,9 +335,20 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                   <span className="text-sm text-muted-foreground">Work</span>
                   <span className="font-medium">{weeklyStats.work} kJ</span>
                 </div>
+              </div>
+
+              <hr className="my-4" />
+
+              {/* Next Week Stats */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-green-600 mb-2">Next Week (Planned)</h4>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">ATP</span>
-                  <span className="font-medium">{weeklyStats.tss} TSS</span>
+                  <span className="text-sm text-muted-foreground">Workouts</span>
+                  <span className="font-medium">{weeklyStats.nextWeekWorkouts}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Duration</span>
+                  <span className="font-medium">{weeklyStats.nextWeekDuration} hrs</span>
                 </div>
               </div>
 
