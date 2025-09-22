@@ -6,6 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Calendar, 
   Target, 
@@ -38,7 +41,7 @@ interface DashboardProps {
 export function NewDashboard({ onNavigate }: DashboardProps) {
   const { trainingHistory } = useTrainingHistory();
   const { activities, loading: activitiesLoading } = useActivities();
-  const { goals } = useGoals();
+  const { goals, createGoal } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
 
   // Get the closest dated Priority A goal
@@ -61,11 +64,40 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { isPopulating } = usePMCPopulation();
   const [combinedSports, setCombinedSports] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [goalForm, setGoalForm] = useState({
+    name: '',
+    event_date: '',
+    event_type: '',
+    priority: 'B' as 'A' | 'B' | 'C',
+    status: 'active' as 'active' | 'completed' | 'deferred',
+    location: '',
+    target_performance: ''
+  });
 
   const handleUploadSuccess = (activityId?: string) => {
     console.log('handleUploadSuccess called with activityId:', activityId);
     // Close the modal immediately
     setUploadModalOpen(false);
+  };
+
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createGoal(goalForm);
+      setGoalModalOpen(false);
+      setGoalForm({
+        name: '',
+        event_date: '',
+        event_type: '',
+        priority: 'B' as 'A' | 'B' | 'C',
+        status: 'active' as 'active' | 'completed' | 'deferred',
+        location: '',
+        target_performance: ''
+      });
+    } catch (error) {
+      console.error('Error creating goal:', error);
+    }
   };
 
   // Calculate current week metrics
@@ -317,7 +349,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => onNavigate('goals')}
+              onClick={() => setGoalModalOpen(true)}
             >
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4" />
@@ -544,6 +576,107 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             </DialogDescription>
           </DialogHeader>
           <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Goal Modal */}
+      <Dialog open={goalModalOpen} onOpenChange={setGoalModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Set New Goal
+            </DialogTitle>
+            <DialogDescription>
+              Create a new training goal to track your progress.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleGoalSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="goal-name">Goal Name</Label>
+              <Input
+                id="goal-name"
+                value={goalForm.name}
+                onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
+                placeholder="e.g., Local Criterium Championship"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-date">Event Date</Label>
+                <Input
+                  id="event-date"
+                  type="date"
+                  value={goalForm.event_date}
+                  onChange={(e) => setGoalForm({ ...goalForm, event_date: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="priority">Priority</Label>
+                <Select value={goalForm.priority} onValueChange={(value: 'A' | 'B' | 'C') => setGoalForm({ ...goalForm, priority: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">A - Highest Priority</SelectItem>
+                    <SelectItem value="B">B - Medium Priority</SelectItem>
+                    <SelectItem value="C">C - Low Priority</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="event-type">Event Type</Label>
+              <Select value={goalForm.event_type} onValueChange={(value) => setGoalForm({ ...goalForm, event_type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select event type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="criterium">Criterium</SelectItem>
+                  <SelectItem value="road race">Road Race</SelectItem>
+                  <SelectItem value="time trial">Time Trial</SelectItem>
+                  <SelectItem value="gran fondo">Gran Fondo</SelectItem>
+                  <SelectItem value="stage race">Stage Race</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="location">Location (Optional)</Label>
+              <Input
+                id="location"
+                value={goalForm.location}
+                onChange={(e) => setGoalForm({ ...goalForm, location: e.target.value })}
+                placeholder="e.g., Central Park, NYC"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="target-performance">Target Performance (Optional)</Label>
+              <Textarea
+                id="target-performance"
+                value={goalForm.target_performance}
+                onChange={(e) => setGoalForm({ ...goalForm, target_performance: e.target.value })}
+                placeholder="e.g., Top 10 finish, Sub 2:30:00"
+                rows={2}
+              />
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1">
+                Create Goal
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setGoalModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
