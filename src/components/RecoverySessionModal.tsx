@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, RotateCcw, Star } from 'lucide-react';
+import { Plus, RotateCcw, Star, StarHalf } from 'lucide-react';
 import { useAuth } from '@/hooks/useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -44,10 +44,16 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
   // Auto-calculate effectiveness based on fatigue improvement
   const calculateEffectiveness = () => {
     const improvement = preFatigue[0] - postFatigue[0];
-    if (improvement >= 3) return 5; // Excellent
-    if (improvement >= 2) return 4; // Very Good
-    if (improvement >= 1) return 3; // Good
-    if (improvement >= 0) return 2; // Fair
+    const fatigueReduction = postFatigue[0] / preFatigue[0]; // Lower is better
+    
+    if (improvement >= 4) return 5; // Excellent
+    if (improvement >= 3) return 4.5; // Very Good+
+    if (improvement >= 2.5) return 4; // Very Good
+    if (improvement >= 2) return 3.5; // Good+
+    if (improvement >= 1.5) return 3; // Good
+    if (improvement >= 1) return 2.5; // Fair+
+    if (improvement >= 0.5) return 2; // Fair
+    if (improvement >= 0) return 1.5; // Poor+
     return 1; // Poor (fatigue increased)
   };
   
@@ -218,15 +224,26 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
                     {effectiveness}/5
                   </div>
                   <div className="flex items-center justify-center gap-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < effectiveness ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
-                    ))}
+                    {[...Array(5)].map((_, i) => {
+                      const starValue = i + 1;
+                      if (effectiveness >= starValue) {
+                        return <Star key={i} className="w-4 h-4 fill-primary text-primary" />;
+                      } else if (effectiveness >= starValue - 0.5) {
+                        return <StarHalf key={i} className="w-4 h-4 fill-primary text-primary" />;
+                      } else {
+                        return <Star key={i} className="w-4 h-4 text-muted-foreground" />;
+                      }
+                    })}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {effectiveness === 5 && "Excellent recovery"}
+                    {effectiveness === 4.5 && "Very good+ recovery"}
                     {effectiveness === 4 && "Very good recovery"}
+                    {effectiveness === 3.5 && "Good+ recovery"}
                     {effectiveness === 3 && "Good recovery"}
+                    {effectiveness === 2.5 && "Fair+ recovery"}
                     {effectiveness === 2 && "Fair recovery"}
+                    {effectiveness === 1.5 && "Poor+ recovery"}
                     {effectiveness === 1 && "Poor recovery"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
