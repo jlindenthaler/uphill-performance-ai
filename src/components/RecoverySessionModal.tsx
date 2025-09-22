@@ -116,12 +116,6 @@ export function RecoverySessionModal({
     }
   };
   return <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="primary-gradient">
-          <Plus className="w-4 h-4 mr-2" />
-          Log Recovery Session
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           
