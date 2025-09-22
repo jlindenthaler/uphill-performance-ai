@@ -189,10 +189,10 @@ export function RecoveryToolsManager() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Heart className="w-5 h-5 text-primary" />
-          Recovery Tools - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}
+          Recovery Tools
         </CardTitle>
         <CardDescription>
-          Manage your available recovery methods and protocols for {sportMode}
+          Manage your available recovery methods and protocols
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
