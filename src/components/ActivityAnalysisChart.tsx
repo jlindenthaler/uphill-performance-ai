@@ -13,7 +13,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState<string[]>([]);
+  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(['wl', 'hr']); // Initialize with power and heart rate
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -22,10 +22,13 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     if (!activity?.gps_data?.trackPoints) return [];
     
     const trackPoints = activity.gps_data.trackPoints;
-    const startTime = trackPoints[0]?.timestamp;
+    const startTimeStr = trackPoints[0]?.timestamp;
+    const startTime = startTimeStr ? new Date(startTimeStr).getTime() : 0;
     
     return trackPoints.map((point: any, index: number) => {
-      const timeElapsed = point.timestamp ? (point.timestamp - startTime) / 1000 : index;
+      const pointTimeStr = point.timestamp;
+      const pointTime = pointTimeStr ? new Date(pointTimeStr).getTime() : startTime + (index * 1000);
+      const timeElapsed = (pointTime - startTime) / 1000;
       const hours = Math.floor(timeElapsed / 3600);
       const minutes = Math.floor((timeElapsed % 3600) / 60);
       const seconds = Math.floor(timeElapsed % 60);
