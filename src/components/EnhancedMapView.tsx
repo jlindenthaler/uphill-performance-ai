@@ -69,17 +69,22 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       // If we have GPS data, process it
-      if (gpsData && gpsData.coordinates && Array.isArray(gpsData.coordinates)) {
-        const coordinates = gpsData.coordinates;
+      if (gpsData && gpsData.type === 'LineString' && gpsData.coordinates && Array.isArray(gpsData.coordinates)) {
+        console.log('Processing GPS data:', gpsData);
+        const coordinates = gpsData.coordinates; // Already in [lng, lat] format from fitParser
         
         if (coordinates.length > 0) {
-          // Create a GeoJSON line
+          console.log('Route has', coordinates.length, 'points');
+          console.log('Start point:', coordinates[0]);
+          console.log('End point:', coordinates[coordinates.length - 1]);
+          
+          // Create a GeoJSON feature using the coordinates directly
           const geojson = {
             type: 'Feature' as const,
             properties: {},
             geometry: {
               type: 'LineString' as const,
-              coordinates: coordinates.map(coord => [coord.lng || coord.longitude, coord.lat || coord.latitude])
+              coordinates: coordinates // Already in correct [lng, lat] format
             }
           };
 
@@ -92,7 +97,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
               data: geojson
             });
 
-            // Add the route layer
+            // Add the route layer - ORANGE color as requested
             map.current.addLayer({
               id: 'route',
               type: 'line',
@@ -102,32 +107,53 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
                 'line-cap': 'round'
               },
               paint: {
-                'line-color': '#22c55e',
+                'line-color': '#f97316', // Orange color
                 'line-width': 4
               }
             });
 
-            // Add start marker
+            // Add start marker - GREEN as requested
             const startCoord = coordinates[0];
             new mapboxgl.Marker({ color: '#22c55e' })
-              .setLngLat([startCoord.lng || startCoord.longitude, startCoord.lat || startCoord.latitude])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
+              .setLngLat(startCoord as [number, number])
+              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold text-green-600">🏁 Start</div>'))
               .addTo(map.current);
 
-            // Add end marker
+            // Create checkered flag finish marker
             const endCoord = coordinates[coordinates.length - 1];
-            new mapboxgl.Marker({ color: '#ef4444' })
-              .setLngLat([endCoord.lng || endCoord.longitude, endCoord.lat || endCoord.latitude])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
+            
+            // Create custom checkered flag element
+            const finishElement = document.createElement('div');
+            finishElement.className = 'finish-marker';
+            finishElement.style.cssText = `
+              width: 30px;
+              height: 30px;
+              background: linear-gradient(45deg, #000 25%, #fff 25%, #fff 50%, #000 50%, #000 75%, #fff 75%);
+              background-size: 8px 8px;
+              border-radius: 50%;
+              border: 3px solid #000;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 16px;
+            `;
+            finishElement.innerHTML = '🏁';
+
+            new mapboxgl.Marker(finishElement)
+              .setLngLat(endCoord as [number, number])
+              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">🏁 Finish</div>'))
               .addTo(map.current);
 
             // Fit map to route bounds
             const bounds = new mapboxgl.LngLatBounds();
             coordinates.forEach(coord => {
-              bounds.extend([coord.lng || coord.longitude, coord.lat || coord.latitude]);
+              bounds.extend(coord as [number, number]);
             });
             map.current.fitBounds(bounds, { padding: 50 });
           });
+        } else {
+          console.warn('GPS data has no coordinates');
         }
       } else if (activity) {
         // Mock GPS route for demonstration
