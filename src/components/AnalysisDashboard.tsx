@@ -15,12 +15,12 @@ import { useState, useMemo } from "react";
 
 export function AnalysisDashboard() {
   const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
-  const { powerProfile, loading: powerLoading } = usePowerProfile();
   const { trainingHistory, loading: historyLoading } = useTrainingHistory();
   const { isRunning } = useSportMode();
   const { isPopulating } = usePMCPopulation();
   const [dateRange, setDateRange] = useState('30');
   const [combinedSports, setCombinedSports] = useState(false);
+  const { powerProfile, loading: powerLoading } = usePowerProfile(parseInt(dateRange));
 
   const filteredTrainingHistory = useMemo(() => {
     const days = parseInt(dateRange === 'custom' ? '30' : dateRange);
