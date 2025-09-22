@@ -42,12 +42,15 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const speedVariation = 0.9 + Math.random() * 0.2;
       const tempVariation = 0.95 + Math.random() * 0.1;
       
+      const leftPower = basePower * powerVariation * 0.52; // Slightly more left
+      const rightPower = basePower * powerVariation * 0.48; // Slightly less right
+      const balance = (leftPower / (leftPower + rightPower)) * 100; // Left/Right balance as percentage
+      
       return {
         time: timeFormatted,
         timeSeconds,
         power: Math.round(basePower * powerVariation),
-        powerLeft: Math.round(basePower * powerVariation * 0.52), // Slightly more left
-        powerRight: Math.round(basePower * powerVariation * 0.48), // Slightly less right
+        balance: Math.round(balance * 10) / 10, // Left/Right balance percentage
         heartRate: Math.round(baseHr * hrVariation),
         cadence: Math.round(baseCadence * cadenceVariation),
         speed: Math.round(baseSpeed * speedVariation * 10) / 10,
@@ -136,7 +139,8 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           <p className="font-medium">{`Time: ${label}`}</p>
           {payload.map((entry: any, index: number) => {
             const getUnit = (name: string) => {
-              if (name === 'Power Left' || name === 'Power Right') return 'W';
+              if (name === 'Power') return 'W';
+              if (name === 'L:R Balance') return '%';
               if (name === 'Heart Rate') return 'bpm';
               if (name === 'Cadence') return 'rpm';
               if (name === 'Speed') return 'km/h';
@@ -267,29 +271,29 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   name="Power"
                 />
                 
-                {/* Conditionally render Power Left */}
+                {/* Conditionally render Total Power */}
                 {visibleMetrics.includes('wl') && (
                   <Line
                     yAxisId="power"
                     type="monotone"
-                    dataKey="powerLeft"
+                    dataKey="power"
                     stroke="hsl(var(--zone-3))"
                     strokeWidth={2}
                     dot={false}
-                    name="Power Left"
+                    name="Power"
                   />
                 )}
                 
-                {/* Conditionally render Power Right */}
+                {/* Conditionally render L:R Balance */}
                 {visibleMetrics.includes('wr') && (
                   <Line
-                    yAxisId="power"
+                    yAxisId="hr"
                     type="monotone"
-                    dataKey="powerRight"
+                    dataKey="balance"
                     stroke="hsl(var(--zone-4))"
                     strokeWidth={2}
                     dot={false}
-                    name="Power Right"
+                    name="L:R Balance"
                   />
                 )}
                 
