@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, startOfWeek, endOfWeek, addDays } from "date-fns";
-import { useGoals } from "@/hooks/useGoals";
-import { useWorkouts } from "@/hooks/useWorkouts";
-import { useActivities } from "@/hooks/useActivities";
-import { useTrainingHistory } from "@/hooks/useTrainingHistory";
+import { useGoals } from '@/hooks/useGoals';
+import { useWorkouts } from '@/hooks/useWorkouts';
+import { useActivities } from '@/hooks/useActivities';
+import { useTrainingHistory } from '@/hooks/useTrainingHistory';
+import { WorkoutDetailModal } from './WorkoutDetailModal';
+import { ActivityDetailModal } from './ActivityDetailModal';
 
 interface CalendarEvent {
   id: string;
@@ -21,6 +23,7 @@ interface CalendarEvent {
 export const EnhancedTrainingCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const { goals } = useGoals();
   const { workouts } = useWorkouts();
   const { activities } = useActivities();
@@ -175,6 +178,8 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     const handleEventClick = () => {
       if (event.type === 'workout') {
         setSelectedWorkout(event.data);
+      } else if (event.type === 'activity') {
+        setSelectedActivity(event.data);
       }
     };
 
@@ -182,7 +187,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
       <div
         key={event.id}
         className={`${bgColor} ${textColor} p-1 mb-1 rounded text-xs ${
-          event.type === 'workout' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+          event.type === 'workout' || event.type === 'activity' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
         } flex items-center gap-1`}
         title={event.title}
         onClick={handleEventClick}
@@ -402,82 +407,19 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* Workout Details Modal */}
-      <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{selectedWorkout?.name}</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSelectedWorkout(null)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedWorkout && (
-            <div className="space-y-4">
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Duration</p>
-                  <p className="text-lg">{selectedWorkout.duration_minutes} minutes</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">TSS</p>
-                  <p className="text-lg">{selectedWorkout.tss || 'N/A'}</p>
-                </div>
-              </div>
+      {/* Workout Detail Modal */}
+      <WorkoutDetailModal
+        workout={selectedWorkout}
+        open={!!selectedWorkout}
+        onClose={() => setSelectedWorkout(null)}
+      />
 
-              {/* Description */}
-              {selectedWorkout.description && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
-                  <p className="text-sm bg-muted p-3 rounded">{selectedWorkout.description}</p>
-                </div>
-              )}
-
-              {/* Workout Structure */}
-              {selectedWorkout.structure && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Workout Structure</p>
-                  <div className="bg-muted p-3 rounded space-y-2">
-                    {selectedWorkout.structure.warmup && (
-                      <div>
-                        <span className="font-medium text-sm">Warmup:</span>
-                        <span className="text-sm ml-2">{selectedWorkout.structure.warmup}</span>
-                      </div>
-                    )}
-                    {selectedWorkout.structure.main_set && (
-                      <div>
-                        <span className="font-medium text-sm">Main Set:</span>
-                        <span className="text-sm ml-2">{selectedWorkout.structure.main_set}</span>
-                      </div>
-                    )}
-                    {selectedWorkout.structure.cooldown && (
-                      <div>
-                        <span className="font-medium text-sm">Cooldown:</span>
-                        <span className="text-sm ml-2">{selectedWorkout.structure.cooldown}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Scheduled Date */}
-              {selectedWorkout.scheduled_date && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Scheduled for</p>
-                  <p className="text-sm">{format(new Date(selectedWorkout.scheduled_date), 'PPP')}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Activity Detail Modal */}
+      <ActivityDetailModal
+        activity={selectedActivity}
+        open={!!selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+      />
     </div>
   );
 };
