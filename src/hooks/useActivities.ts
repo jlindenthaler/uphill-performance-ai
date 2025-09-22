@@ -74,6 +74,25 @@ export function useActivities() {
     console.log('Starting upload activity process for:', file.name);
     setLoading(true);
     try {
+      // Parse FIT file client-side
+      let parsedData;
+      if (file.name.toLowerCase().endsWith('.fit')) {
+        console.log('Parsing FIT file client-side...');
+        try {
+          const { parseFitFile } = await import('@/utils/fitParser');
+          parsedData = await parseFitFile(file);
+          console.log('Client-side FIT parsing successful:', parsedData);
+        } catch (error) {
+          console.error('Client-side FIT parsing failed, using fallback:', error);
+          const { generateFallbackData } = await import('@/utils/fitParser');
+          parsedData = generateFallbackData(file);
+        }
+      } else {
+        console.log('Non-FIT file, generating fallback data');
+        const { generateFallbackData } = await import('@/utils/fitParser');
+        parsedData = generateFallbackData(file);
+      }
+
       // Upload file to storage
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
       console.log('Uploading file to storage:', fileName);
@@ -84,23 +103,10 @@ export function useActivities() {
       if (uploadError) throw uploadError;
       console.log('File uploaded to storage successfully');
 
-      // Process the file with new FIT parser edge function
-      console.log('Processing file with edge function...');
-      const { data: processResult, error: processError } = await supabase.functions
-        .invoke('fit-parser', {
-          body: {
-            action: 'process_file',
-            filePath: fileName
-          }
-        });
-
-      if (processError) throw processError;
-      console.log('File processed successfully:', processResult);
-
-      // Save the activity
+      // Prepare activity data
       const activityData = {
-        ...processResult,
-        name: activityName || processResult.name || file.name.replace(/\.[^/.]+$/, ""),
+        ...parsedData,
+        name: activityName || parsedData.name || file.name.replace(/\.[^/.]+$/, ""),
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),
         original_filename: file.name,
@@ -115,6 +121,8 @@ export function useActivities() {
             activityData
           }
         });
+
+      if (saveError) throw saveError;
 
       // Return the saved activity data
       console.log('Activity saved successfully:', saveResult);
