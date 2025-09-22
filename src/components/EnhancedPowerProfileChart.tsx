@@ -169,7 +169,12 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
     );
   }
 
-  const bestEfforts = filteredPowerProfile.slice(0, 4);
+  const bestEfforts = [
+    { duration: '5s', best: activityBestPowers.find(p => p.duration === '5s')?.value || 0, unit: 'W' },
+    { duration: '1min', best: activityBestPowers.find(p => p.duration === '1min')?.value || 0, unit: 'W' },
+    { duration: '5min', best: activityBestPowers.find(p => p.duration === '5min')?.value || 0, unit: 'W' },
+    { duration: '20min', best: activityBestPowers.find(p => p.duration === '20min')?.value || 0, unit: 'W' }
+  ];
 
   return (
     <div className="space-y-6">
