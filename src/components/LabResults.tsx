@@ -60,9 +60,11 @@ const initialFormData: LabResultFormData = {
 
 interface LabResultsProps {
   openAddDialog?: boolean;
+  formOnly?: boolean;
+  onFormSubmit?: () => void;
 }
 
-export function LabResults({ openAddDialog = false }: LabResultsProps) {
+export function LabResults({ openAddDialog = false, formOnly = false, onFormSubmit }: LabResultsProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(openAddDialog);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const { sportMode } = useSportMode();
@@ -101,6 +103,11 @@ export function LabResults({ openAddDialog = false }: LabResultsProps) {
       
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      
+      // Call the external callback if provided
+      if (onFormSubmit) {
+        onFormSubmit();
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -155,6 +162,231 @@ export function LabResults({ openAddDialog = false }: LabResultsProps) {
     { metric: 'RMR', value: '1850', unit: 'cal/day', change: -2, trend: 'down' }
   ];
 
+  // Extract the form content into a variable for reuse
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Test Details */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label>Test Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.testDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.testDate ? format(formData.testDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.testDate}
+                onSelect={(date) => date && handleInputChange('testDate', date)}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label>Test Type</Label>
+          <Select value={formData.testType} onValueChange={(value) => handleInputChange('testType', value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="comprehensive">Comprehensive</SelectItem>
+              <SelectItem value="vo2max">VO2max</SelectItem>
+              <SelectItem value="metabolic">Metabolic Efficiency</SelectItem>
+              <SelectItem value="threshold">Threshold Testing</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Sport</Label>
+          <Select value={formData.sport} onValueChange={(value) => handleInputChange('sport', value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cycling">Cycling</SelectItem>
+              <SelectItem value="running">Running</SelectItem>
+              <SelectItem value="swimming">Swimming</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Aerobic Capacity */}
+      <div className="space-y-4">
+        <h3 className="font-semibold">Aerobic Capacity</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>VO2max (ml/kg/min)</Label>
+            <Input
+              placeholder="60.5"
+              value={formData.vo2max}
+              onChange={(e) => handleInputChange('vo2max', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>MAP - Maximal Aerobic Power (W)</Label>
+            <Input
+              placeholder="300"
+              value={formData.mapPower}
+              onChange={(e) => handleInputChange('mapPower', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Ventilatory Thresholds */}
+      <div className="space-y-4">
+        <h3 className="font-semibold">Ventilatory Thresholds</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label>VT1 HR (bpm)</Label>
+            <Input
+              placeholder="140"
+              value={formData.vt1Hr}
+              onChange={(e) => handleInputChange('vt1Hr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>VT1 Power (W)</Label>
+            <Input
+              placeholder="200"
+              value={formData.vt1Power}
+              onChange={(e) => handleInputChange('vt1Power', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>VT2 HR (bpm)</Label>
+            <Input
+              placeholder="165"
+              value={formData.vt2Hr}
+              onChange={(e) => handleInputChange('vt2Hr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>VT2 Power (W)</Label>
+            <Input
+              placeholder="280"
+              value={formData.vt2Power}
+              onChange={(e) => handleInputChange('vt2Power', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Lactate Thresholds */}
+      <div className="space-y-4">
+        <h3 className="font-semibold">Lactate Thresholds</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label>LT1 HR (bpm)</Label>
+            <Input
+              placeholder="135"
+              value={formData.lt1Hr}
+              onChange={(e) => handleInputChange('lt1Hr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>LT1 Power (W)</Label>
+            <Input
+              placeholder="190"
+              value={formData.lt1Power}
+              onChange={(e) => handleInputChange('lt1Power', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>LT2 HR (bpm)</Label>
+            <Input
+              placeholder="160"
+              value={formData.lt2Hr}
+              onChange={(e) => handleInputChange('lt2Hr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>LT2 Power (W)</Label>
+            <Input
+              placeholder="270"
+              value={formData.lt2Power}
+              onChange={(e) => handleInputChange('lt2Power', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Metabolic Efficiency */}
+      <div className="space-y-4">
+        <h3 className="font-semibold">Metabolic Efficiency</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label>RMR (cal/day)</Label>
+            <Input
+              placeholder="1800"
+              value={formData.rmr}
+              onChange={(e) => handleInputChange('rmr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Fat Ox Rate (g/min)</Label>
+            <Input
+              placeholder="0.45"
+              value={formData.fatOxRate}
+              onChange={(e) => handleInputChange('fatOxRate', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Carb Ox Rate (g/min)</Label>
+            <Input
+              placeholder="2.5"
+              value={formData.carbOxRate}
+              onChange={(e) => handleInputChange('carbOxRate', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>FatMax (%VO2max)</Label>
+            <Input
+              placeholder="65"
+              value={formData.fatMax}
+              onChange={(e) => handleInputChange('fatMax', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label>Notes</Label>
+        <Textarea
+          placeholder="Additional notes about the test..."
+          value={formData.notes}
+          onChange={(e) => handleInputChange('notes', e.target.value)}
+          rows={3}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => formOnly ? onFormSubmit?.() : setIsAddDialogOpen(false)}>
+          Cancel
+        </Button>
+        <Button type="submit">Save Lab Result</Button>
+      </div>
+    </form>
+  );
+
+  // If formOnly is true, return just the form content
+  if (formOnly) {
+    return formContent;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -178,222 +410,7 @@ export function LabResults({ openAddDialog = false }: LabResultsProps) {
               </DialogDescription>
             </DialogHeader>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Test Details */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Test Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.testDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.testDate ? format(formData.testDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formData.testDate}
-                        onSelect={(date) => date && handleInputChange('testDate', date)}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label>Test Type</Label>
-                  <Select value={formData.testType} onValueChange={(value) => handleInputChange('testType', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="comprehensive">Comprehensive</SelectItem>
-                      <SelectItem value="vo2max">VO2max</SelectItem>
-                      <SelectItem value="metabolic">Metabolic Efficiency</SelectItem>
-                      <SelectItem value="threshold">Threshold Testing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Sport</Label>
-                  <Select value={formData.sport} onValueChange={(value) => handleInputChange('sport', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cycling">Cycling</SelectItem>
-                      <SelectItem value="running">Running</SelectItem>
-                      <SelectItem value="swimming">Swimming</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Aerobic Capacity */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Aerobic Capacity</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>VO2max (ml/kg/min)</Label>
-                    <Input
-                      placeholder="60.5"
-                      value={formData.vo2max}
-                      onChange={(e) => handleInputChange('vo2max', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>MAP - Maximal Aerobic Power (W)</Label>
-                    <Input
-                      placeholder="300"
-                      value={formData.mapPower}
-                      onChange={(e) => handleInputChange('mapPower', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Ventilatory Thresholds */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Ventilatory Thresholds</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>VT1 HR (bpm)</Label>
-                    <Input
-                      placeholder="140"
-                      value={formData.vt1Hr}
-                      onChange={(e) => handleInputChange('vt1Hr', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>VT1 Power (W)</Label>
-                    <Input
-                      placeholder="200"
-                      value={formData.vt1Power}
-                      onChange={(e) => handleInputChange('vt1Power', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>VT2 HR (bpm)</Label>
-                    <Input
-                      placeholder="165"
-                      value={formData.vt2Hr}
-                      onChange={(e) => handleInputChange('vt2Hr', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>VT2 Power (W)</Label>
-                    <Input
-                      placeholder="280"
-                      value={formData.vt2Power}
-                      onChange={(e) => handleInputChange('vt2Power', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Lactate Thresholds */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Lactate Thresholds</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>LT1 HR (bpm)</Label>
-                    <Input
-                      placeholder="135"
-                      value={formData.lt1Hr}
-                      onChange={(e) => handleInputChange('lt1Hr', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LT1 Power (W)</Label>
-                    <Input
-                      placeholder="190"
-                      value={formData.lt1Power}
-                      onChange={(e) => handleInputChange('lt1Power', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LT2 HR (bpm)</Label>
-                    <Input
-                      placeholder="160"
-                      value={formData.lt2Hr}
-                      onChange={(e) => handleInputChange('lt2Hr', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LT2 Power (W)</Label>
-                    <Input
-                      placeholder="270"
-                      value={formData.lt2Power}
-                      onChange={(e) => handleInputChange('lt2Power', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Metabolic Efficiency */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Metabolic Efficiency</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>RMR (cal/day)</Label>
-                    <Input
-                      placeholder="1800"
-                      value={formData.rmr}
-                      onChange={(e) => handleInputChange('rmr', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fat Ox Rate (g/min)</Label>
-                    <Input
-                      placeholder="0.45"
-                      value={formData.fatOxRate}
-                      onChange={(e) => handleInputChange('fatOxRate', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Carb Ox Rate (g/min)</Label>
-                    <Input
-                      placeholder="2.5"
-                      value={formData.carbOxRate}
-                      onChange={(e) => handleInputChange('carbOxRate', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>FatMax (%VO2max)</Label>
-                    <Input
-                      placeholder="65"
-                      value={formData.fatMax}
-                      onChange={(e) => handleInputChange('fatMax', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="Additional notes about the test..."
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Lab Result</Button>
-              </div>
-            </form>
+            {formContent}
           </DialogContent>
         </Dialog>
       </div>

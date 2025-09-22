@@ -23,6 +23,8 @@ interface RecoveryTool {
 interface RecoverySessionModalProps {
   recoveryTools: RecoveryTool[];
   onSessionSaved: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const MUSCLE_GROUPS = [
@@ -31,10 +33,14 @@ const MUSCLE_GROUPS = [
   'Chest', 'Neck', 'IT Band', 'Achilles', 'Plantar Fascia'
 ];
 
-export function RecoverySessionModal({ recoveryTools, onSessionSaved }: RecoverySessionModalProps) {
+export function RecoverySessionModal({ recoveryTools, onSessionSaved, open: externalOpen, onOpenChange: externalOnOpenChange }: RecoverySessionModalProps) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
   
   // Form state
   const [duration, setDuration] = useState(30);
@@ -130,12 +136,14 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="primary-gradient">
-          <Plus className="w-4 h-4 mr-2" />
-          Log Recovery Session
-        </Button>
-      </DialogTrigger>
+      {!externalOpen && (
+        <DialogTrigger asChild>
+          <Button className="primary-gradient">
+            <Plus className="w-4 h-4 mr-2" />
+            Log Recovery Session
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

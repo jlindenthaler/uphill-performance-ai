@@ -687,28 +687,29 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
       </Dialog>
 
       {/* Recovery Session Modal */}
-      <Dialog open={recoveryModalOpen} onOpenChange={setRecoveryModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Heart className="w-5 h-5 text-primary" />
-              Log Recovery Session
-            </DialogTitle>
-            <DialogDescription>
-              Track your recovery session details, effectiveness, and tools used
-            </DialogDescription>
-          </DialogHeader>
-          {/* Recovery session form content would go here */}
-          <div className="p-4 text-center text-muted-foreground">
-            Recovery session logging form will be integrated here.
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RecoverySessionModal 
+        recoveryTools={recoveryTools}
+        onSessionSaved={() => setRecoveryModalOpen(false)}
+        open={recoveryModalOpen}
+        onOpenChange={setRecoveryModalOpen}
+      />
 
       {/* Lab Results Modal */}
       <Dialog open={labResultsModalOpen} onOpenChange={setLabResultsModalOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <LabResults openAddDialog={labResultsModalOpen} />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Beaker className="w-5 h-5" />
+              Add Lab Results
+            </DialogTitle>
+            <DialogDescription>
+              Enter your laboratory test results to track physiological improvements
+            </DialogDescription>
+          </DialogHeader>
+          <LabResults 
+            formOnly={true}
+            onFormSubmit={() => setLabResultsModalOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
