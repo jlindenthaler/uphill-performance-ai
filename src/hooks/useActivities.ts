@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
 
 interface Activity {
   id: string;
@@ -71,10 +72,10 @@ export function useActivities() {
   const uploadActivity = async (file: File, activityName?: string) => {
     if (!user) throw new Error('User not authenticated');
 
-    console.log('Starting basic file upload for:', file.name);
+    console.log('Starting file upload for:', file.name);
     setLoading(true);
     try {
-      // Upload file to storage only
+      // Upload file to storage first
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
       console.log('Uploading file to storage:', fileName);
       const { error: uploadError } = await supabase.storage
@@ -84,18 +85,45 @@ export function useActivities() {
       if (uploadError) throw uploadError;
       console.log('File uploaded to storage successfully');
 
-      // Create basic activity record
-      const activityData = {
+      let activityData: any = {
         name: activityName || file.name.replace(/\.[^/.]+$/, ""),
         sport_mode: sportMode,
         date: new Date().toISOString().split('T')[0],
-        duration_seconds: 0, // User will need to fill this manually
+        duration_seconds: 0,
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),
         original_filename: file.name
       };
 
-      console.log('Saving basic activity data:', activityData);
+      // Try to parse FIT file if it's a .fit file
+      const isFileType = (extensions: string[]) => 
+        extensions.some(ext => file.name.toLowerCase().endsWith(ext.toLowerCase()));
+
+      if (isFileType(['.fit'])) {
+        try {
+          console.log('Parsing FIT file...');
+          const parsedData: ParsedActivityData = await parseFitFile(file);
+          console.log('FIT file parsed successfully:', parsedData);
+          
+          // Merge parsed data with basic activity data
+          activityData = {
+            ...activityData,
+            ...parsedData,
+            // Keep the user-provided name if specified
+            name: activityName || parsedData.name || activityData.name,
+            // Keep user-selected sport mode if specified, otherwise use parsed
+            sport_mode: sportMode !== 'cycling' ? sportMode : parsedData.sport_mode
+          };
+        } catch (parseError) {
+          console.warn('Failed to parse FIT file, saving basic data:', parseError);
+          // Continue with basic data if parsing fails
+        }
+      } else if (isFileType(['.gpx', '.tcx'])) {
+        console.log('GPX/TCX parsing not yet implemented, saving basic data');
+        // TODO: Add GPX/TCX parsing in the future
+      }
+
+      console.log('Saving activity data:', activityData);
       const { data: savedActivity, error: saveError } = await supabase
         .from('activities')
         .insert({
