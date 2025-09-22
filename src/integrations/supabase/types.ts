@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
+          avg_cadence: number | null
           avg_heart_rate: number | null
           avg_pace_per_km: number | null
           avg_power: number | null
@@ -48,6 +49,7 @@ export type Database = {
           weather_conditions: Json | null
         }
         Insert: {
+          avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null
@@ -80,6 +82,7 @@ export type Database = {
           weather_conditions?: Json | null
         }
         Update: {
+          avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null

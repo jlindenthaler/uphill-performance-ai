@@ -3,6 +3,7 @@ import { useAuth } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
+import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 
 interface Activity {
   id: string;
@@ -20,6 +21,7 @@ interface Activity {
   max_heart_rate?: number;
   avg_pace_per_km?: number;
   avg_speed_kmh?: number;
+  avg_cadence?: number;
   calories?: number;
   tss?: number;
   intensity_factor?: number;
@@ -69,7 +71,7 @@ export function useActivities() {
     }
   };
 
-  const uploadActivity = async (file: File, activityName?: string) => {
+  const uploadActivity = async (file: File, activityName?: string, notes?: string) => {
     if (!user) throw new Error('User not authenticated');
 
     console.log('Starting file upload for:', file.name);
@@ -129,6 +131,7 @@ export function useActivities() {
         .insert({
           ...activityData,
           user_id: user.id,
+          notes: notes || null,
         })
         .select()
         .single();
@@ -136,6 +139,15 @@ export function useActivities() {
       if (saveError) throw saveError;
 
       console.log('Activity saved successfully:', savedActivity);
+      
+      // Update PMC calculations for this date
+      try {
+        await updateTrainingHistoryForDate(user.id, activityData.date);
+        console.log('PMC data updated successfully');
+      } catch (pmcError) {
+        console.warn('Failed to update PMC data:', pmcError);
+      }
+      
       return savedActivity;
     } catch (error) {
       console.error('Error uploading activity:', error);

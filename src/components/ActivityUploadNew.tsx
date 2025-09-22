@@ -99,7 +99,7 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
         updateProgress(100, 'complete');
         
         console.log('Starting activity upload for:', file.name);
-        const uploadedActivity = await uploadActivity(file, activityName || undefined);
+        const uploadedActivity = await uploadActivity(file, activityName || undefined, notes || undefined);
         console.log('Activity uploaded successfully:', uploadedActivity);
         
         toast({

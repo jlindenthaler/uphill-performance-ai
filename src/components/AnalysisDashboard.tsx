@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame, Calendar
 import { useMetabolicData } from "@/hooks/useMetabolicData";
 import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
+import { usePMCPopulation } from "@/hooks/usePMCPopulation";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { useState, useMemo } from "react";
 
@@ -17,6 +18,7 @@ export function AnalysisDashboard() {
   const { powerProfile, loading: powerLoading } = usePowerProfile();
   const { trainingHistory, loading: historyLoading } = useTrainingHistory();
   const { isRunning } = useSportMode();
+  const { isPopulating } = usePMCPopulation();
   const [dateRange, setDateRange] = useState('30');
   const [combinedSports, setCombinedSports] = useState(false);
 

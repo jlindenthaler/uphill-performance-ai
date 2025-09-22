@@ -12,7 +12,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
-import { ActivityPowerComparison } from './ActivityPowerComparison';
+import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 
 export function Activities() {
   const { activities, loading, deleteActivity } = useActivities();
@@ -61,6 +61,11 @@ export function Activities() {
   const formatPower = (watts?: number) => {
     if (!watts) return 'N/A';
     return `${Math.round(watts)}W`;
+  };
+
+  const formatCadence = (rpm?: number) => {
+    if (!rpm) return 'N/A';
+    return `${Math.round(rpm)} rpm`;
   };
 
 
@@ -168,8 +173,10 @@ export function Activities() {
         )}
       </div>
 
-      {/* Power Profile Comparison */}
-      <ActivityPowerComparison activity={activity} />
+      {/* Enhanced Power Profile */}
+      <div className="mt-6">
+        <EnhancedPowerProfileChart activity={activity} />
+      </div>
 
       {/* Detailed Metrics */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -220,6 +227,13 @@ export function Activities() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Elevation Gain</span>
                 <span className="font-medium">{Math.round(activity.elevation_gain_meters)} m</span>
+              </div>
+            )}
+            
+            {activity.avg_cadence && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Average Cadence</span>
+                <span className="font-medium">{formatCadence(activity.avg_cadence)}</span>
               </div>
             )}
             

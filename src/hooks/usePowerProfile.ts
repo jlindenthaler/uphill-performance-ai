@@ -11,7 +11,7 @@ interface PowerProfileData {
   unit: string;
 }
 
-export function usePowerProfile() {
+export function usePowerProfile(dateRangeDays?: number) {
   const { user } = useAuth();
   const { sportMode, isRunning } = useSportMode();
   const [powerProfile, setPowerProfile] = useState<PowerProfileData[]>([]);
@@ -30,13 +30,22 @@ export function usePowerProfile() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('power_profile')
         .select('*')
         .eq('user_id', user.id)
         .eq('sport', sportMode)
         .in('duration_seconds', durations.map(d => d.seconds))
         .order('date_achieved', { ascending: false });
+
+      // Add date filter if dateRangeDays is provided
+      if (dateRangeDays) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
+        query = query.gte('date_achieved', cutoffDate.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -110,7 +119,7 @@ export function usePowerProfile() {
     if (user) {
       fetchPowerProfile();
     }
-  }, [user, sportMode]);
+  }, [user, sportMode, dateRangeDays]);
 
   return {
     powerProfile,

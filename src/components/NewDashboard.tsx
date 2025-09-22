@@ -23,6 +23,7 @@ import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { useActivities } from '@/hooks/useActivities';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { usePMCPopulation } from '@/hooks/usePMCPopulation';
 
 interface DashboardProps {
   onNavigate: (section: string) => void;
@@ -33,6 +34,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { activities } = useActivities();
   const { metabolicMetrics } = useMetabolicData();
   const { sportMode } = useSportMode();
+  const { isPopulating } = usePMCPopulation();
 
   // Calculate current week metrics
   const currentWeek = trainingHistory.slice(-7);

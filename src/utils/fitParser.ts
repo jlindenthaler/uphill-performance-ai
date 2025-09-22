@@ -14,6 +14,7 @@ export interface ParsedActivityData {
   max_heart_rate?: number;
   avg_pace_per_km?: number;
   avg_speed_kmh?: number;
+  avg_cadence?: number;
   calories?: number;
   tss?: number;
   intensity_factor?: number;
@@ -150,6 +151,9 @@ function extractActivityData(messages: any): ParsedActivityData {
   const avgHeartRate = unwrapValue(sessionData.avgHeartRate) || null;
   const maxHeartRate = unwrapValue(sessionData.maxHeartRate) || null;
   
+  // Cadence metrics
+  const avgCadence = unwrapValue(sessionData.avgCadence) || calculateAverageCadence(recordMessages);
+  
   // Speed and pace calculations
   const rawAvgSpeed = unwrapValue(sessionData.avgSpeed);
   const avgSpeed = rawAvgSpeed ? rawAvgSpeed * 3.6 : 
@@ -197,6 +201,7 @@ function extractActivityData(messages: any): ParsedActivityData {
     max_heart_rate: maxHeartRate ? Math.round(maxHeartRate) : undefined,
     avg_pace_per_km: avgPace ? Math.round(avgPace) : undefined,
     avg_speed_kmh: avgSpeed ? Math.round(avgSpeed * 100) / 100 : undefined,
+    avg_cadence: avgCadence ? Math.round(avgCadence) : undefined,
     calories: calories ? Math.round(calories) : undefined,
     tss: tss ? Math.round(tss) : undefined,
     intensity_factor: intensityFactor ? Math.round(intensityFactor * 100) / 100 : undefined,
@@ -333,4 +338,22 @@ function calculateVariabilityIndex(avgPower: number | null, normalizedPower: num
   if (!avgPower || !normalizedPower || avgPower <= 0) return null;
   
   return normalizedPower / avgPower;
+}
+
+function calculateAverageCadence(records: any[]): number | null {
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
+  
+  const cadenceData = records
+    .map(r => unwrapValue(r.cadence))
+    .filter(c => c !== undefined && c !== null && c > 0);
+    
+  if (cadenceData.length === 0) return null;
+  
+  return cadenceData.reduce((sum, c) => sum + c, 0) / cadenceData.length;
 }
