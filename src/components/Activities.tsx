@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, Save, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Textarea } from '@/components/ui/textarea';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
@@ -16,15 +15,13 @@ import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 
 export function Activities() {
-  const { activities, loading, deleteActivity, updateActivity } = useActivities();
+  const { activities, loading, deleteActivity } = useActivities();
   const { sportMode } = useSportMode();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', notes: '' });
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,95 +105,33 @@ export function Activities() {
     }
   };
 
-  const handleEditActivity = (activity: any) => {
-    setEditingActivity(activity.id);
-    setEditForm({ name: activity.name, notes: activity.notes || '' });
-  };
-
-  const handleSaveEdit = async () => {
-    if (editingActivity) {
-      try {
-        await updateActivity(editingActivity, editForm);
-        setEditingActivity(null);
-        setEditForm({ name: '', notes: '' });
-      } catch (error) {
-        console.error('Failed to update activity:', error);
-      }
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingActivity(null);
-    setEditForm({ name: '', notes: '' });
-  };
-
   const renderExpandedActivity = (activity: any) => (
     <div className="space-y-6 pt-4 border-t">
       {/* Activity Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 flex-1">
+        <div className="flex items-center space-x-3">
           <span className="text-2xl">{getSportIcon(activity.sport_mode)}</span>
-          <div className="flex-1">
-            {editingActivity === activity.id ? (
-              <div className="space-y-3">
-                <Input
-                  value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Activity name"
-                  className="text-xl font-bold"
-                />
-                <Textarea
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Add notes..."
-                  className="min-h-[60px]"
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveEdit}>
-                    <Save className="h-4 w-4 mr-1" />
-                    Save
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4 mr-1" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h3 className="text-xl font-bold">{activity.name}</h3>
-                <div className="flex items-center space-x-4 text-muted-foreground text-sm">
-                  <span className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(activity.date).toLocaleDateString()}</span>
-                  </span>
-                  <Badge variant="outline" className="capitalize">
-                    {activity.sport_mode}
-                  </Badge>
-                </div>
-              </div>
-            )}
+          <div>
+            <h3 className="text-xl font-bold">{activity.name}</h3>
+            <div className="flex items-center space-x-4 text-muted-foreground text-sm">
+              <span className="flex items-center space-x-1">
+                <Calendar className="h-3 w-3" />
+                <span>{new Date(activity.date).toLocaleDateString()}</span>
+              </span>
+              <Badge variant="outline" className="capitalize">
+                {activity.sport_mode}
+              </Badge>
+            </div>
           </div>
         </div>
         
-        <div className="flex gap-2">
-          {editingActivity !== activity.id && (
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => handleEditActivity(activity)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={() => handleDeleteActivity(activity.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => handleDeleteActivity(activity.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Key Metrics */}
@@ -379,7 +314,7 @@ export function Activities() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Activities</h1>
+          <h1 className="text-3xl font-bold">Training</h1>
           <p className="text-muted-foreground mt-2">
             Review activities and upload new training data
           </p>
