@@ -215,39 +215,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Simplified FIT file data extraction
-async function extractBasicFitData(arrayBuffer: ArrayBuffer): Promise<Partial<ActivityData>> {
-  console.log('Extracting basic FIT data, file size:', arrayBuffer.byteLength);
-  
-  const data: Partial<ActivityData> = {};
-  
-  try {
-    // Check for FIT file signature
-    const header = new Uint8Array(arrayBuffer.slice(0, 14));
-    const signature = new TextDecoder().decode(header.slice(8, 12));
-    
-    if (signature !== '.FIT') {
-      console.log('Invalid FIT file signature');
-      return data;
-    }
-    
-    console.log('Valid FIT file detected');
-    
-    // For now, just return sample data that looks realistic
-    // In a real implementation, you'd parse the FIT protocol
-    data.duration_seconds = 3600 + Math.floor(Math.random() * 1800); // 1-1.5 hours
-    data.distance_meters = 25000 + Math.floor(Math.random() * 20000); // 25-45km
-    data.avg_power = 180 + Math.floor(Math.random() * 80); // 180-260W
-    data.max_power = 350 + Math.floor(Math.random() * 150); // 350-500W
-    data.avg_heart_rate = 140 + Math.floor(Math.random() * 30); // 140-170
-    data.max_heart_rate = 170 + Math.floor(Math.random() * 25); // 170-195
-    
-    console.log('Extracted FIT data:', data);
-    
-  } catch (error) {
-    console.error('Error extracting FIT data:', error);
-  }
-  
-  return data;
-}
