@@ -187,16 +187,12 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
             if (entry.name === 'R Power') {
               const dataPoint = timelineData.find(d => d.xValue === label);
               if (dataPoint && dataPoint.power > 0) {
-                const lrBalance = Math.round((1 - dataPoint.rPower / dataPoint.power) * 100);
+                const rightPercent = Math.round((dataPoint.rPower / dataPoint.power) * 100);
+                const leftPercent = 100 - rightPercent;
                 return (
-                  <div key={index}>
-                    <p style={{ color: entry.color }}>
-                      {`R Power: ${entry.value}W`}
-                    </p>
-                    <p style={{ color: entry.color }}>
-                      {`L:R Balance: ${lrBalance}:${100 - lrBalance}`}
-                    </p>
-                  </div>
+                  <p key={index} style={{ color: entry.color }}>
+                    {`L:R Balance: ${leftPercent}:${rightPercent}`}
+                  </p>
                 );
               }
             }
