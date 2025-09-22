@@ -41,20 +41,19 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
   const [preFatigue, setPreFatigue] = useState([5]);
   const [postFatigue, setPostFatigue] = useState([5]);
   
-  // Auto-calculate effectiveness based on fatigue improvement
+  // Auto-calculate effectiveness based on fatigue improvement (ARPE scoring)
   const calculateEffectiveness = () => {
     const improvement = preFatigue[0] - postFatigue[0];
     
-    if (improvement >= 4) return 5; // Excellent
-    if (improvement >= 3) return 4.5; // Very Good+
-    if (improvement >= 2.5) return 4; // Very Good
-    if (improvement >= 2) return 3.5; // Good+
-    if (improvement >= 1.5) return 3; // Good
-    if (improvement >= 1) return 2.5; // Fair+
-    if (improvement >= 0.5) return 2; // Fair
-    if (improvement > 0) return 1.5; // Poor+
-    if (improvement === 0) return 0; // No change
-    return 0; // Poor (fatigue increased)
+    if (improvement >= 4.0) return 5; // Profound recovery effect
+    if (improvement >= 3.5) return 4.5; // Excellent relief
+    if (improvement >= 3.0) return 4; // Very strong relief
+    if (improvement >= 2.5) return 3.5; // Strong relief
+    if (improvement >= 2.0) return 3; // Moderate relief
+    if (improvement >= 1.5) return 2.5; // Mild relief
+    if (improvement >= 1.0) return 2; // Minimal relief
+    if (improvement >= 0.5) return 1; // Negligible relief
+    return 0; // No relief or worse
   };
   
   const effectiveness = calculateEffectiveness();
@@ -183,7 +182,7 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
                   onValueChange={setPreFatigue}
                   max={10}
                   min={1}
-                  step={1}
+                  step={0.5}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -202,7 +201,7 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
                   onValueChange={setPostFatigue}
                   max={10}
                   min={1}
-                  step={1}
+                  step={0.5}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -236,15 +235,15 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
                     })}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {effectiveness === 5 && "Excellent recovery"}
-                    {effectiveness === 4.5 && "Very good+ recovery"}
-                    {effectiveness === 4 && "Very good recovery"}
-                    {effectiveness === 3.5 && "Good+ recovery"}
-                    {effectiveness === 3 && "Good recovery"}
-                    {effectiveness === 2.5 && "Fair+ recovery"}
-                    {effectiveness === 2 && "Fair recovery"}
-                    {effectiveness === 1.5 && "Minor recovery"}
-                    {effectiveness === 0 && "No improvement"}
+                    {effectiveness === 5 && "Profound recovery effect"}
+                    {effectiveness === 4.5 && "Excellent relief"}
+                    {effectiveness === 4 && "Very strong relief"}
+                    {effectiveness === 3.5 && "Strong relief"}
+                    {effectiveness === 3 && "Moderate relief"}
+                    {effectiveness === 2.5 && "Mild relief"}
+                    {effectiveness === 2 && "Minimal relief"}
+                    {effectiveness === 1 && "Negligible relief"}
+                    {effectiveness === 0 && "No relief or worse"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Based on fatigue improvement ({preFatigue[0]} → {postFatigue[0]})
