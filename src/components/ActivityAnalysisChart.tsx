@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { Activity, Clock, Heart, Zap, BarChart3 } from 'lucide-react';
@@ -12,6 +13,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
+  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp']);
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -31,20 +33,25 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const baseHr = activity.avg_heartrate || 150;
       const baseCadence = isRunning ? 180 : 90;
       const baseSpeed = activity.avg_speed || (isRunning ? 12 : 35);
+      const baseTemp = 22; // Base temperature in Celsius
       
       // Add some variation to make it realistic
       const powerVariation = 0.8 + Math.random() * 0.4;
       const hrVariation = 0.9 + Math.random() * 0.2;
       const cadenceVariation = 0.85 + Math.random() * 0.3;
       const speedVariation = 0.9 + Math.random() * 0.2;
+      const tempVariation = 0.95 + Math.random() * 0.1;
       
       return {
         time: timeFormatted,
         timeSeconds,
         power: Math.round(basePower * powerVariation),
+        powerLeft: Math.round(basePower * powerVariation * 0.52), // Slightly more left
+        powerRight: Math.round(basePower * powerVariation * 0.48), // Slightly less right
         heartRate: Math.round(baseHr * hrVariation),
         cadence: Math.round(baseCadence * cadenceVariation),
         speed: Math.round(baseSpeed * speedVariation * 10) / 10,
+        temperature: Math.round(baseTemp * tempVariation * 10) / 10,
         // Add zone coloring based on power/HR
         zone: Math.min(4, Math.max(1, Math.floor((basePower * powerVariation) / (basePower * 0.25)) + 1))
       };
@@ -127,11 +134,22 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       return (
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{`Time: ${label}`}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
-              {`${entry.name}: ${entry.value}${entry.name === 'Power' ? 'W' : entry.name === 'Heart Rate' ? 'bpm' : entry.name === 'Cadence' ? 'rpm' : 'km/h'}`}
-            </p>
-          ))}
+          {payload.map((entry: any, index: number) => {
+            const getUnit = (name: string) => {
+              if (name === 'Power Left' || name === 'Power Right') return 'W';
+              if (name === 'Heart Rate') return 'bpm';
+              if (name === 'Cadence') return 'rpm';
+              if (name === 'Speed') return 'km/h';
+              if (name === 'Temperature') return '°C';
+              return '';
+            };
+            
+            return (
+              <p key={index} style={{ color: entry.color }}>
+                {`${entry.name}: ${entry.value}${getUnit(entry.name)}`}
+              </p>
+            );
+          })}
         </div>
       );
     }
@@ -162,15 +180,31 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex gap-1">
-            <Badge className="bg-zone-1/20 text-zone-1 border-zone-1/30">RPM</Badge>
-            <Badge className="bg-zone-2/20 text-zone-2 border-zone-2/30">M</Badge>
-            <Badge className="bg-destructive/20 text-destructive border-destructive/30">BPM</Badge>
-            <Badge className="bg-zone-3/20 text-zone-3 border-zone-3/30">W</Badge>
-            <Badge className="bg-zone-4/20 text-zone-4 border-zone-4/30">W</Badge>
-            <Badge className="bg-primary/20 text-primary border-primary/30">KPH</Badge>
-            <Badge className="bg-accent/20 text-accent border-accent/30">C</Badge>
-          </div>
+          <ToggleGroup 
+            type="multiple" 
+            value={visibleMetrics} 
+            onValueChange={setVisibleMetrics}
+            className="flex gap-1"
+          >
+            <ToggleGroupItem value="cadence" className="text-xs px-2 py-1 h-6 bg-zone-1/20 text-zone-1 border-zone-1/30 data-[state=on]:bg-zone-1/40">
+              RPM
+            </ToggleGroupItem>
+            <ToggleGroupItem value="hr" className="text-xs px-2 py-1 h-6 bg-destructive/20 text-destructive border-destructive/30 data-[state=on]:bg-destructive/40">
+              BPM
+            </ToggleGroupItem>
+            <ToggleGroupItem value="wl" className="text-xs px-2 py-1 h-6 bg-zone-3/20 text-zone-3 border-zone-3/30 data-[state=on]:bg-zone-3/40">
+              WL
+            </ToggleGroupItem>
+            <ToggleGroupItem value="wr" className="text-xs px-2 py-1 h-6 bg-zone-4/20 text-zone-4 border-zone-4/30 data-[state=on]:bg-zone-4/40">
+              WR
+            </ToggleGroupItem>
+            <ToggleGroupItem value="speed" className="text-xs px-2 py-1 h-6 bg-primary/20 text-primary border-primary/30 data-[state=on]:bg-primary/40">
+              Speed
+            </ToggleGroupItem>
+            <ToggleGroupItem value="temp" className="text-xs px-2 py-1 h-6 bg-accent/20 text-accent border-accent/30 data-[state=on]:bg-accent/40">
+              C
+            </ToggleGroupItem>
+          </ToggleGroup>
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -233,28 +267,85 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   name="Power"
                 />
                 
-                {/* Heart rate line */}
-                <Line
-                  yAxisId="hr"
-                  type="monotone"
-                  dataKey="heartRate"
-                  stroke="hsl(var(--destructive))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Heart Rate"
-                />
+                {/* Conditionally render Power Left */}
+                {visibleMetrics.includes('wl') && (
+                  <Line
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="powerLeft"
+                    stroke="hsl(var(--zone-3))"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Power Left"
+                  />
+                )}
                 
-                {/* Cadence line */}
-                <Line
-                  yAxisId="power"
-                  type="monotone"
-                  dataKey="cadence"
-                  stroke="hsl(var(--zone-1))"
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                  dot={false}
-                  name="Cadence"
-                />
+                {/* Conditionally render Power Right */}
+                {visibleMetrics.includes('wr') && (
+                  <Line
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="powerRight"
+                    stroke="hsl(var(--zone-4))"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Power Right"
+                  />
+                )}
+                
+                {/* Conditionally render Heart Rate */}
+                {visibleMetrics.includes('hr') && (
+                  <Line
+                    yAxisId="hr"
+                    type="monotone"
+                    dataKey="heartRate"
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Heart Rate"
+                  />
+                )}
+                
+                {/* Conditionally render Cadence */}
+                {visibleMetrics.includes('cadence') && (
+                  <Line
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="cadence"
+                    stroke="hsl(var(--zone-1))"
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                    dot={false}
+                    name="Cadence"
+                  />
+                )}
+                
+                {/* Conditionally render Speed */}
+                {visibleMetrics.includes('speed') && (
+                  <Line
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="speed"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                    dot={false}
+                    name="Speed"
+                  />
+                )}
+                
+                {/* Conditionally render Temperature */}
+                {visibleMetrics.includes('temp') && (
+                  <Line
+                    yAxisId="hr"
+                    type="monotone"
+                    dataKey="temperature"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={1}
+                    dot={false}
+                    name="Temperature"
+                  />
+                )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
