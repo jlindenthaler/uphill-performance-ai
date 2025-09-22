@@ -27,6 +27,8 @@ const Index = () => {
     switch (activeSection) {
       case 'dashboard':
         return <Dashboard onNavigate={handleSectionChange} />;
+      case 'activities':
+        return <Activities />;
       case 'lab-results':
         return <LabResults openAddDialog={openLabDialog} />;
       case 'calendar':
