@@ -108,9 +108,6 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
             </DialogTitle>
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{activity.sport_mode}</Badge>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>
