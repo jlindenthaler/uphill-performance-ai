@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useActivities } from '@/hooks/useActivities';
@@ -85,10 +85,14 @@ export function Activities() {
   };
 
   const handleUploadSuccess = (activityId?: string) => {
+    // Close the modal immediately
     setUploadModalOpen(false);
+    
     if (activityId) {
-      // Expand the newly uploaded activity
-      setExpandedActivity(activityId);
+      // Expand the newly uploaded activity after a brief delay to ensure data is loaded
+      setTimeout(() => {
+        setExpandedActivity(activityId);
+      }, 500);
     }
   };
 
@@ -482,6 +486,9 @@ export function Activities() {
               <Upload className="w-5 h-5" />
               Upload Activity
             </DialogTitle>
+            <DialogDescription>
+              Upload your training activity files (GPX, TCX, or FIT) to analyze and track your performance.
+            </DialogDescription>
           </DialogHeader>
           <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
         </DialogContent>

@@ -113,6 +113,8 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
         // Clear completed uploads after 2 seconds
         setTimeout(() => {
           setUploadingFiles(prev => prev.filter(item => item.file !== file));
+          // Trigger a window event to refresh activities
+          window.dispatchEvent(new CustomEvent('activity-uploaded'));
         }, 2000);
 
       } catch (error) {
