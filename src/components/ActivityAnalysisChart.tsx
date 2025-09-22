@@ -59,7 +59,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const speedKmh = point.speed ? (point.speed * 3.6) : 0;
       
       // Handle power balance (convert to percentage if available)
-      const leftRightBalance = point.left_right_balance ? (point.left_right_balance / 255 * 100) : 50;
+      const leftRightBalance = point.leftRightBalance ? (point.leftRightBalance / 255 * 100) : 50;
       
       return {
         time: timeFormatted,
@@ -68,7 +68,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         timeSeconds: timeElapsed,
         distanceMeters: cumulativeDistance,
         cadence: point.cadence || 0,
-        heartRate: point.heart_rate || 0,
+        heartRate: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
         wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
         speed: Math.round(speedKmh * 10) / 10,
