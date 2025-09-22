@@ -21,17 +21,25 @@ interface RecoveryTool {
 interface RecoverySessionModalProps {
   recoveryTools: RecoveryTool[];
   onSessionSaved: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 const MUSCLE_GROUPS = ['Quadriceps', 'Hamstrings', 'Glutes', 'Calves', 'Hip Flexors', 'Core', 'Lower Back', 'Upper Back', 'Shoulders', 'Arms', 'Chest', 'Neck', 'IT Band', 'Achilles', 'Plantar Fascia'];
 export function RecoverySessionModal({
   recoveryTools,
-  onSessionSaved
+  onSessionSaved,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }: RecoverySessionModalProps) {
   const {
     user
   } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   // Form state
   const [duration, setDuration] = useState(30);
