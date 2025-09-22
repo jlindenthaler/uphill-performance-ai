@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, TrendingUp, Zap, RefreshCw, ExternalLink, Calendar, Bike, PersonStanding, Waves } from "lucide-react";
-import { useAIAnalysis } from "@/hooks/useSupabase";
 import { useSportMode } from "@/contexts/SportModeContext";
 
 interface ResearchUpdate {
@@ -26,7 +25,6 @@ export function ResearchUpdates() {
   const [updates, setUpdates] = useState<ResearchUpdate[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const { fetchResearchUpdates } = useAIAnalysis();
   const { sportMode } = useSportMode();
 
   const mockUpdates: ResearchUpdate[] = [

@@ -1,11 +1,5 @@
 project_id = "srwuprrcbfuzvkehvgyt"
 
-[functions.ai-training-analysis]
-verify_jwt = true
-
-[functions.fit-parser]
-verify_jwt = true
-
 [functions.get-mapbox-token]
 verify_jwt = false
 

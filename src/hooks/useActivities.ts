@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth, useAIAnalysis } from './useSupabase';
+import { useAuth } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
 
@@ -71,29 +71,10 @@ export function useActivities() {
   const uploadActivity = async (file: File, activityName?: string) => {
     if (!user) throw new Error('User not authenticated');
 
-    console.log('Starting upload activity process for:', file.name);
+    console.log('Starting basic file upload for:', file.name);
     setLoading(true);
     try {
-      // Parse FIT file client-side
-      let parsedData;
-      if (file.name.toLowerCase().endsWith('.fit')) {
-        console.log('Parsing FIT file client-side...');
-        try {
-          const { parseFitFile } = await import('@/utils/fitParser');
-          parsedData = await parseFitFile(file);
-          console.log('Client-side FIT parsing successful:', parsedData);
-        } catch (error) {
-          console.error('Client-side FIT parsing failed, using fallback:', error);
-          const { generateFallbackData } = await import('@/utils/fitParser');
-          parsedData = generateFallbackData(file);
-        }
-      } else {
-        console.log('Non-FIT file, generating fallback data');
-        const { generateFallbackData } = await import('@/utils/fitParser');
-        parsedData = generateFallbackData(file);
-      }
-
-      // Upload file to storage
+      // Upload file to storage only
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
       console.log('Uploading file to storage:', fileName);
       const { error: uploadError } = await supabase.storage
@@ -103,30 +84,31 @@ export function useActivities() {
       if (uploadError) throw uploadError;
       console.log('File uploaded to storage successfully');
 
-      // Prepare activity data
+      // Create basic activity record
       const activityData = {
-        ...parsedData,
-        name: activityName || parsedData.name || file.name.replace(/\.[^/.]+$/, ""),
+        name: activityName || file.name.replace(/\.[^/.]+$/, ""),
+        sport_mode: sportMode,
+        date: new Date().toISOString().split('T')[0],
+        duration_seconds: 0, // User will need to fill this manually
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),
-        original_filename: file.name,
-        sport_mode: sportMode
+        original_filename: file.name
       };
 
-      console.log('Saving activity data:', activityData);
-      const { data: saveResult, error: saveError } = await supabase.functions
-        .invoke('fit-parser', {
-          body: {
-            action: 'save_activity',
-            activityData
-          }
-        });
+      console.log('Saving basic activity data:', activityData);
+      const { data: savedActivity, error: saveError } = await supabase
+        .from('activities')
+        .insert({
+          ...activityData,
+          user_id: user.id,
+        })
+        .select()
+        .single();
 
       if (saveError) throw saveError;
 
-      // Return the saved activity data
-      console.log('Activity saved successfully:', saveResult);
-      return saveResult;
+      console.log('Activity saved successfully:', savedActivity);
+      return savedActivity;
     } catch (error) {
       console.error('Error uploading activity:', error);
       throw error;

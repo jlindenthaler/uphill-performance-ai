@@ -125,32 +125,3 @@ export function usePhysiologyData() {
     getPhysiologyData
   }
 }
-
-export function useAIAnalysis() {
-  const callAIFunction = async (action: string, data?: any) => {
-    const { data: result, error } = await supabase.functions.invoke(
-      'ai-training-analysis',
-      {
-        body: { action, data }
-      }
-    )
-
-    if (error) throw error
-    return result
-  }
-
-  return {
-    calculateZones: (physiologyData: any) => 
-      callAIFunction('calculate_zones', physiologyData),
-    analyzePerformance: () => 
-      callAIFunction('analyze_performance'),
-    recommendWorkout: (preferences: any) => 
-      callAIFunction('recommend_workout', preferences),
-    adjustTrainingLoad: (feedback: any) => 
-      callAIFunction('adjust_training_load', feedback),
-    fetchResearchUpdates: () =>
-      callAIFunction('fetch_research_updates'),
-    calculateMetabolicMetrics: (data?: any) =>
-      callAIFunction('calculate_metabolic_metrics', data)
-  }
-}
