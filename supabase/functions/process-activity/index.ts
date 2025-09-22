@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +27,21 @@ interface ActivityData {
   gps_data?: any;
   lap_data?: any;
   notes?: string;
+}
+
+// Safe calculation helpers
+function safeCalculateSpeed(distanceMeters: number, durationSeconds: number): number {
+  if (!distanceMeters || !durationSeconds || durationSeconds <= 0) {
+    return 0;
+  }
+  return Number(((distanceMeters / 1000) / (durationSeconds / 3600)).toFixed(2));
+}
+
+function safeCalculateTSS(durationSeconds: number, avgPower: number, ftp: number = 250): number {
+  if (!durationSeconds || !avgPower || durationSeconds <= 0 || ftp <= 0) {
+    return 0;
+  }
+  return Math.floor((durationSeconds / 3600) * (avgPower / ftp) * 100);
 }
 
 // Simplified FIT file data extraction without external dependencies
@@ -58,9 +73,9 @@ async function extractBasicFitData(arrayBuffer: ArrayBuffer): Promise<Partial<Ac
     data.max_power = 350 + Math.floor(Math.random() * 150); // 350-500W
     data.avg_heart_rate = 140 + Math.floor(Math.random() * 30); // 140-170
     data.max_heart_rate = 170 + Math.floor(Math.random() * 25); // 170-195
-    data.avg_speed_kmh = (data.distance_meters / 1000) / (estimatedDuration / 3600); // Calculate speed
+    data.avg_speed_kmh = safeCalculateSpeed(data.distance_meters || 0, data.duration_seconds || 1);
     data.calories = Math.floor(estimatedDuration * 0.75); // Rough calorie estimate
-    data.tss = Math.floor((estimatedDuration / 3600) * ((data.avg_power || 200) / 250) * 100); // Basic TSS
+    data.tss = safeCalculateTSS(data.duration_seconds || 0, data.avg_power || 200); // Basic TSS
     
     console.log('Extracted FIT data:', data);
     
@@ -85,9 +100,9 @@ function generateSampleData(): Partial<ActivityData> {
     max_power: 350 + Math.floor(Math.random() * 150), // 350-500W
     avg_heart_rate: 140 + Math.floor(Math.random() * 30), // 140-170
     max_heart_rate: 170 + Math.floor(Math.random() * 25), // 170-195
-    avg_speed_kmh: (distance / 1000) / (duration / 3600), // Calculate speed
+    avg_speed_kmh: safeCalculateSpeed(distance, duration),
     calories: Math.floor(duration * 0.75), // Rough calorie estimate
-    tss: Math.floor((duration / 3600) * (avgPower / 250) * 100), // Basic TSS calculation
+    tss: safeCalculateTSS(duration, avgPower),
   };
 }
 
@@ -158,9 +173,9 @@ serve(async (req) => {
         max_power: 350 + Math.floor(Math.random() * 150), // 350-500W
         avg_heart_rate: 140 + Math.floor(Math.random() * 30), // 140-170 HR
         max_heart_rate: 170 + Math.floor(Math.random() * 25), // 170-195 HR
-        avg_speed_kmh: (distance / 1000) / (duration / 3600), // Calculate speed from distance/time
+        avg_speed_kmh: safeCalculateSpeed(distance, duration),
         calories: Math.floor(duration * 0.75), // Rough calorie estimate
-        tss: Math.floor((duration / 3600) * (avgPower / 250) * 100), // Basic TSS calculation
+        tss: safeCalculateTSS(duration, avgPower),
       };
 
       // If it's a FIT file, try to extract some real data
