@@ -88,6 +88,9 @@ export function WorkoutDetailModal({ workout, open, onClose }: WorkoutDetailModa
                   Zone {zone}
                 </Badge>
               ))}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </DialogHeader>
