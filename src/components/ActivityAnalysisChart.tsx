@@ -73,7 +73,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
-        elevation: point.altitude || 0,
+        elevation: Math.round((point.altitude || 0) * 10) / 10,
         power: point.power || 0,
         balance: leftRightBalance
       };
