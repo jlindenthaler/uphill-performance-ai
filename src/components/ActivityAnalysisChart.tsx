@@ -13,7 +13,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp', 'elevation']);
+  const [visibleMetrics, setVisibleMetrics] = useState<string[]>([]);
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
