@@ -3,7 +3,7 @@ project_id = "srwuprrcbfuzvkehvgyt"
 [functions.ai-training-analysis]
 verify_jwt = true
 
-[functions.process-activity]
+[functions.fit-parser]
 verify_jwt = true
 
 [functions.get-mapbox-token]

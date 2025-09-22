@@ -50,10 +50,6 @@ export function Activities() {
     return `${kmh.toFixed(1)} km/h`;
   };
 
-  const calculateSpeed = (distanceMeters?: number, durationSeconds?: number) => {
-    if (!distanceMeters || !durationSeconds || durationSeconds === 0) return undefined;
-    return (distanceMeters / 1000) / (durationSeconds / 3600); // km/h
-  };
 
   const formatPace = (pacePerKm?: number) => {
     if (!pacePerKm) return 'N/A';
@@ -67,20 +63,6 @@ export function Activities() {
     return `${Math.round(watts)}W`;
   };
 
-  const calculateTSS = (durationSeconds?: number, avgPower?: number, ftp: number = 250) => {
-    if (!durationSeconds || !avgPower || durationSeconds <= 0 || ftp <= 0) return undefined;
-    return Math.floor((durationSeconds / 3600) * (avgPower / ftp) * 100);
-  };
-
-  const calculateCalories = (durationSeconds?: number, avgPower?: number) => {
-    if (!durationSeconds) return undefined;
-    if (avgPower) {
-      // More accurate calculation for cycling with power
-      return Math.floor(durationSeconds * 0.75 + (avgPower * durationSeconds) / 1000);
-    }
-    // Basic calculation for activities without power
-    return Math.floor(durationSeconds * 0.75);
-  };
 
   const getSportIcon = (sport: string) => {
     switch (sport) {
@@ -169,7 +151,7 @@ export function Activities() {
           <CardContent className="p-4 text-center">
             <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
             <div className="text-2xl font-bold">
-              {formatSpeed(activity.avg_speed_kmh || calculateSpeed(activity.distance_meters, activity.duration_seconds))}
+              {formatSpeed(activity.avg_speed_kmh)}
             </div>
             <div className="text-sm text-muted-foreground">Avg Speed</div>
           </CardContent>
@@ -241,18 +223,12 @@ export function Activities() {
               </div>
             )}
             
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Calories</span>
-              <span className="font-medium">
-                {activity.calories ? 
-                  `${activity.calories} kcal` : 
-                  (calculateCalories(activity.duration_seconds, activity.avg_power) ? 
-                    `~${calculateCalories(activity.duration_seconds, activity.avg_power)} kcal` : 
-                    'N/A'
-                  )
-                }
-              </span>
-            </div>
+            {activity.calories && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Calories</span>
+                <span className="font-medium">{activity.calories} kcal</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -265,13 +241,7 @@ export function Activities() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Training Stress Score</span>
               <span className="font-medium">
-                {activity.tss ? 
-                  Math.round(activity.tss) : 
-                  (calculateTSS(activity.duration_seconds, activity.avg_power) ? 
-                    `~${calculateTSS(activity.duration_seconds, activity.avg_power)}` : 
-                    'N/A'
-                  )
-                }
+                {activity.tss ? Math.round(activity.tss) : 'N/A'}
               </span>
             </div>
             
@@ -469,7 +439,7 @@ export function Activities() {
                                   <span className="text-xs font-medium">Avg Speed</span>
                                 </div>
                                 <div className="font-bold text-sm text-zone-2">
-                                  {formatSpeed(activity.avg_speed_kmh || calculateSpeed(activity.distance_meters, activity.duration_seconds))}
+                                  {activity.avg_speed_kmh ? formatSpeed(activity.avg_speed_kmh) : 'N/A'}
                                 </div>
                               </div>
                             </>

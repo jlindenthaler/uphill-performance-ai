@@ -84,10 +84,10 @@ export function useActivities() {
       if (uploadError) throw uploadError;
       console.log('File uploaded to storage successfully');
 
-      // Process the file
+      // Process the file with new FIT parser edge function
       console.log('Processing file with edge function...');
       const { data: processResult, error: processError } = await supabase.functions
-        .invoke('process-activity', {
+        .invoke('fit-parser', {
           body: {
             action: 'process_file',
             filePath: fileName
@@ -99,8 +99,8 @@ export function useActivities() {
 
       // Save the activity
       const activityData = {
-        ...processResult.data,
-        name: activityName || processResult.data.name || file.name.replace(/\.[^/.]+$/, ""),
+        ...processResult,
+        name: activityName || processResult.name || file.name.replace(/\.[^/.]+$/, ""),
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),
         original_filename: file.name,
@@ -109,19 +109,16 @@ export function useActivities() {
 
       console.log('Saving activity data:', activityData);
       const { data: saveResult, error: saveError } = await supabase.functions
-        .invoke('process-activity', {
+        .invoke('fit-parser', {
           body: {
             action: 'save_activity',
             activityData
           }
         });
 
-      if (saveError) throw saveError;
+      // Return the saved activity data
       console.log('Activity saved successfully:', saveResult);
-
-      // Don't refresh immediately here - let the event handler do it with proper timing
-      console.log('Activity upload complete, returning data');
-      return saveResult.activity;
+      return saveResult;
     } catch (error) {
       console.error('Error uploading activity:', error);
       throw error;
