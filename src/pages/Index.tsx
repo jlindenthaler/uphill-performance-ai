@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
 import { PhysiologyDashboard } from "@/components/PhysiologyDashboard";
+import { LabResults } from "@/components/LabResults";
 import { WorkoutLibrary } from "@/components/WorkoutLibrary";
 import { AnalysisDashboard } from "@/components/AnalysisDashboard";
 import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
-import { TrainingCalendar } from "@/components/TrainingCalendar";
+import { EnhancedTrainingCalendar } from "@/components/EnhancedTrainingCalendar";
 import { Activities } from "@/components/Activities";
 import { Goals } from "@/components/Goals";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -17,16 +18,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveSection} />;
-      case 'physiology':
-        return <PhysiologyDashboard />;
+      case 'lab-results':
+        return <LabResults />;
       case 'calendar':
-        return <TrainingCalendar />;
+        return <EnhancedTrainingCalendar />;
       case 'activities':
         return <Activities />;
       case 'workouts':
@@ -85,10 +87,12 @@ const Index = () => {
       ) : (
         <>
           {/* Desktop Sidebar */}
-          <div className="w-64 bg-card border-r border-border">
+          <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-border transition-all duration-300 ease-in-out`}>
             <Navigation 
               activeSection={activeSection}
               onSectionChange={setActiveSection}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
             />
           </div>
 

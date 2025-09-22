@@ -184,6 +184,17 @@ export function useActivities() {
     if (user) {
       fetchActivities();
     }
+    
+    // Listen for activity upload events
+    const handleActivityUploaded = () => {
+      fetchActivities();
+    };
+    
+    window.addEventListener('activity-uploaded', handleActivityUploaded);
+    
+    return () => {
+      window.removeEventListener('activity-uploaded', handleActivityUploaded);
+    };
   }, [user, sportMode]);
 
   return {
