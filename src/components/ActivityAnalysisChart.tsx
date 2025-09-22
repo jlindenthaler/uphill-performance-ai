@@ -32,17 +32,15 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         (new Date(point.timestamp).getTime() - new Date(startTime).getTime()) / 1000 : 
         index;
 
-      // Calculate cumulative distance
-      if (index > 0) {
+      // Calculate cumulative distance by integrating speed over time
+      if (index > 0 && point.speed) {
         const prevPoint = trackPoints[index - 1];
-        if (point.position_lat && point.position_long && prevPoint.position_lat && prevPoint.position_long) {
-          // Simple distance calculation (for better accuracy, use Haversine formula)
-          const distanceDelta = Math.sqrt(
-            Math.pow(point.position_lat - prevPoint.position_lat, 2) + 
-            Math.pow(point.position_long - prevPoint.position_long, 2)
-          ) * 111320; // Rough conversion to meters
-          cumulativeDistance += distanceDelta;
-        }
+        const timeInterval = point.timestamp && prevPoint.timestamp ? 
+          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+        
+        // Use speed (m/s) * time (s) = distance (m)
+        const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
+        cumulativeDistance += avgSpeed * timeInterval;
       }
 
       const hours = Math.floor(timeElapsed / 3600);
@@ -61,7 +59,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const speedKmh = point.speed ? (point.speed * 3.6) : 0;
       
       // Handle power balance (convert to percentage if available)
-      const leftRightBalance = point.leftRightBalance ? (point.leftRightBalance / 255 * 100) : 50;
+      const leftRightBalance = point.left_right_balance ? (point.left_right_balance / 255 * 100) : 50;
       
       return {
         time: timeFormatted,
@@ -70,13 +68,14 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         timeSeconds: timeElapsed,
         distanceMeters: cumulativeDistance,
         cadence: point.cadence || 0,
-        hr: point.heartRate || 0,
+        heartRate: point.heart_rate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
         wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: point.altitude || 0,
-        power: point.power || 0
+        power: point.power || 0,
+        balance: leftRightBalance
       };
     });
   }, [activity, xAxisMode]);
@@ -163,7 +162,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     if (active && payload && payload.length) {
       return (
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{`Time: ${label}`}</p>
+          <p className="font-medium">{`${xAxisMode === 'time' ? 'Time' : 'Distance'}: ${label}`}</p>
           {payload.map((entry: any, index: number) => {
             const getUnit = (name: string) => {
               if (name === 'Power') return 'W';
