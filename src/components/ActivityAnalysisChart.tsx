@@ -191,25 +191,25 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
             onValueChange={setVisibleMetrics}
             className="flex gap-1"
           >
-            <ToggleGroupItem value="cadence" className="text-xs px-2 py-1 h-6 bg-zone-1/20 text-zone-1 border-zone-1/30 data-[state=on]:bg-zone-1/40">
+            <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
               RPM
             </ToggleGroupItem>
-            <ToggleGroupItem value="hr" className="text-xs px-2 py-1 h-6 bg-destructive/20 text-destructive border-destructive/30 data-[state=on]:bg-destructive/40">
+            <ToggleGroupItem value="hr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all">
               BPM
             </ToggleGroupItem>
-            <ToggleGroupItem value="wl" className="text-xs px-2 py-1 h-6 bg-zone-3/20 text-zone-3 border-zone-3/30 data-[state=on]:bg-zone-3/40">
+            <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
               Power
             </ToggleGroupItem>
-            <ToggleGroupItem value="wr" className="text-xs px-2 py-1 h-6 bg-zone-4/20 text-zone-4 border-zone-4/30 data-[state=on]:bg-zone-4/40">
+            <ToggleGroupItem value="wr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-4/10 text-zone-4 border border-zone-4/20 hover:bg-zone-4/20 data-[state=on]:bg-zone-4 data-[state=on]:text-white shadow-sm transition-all">
               L:R
             </ToggleGroupItem>
-            <ToggleGroupItem value="speed" className="text-xs px-2 py-1 h-6 bg-primary/20 text-primary border-primary/30 data-[state=on]:bg-primary/40">
+            <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
               Speed
             </ToggleGroupItem>
-            <ToggleGroupItem value="temp" className="text-xs px-2 py-1 h-6 bg-accent/20 text-accent border-accent/30 data-[state=on]:bg-accent/40">
+            <ToggleGroupItem value="temp" className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all">
               C
             </ToggleGroupItem>
-            <ToggleGroupItem value="elevation" className="text-xs px-2 py-1 h-6 bg-muted/20 text-muted-foreground border-muted/30 data-[state=on]:bg-muted/40">
+            <ToggleGroupItem value="elevation" className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all">
               Elev
             </ToggleGroupItem>
           </ToggleGroup>
