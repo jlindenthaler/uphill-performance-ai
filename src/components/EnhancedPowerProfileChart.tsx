@@ -235,7 +235,7 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center gap-1 mb-2">
                 <Clock className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{formatDuration(parseInt(effort.duration.toString()))}</span>
+                <span className="text-xs text-muted-foreground">{effort.duration}</span>
               </div>
               <div className="text-xl font-bold">{formatValue(effort.best)}</div>
               <Badge variant="outline" className="text-xs mt-1">
