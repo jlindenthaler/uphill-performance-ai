@@ -1,4 +1,4 @@
-import { FitParser, FitActivity, FitSession, FitRecord, FitLap } from '@garmin/fitsdk';
+import { Decoder, Stream, Profile, Utils } from '@garmin/fitsdk';
 
 export interface ParsedActivityData {
   name?: string;
@@ -59,10 +59,24 @@ export function parseFitFile(file: File): Promise<ParsedActivityData> {
         }
 
         console.log('Parsing FIT file:', file.name);
-        const fitParser = new FitParser();
-        const messages = fitParser.parse(new Uint8Array(buffer));
         
-        console.log('FIT messages parsed:', messages.length);
+        // Create stream from buffer
+        const stream = Stream.fromByteArray(new Uint8Array(buffer));
+        
+        // Create decoder and check if valid FIT file
+        const decoder = new Decoder(stream);
+        if (!decoder.isFIT()) {
+          throw new Error('File is not a valid FIT file');
+        }
+        
+        // Read messages from the FIT file
+        const { messages, errors } = decoder.read();
+        
+        if (errors.length > 0) {
+          console.warn('FIT parsing errors:', errors);
+        }
+        
+        console.log('FIT messages parsed:', Object.keys(messages));
         
         // Extract activity data
         const activityData = extractActivityData(messages);
@@ -84,68 +98,58 @@ export function parseFitFile(file: File): Promise<ParsedActivityData> {
   });
 }
 
-function extractActivityData(messages: any[]): ParsedActivityData {
-  let sessionData: any = null;
-  let activityData: any = null;
-  let records: any[] = [];
-  let laps: any[] = [];
+function extractActivityData(messages: any): ParsedActivityData {
+  console.log('Available message types:', Object.keys(messages));
   
-  // Parse different message types
-  messages.forEach(message => {
-    switch (message.messageType) {
-      case 'session':
-        sessionData = message;
-        break;
-      case 'activity':
-        activityData = message;
-        break;
-      case 'record':
-        records.push(message);
-        break;
-      case 'lap':
-        laps.push(message);
-        break;
-    }
-  });
-
-  console.log('Session data:', sessionData);
-  console.log('Activity data:', activityData);
-  console.log('Records count:', records.length);
-  console.log('Laps count:', laps.length);
-
-  // Use session data as primary source, fall back to activity data
-  const primaryData = sessionData || activityData || {};
+  // Get messages by type - Garmin SDK groups messages by type
+  const sessionMessages = messages.session || [];
+  const activityMessages = messages.activity || [];
+  const recordMessages = messages.record || [];
+  const lapMessages = messages.lap || [];
   
+  console.log('Session messages:', sessionMessages.length);
+  console.log('Activity messages:', activityMessages.length);
+  console.log('Record messages:', recordMessages.length);
+  console.log('Lap messages:', lapMessages.length);
+
+  // Use the first session as primary data source
+  const sessionData = sessionMessages[0] || {};
+  const activityData = activityMessages[0] || {};
+  
+  console.log('Session data sample:', sessionData);
+  console.log('Activity data sample:', activityData);
+
   // Determine sport mode
-  const sport = primaryData.sport || primaryData.subSport || 2; // Default to cycling
+  const sport = sessionData.sport || sessionData.subSport || activityData.sport || 2;
   const sportMode = SPORT_MAPPING[sport] || 'cycling';
   
-  // Calculate basic metrics
-  const duration = primaryData.totalTimerTime || primaryData.totalElapsedTime || 0;
-  const distance = primaryData.totalDistance || 0;
-  const calories = primaryData.totalCalories || 0;
+  // Calculate basic metrics from session data
+  const duration = sessionData.totalTimerTime || sessionData.totalElapsedTime || 0;
+  const distance = sessionData.totalDistance || 0;
+  const calories = sessionData.totalCalories || 0;
   
   // Power metrics
-  const avgPower = primaryData.avgPower || null;
-  const maxPower = primaryData.maxPower || null;
-  const normalizedPower = primaryData.normalizedPower || calculateNormalizedPower(records);
+  const avgPower = sessionData.avgPower || null;
+  const maxPower = sessionData.maxPower || null;
+  const normalizedPower = sessionData.normalizedPower || calculateNormalizedPower(recordMessages);
   
-  // Heart rate metrics
-  const avgHeartRate = primaryData.avgHeartRate || null;
-  const maxHeartRate = primaryData.maxHeartRate || null;
+  // Heart rate metrics  
+  const avgHeartRate = sessionData.avgHeartRate || null;
+  const maxHeartRate = sessionData.maxHeartRate || null;
   
   // Speed and pace calculations
-  const avgSpeed = duration > 0 && distance > 0 ? (distance / duration) * 3.6 : null; // km/h
-  const avgPace = avgSpeed ? (1000 / (avgSpeed * 1000 / 3600)) : null; // seconds per km
+  const avgSpeed = sessionData.avgSpeed ? sessionData.avgSpeed * 3.6 : 
+                   (duration > 0 && distance > 0 ? (distance / duration) * 3.6 : null);
+  const avgPace = avgSpeed ? (1000 / (avgSpeed * 1000 / 3600)) : null;
   
   // Elevation gain
-  const elevationGain = primaryData.totalAscent || calculateElevationGain(records);
+  const elevationGain = sessionData.totalAscent || calculateElevationGain(recordMessages);
   
-  // GPS data
-  const gpsData = extractGPSData(records);
+  // GPS data from record messages
+  const gpsData = extractGPSData(recordMessages);
   
   // Lap data
-  const lapData = laps.length > 0 ? laps : null;
+  const lapData = lapMessages.length > 0 ? lapMessages : null;
   
   // Calculate training metrics
   const tss = calculateTSS(normalizedPower, duration);
@@ -153,7 +157,8 @@ function extractActivityData(messages: any[]): ParsedActivityData {
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
   // Get activity timestamp
-  const timestamp = primaryData.startTime || activityData?.timestamp || new Date();
+  const timestamp = sessionData.startTime || sessionData.timestamp || 
+                   activityData.timestamp || activityData.timeCreated || new Date();
   const activityDate = new Date(timestamp).toISOString().split('T')[0];
   
   return {
