@@ -11,6 +11,7 @@ import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { usePMCPopulation } from "@/hooks/usePMCPopulation";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { ActivityAnalysisChart } from "./ActivityAnalysisChart";
 import { useState, useMemo } from "react";
 
 export function AnalysisDashboard() {
@@ -110,9 +111,10 @@ export function AnalysisDashboard() {
       </div>
 
       <Tabs defaultValue="pmc" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="pmc">PMC Chart</TabsTrigger>
           <TabsTrigger value="power">{isRunning ? 'Pace Profile' : 'Power Profile'}</TabsTrigger>
+          <TabsTrigger value="activity">Activity Analysis</TabsTrigger>
           <TabsTrigger value="metabolic">Metabolic</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="analysis">Overview</TabsTrigger>
@@ -261,6 +263,10 @@ export function AnalysisDashboard() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-6">
+          <ActivityAnalysisChart activity={null} />
         </TabsContent>
 
         <TabsContent value="metabolic" className="space-y-6">
