@@ -86,14 +86,14 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
   }, [powerProfile, dateRange]);
 
   const chartData = useMemo(() => {
-    const durations = ['5s', '1min', '5min', '20min', '60min'];
+    const durations = ['1s', '5s', '10s', '20s', '1min', '5min', '10min', '20min', '60min'];
     return durations.map((duration, index) => {
       const profileItem = filteredPowerProfile.find(item => item.duration === duration);
       const activityItem = activityMeanMax.find(item => item.duration === duration);
       
       return {
         duration,
-        durationLabel: formatDuration([5, 60, 300, 1200, 3600][index]),
+        durationLabel: formatDuration([1, 5, 10, 20, 60, 300, 600, 1200, 3600][index]),
         allTimeBest: profileItem?.best || 0,
         rangeFiltered: profileItem?.current || 0,
         activityMeanMax: activityItem?.activityMeanMax || 0,
