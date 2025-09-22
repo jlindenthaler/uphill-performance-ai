@@ -21,15 +21,6 @@ interface AppSettings {
   privacy_mode: boolean;
 }
 
-interface ExternalConnection {
-  id: string;
-  provider: 'strava' | 'trainingpeaks' | 'garmin' | 'zwift' | 'trainerroad' | 'mywhoosh';
-  provider_user_id?: string;
-  is_active: boolean;
-  last_sync?: string;
-  sync_settings: Record<string, any>;
-}
-
 export function useUserProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -94,6 +85,41 @@ export function useUserProfile() {
     }
   };
 
+  const uploadAvatar = async (file: File): Promise<string> => {
+    if (!user) throw new Error('User not authenticated')
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/${Math.random()}.${fileExt}`
+    const filePath = fileName
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file)
+
+    if (uploadError) throw uploadError
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+    
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .upsert({ 
+        user_id: user.id, 
+        avatar_url: data.publicUrl 
+      }, {
+        onConflict: 'user_id'
+      })
+
+    if (updateError) throw updateError
+
+    await fetchProfile()
+    toast({
+      title: "Avatar updated successfully",
+      description: "Your profile picture has been updated.",
+    })
+
+    return data.publicUrl
+  }
+
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -126,6 +152,7 @@ export function useUserProfile() {
     loading,
     updateProfile,
     resetPassword,
+    uploadAvatar,
     refetchProfile: fetchProfile
   };
 }
@@ -223,121 +250,5 @@ export function useAppSettings() {
     loading,
     updateSettings,
     refetchSettings: fetchSettings
-  };
-}
-
-export function useExternalConnections() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [connections, setConnections] = useState<ExternalConnection[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchConnections = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('external_connections')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      
-      setConnections(data?.map(item => ({
-        id: item.id,
-        provider: item.provider as ExternalConnection['provider'],
-        provider_user_id: item.provider_user_id || undefined,
-        is_active: item.is_active,
-        last_sync: item.last_sync || undefined,
-        sync_settings: (item.sync_settings as Record<string, any>) || {}
-      })) || []);
-    } catch (error) {
-      console.error('Error fetching connections:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const connectProvider = async (provider: ExternalConnection['provider']) => {
-    // This would initiate OAuth flow in a real implementation
-    toast({
-      title: "Connect " + provider,
-      description: "OAuth integration coming soon. This will redirect to " + provider + " for authorization.",
-    });
-  };
-
-  const disconnectProvider = async (provider: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('external_connections')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('provider', provider);
-
-      if (error) throw error;
-
-      setConnections(prev => prev.filter(conn => conn.provider !== provider));
-      toast({
-        title: "Disconnected",
-        description: `Successfully disconnected from ${provider}.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateConnectionSettings = async (provider: string, settings: Record<string, any>) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('external_connections')
-        .update({ sync_settings: settings })
-        .eq('user_id', user.id)
-        .eq('provider', provider);
-
-      if (error) throw error;
-
-      setConnections(prev => 
-        prev.map(conn => 
-          conn.provider === provider 
-            ? { ...conn, sync_settings: settings }
-            : conn
-        )
-      );
-
-      toast({
-        title: "Settings updated",
-        description: `${provider} sync settings have been updated.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchConnections();
-    }
-  }, [user]);
-
-  return {
-    connections,
-    loading,
-    connectProvider,
-    disconnectProvider,
-    updateConnectionSettings,
-    refetchConnections: fetchConnections
   };
 }

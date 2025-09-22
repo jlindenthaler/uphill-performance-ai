@@ -8,6 +8,8 @@ import { ExternalLink, BookOpen, Target, Clock, Zap, Search, Filter, Download } 
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useState } from "react";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { useWorkouts } from "@/hooks/useWorkouts";
+import { useToast } from "@/hooks/use-toast";
 
 interface WorkoutData {
   id: string;
@@ -165,11 +167,87 @@ export function WorkoutLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const { sportMode } = useSportMode();
+  const { saveWorkout, scheduleWorkout, exportWorkout } = useWorkouts();
+  const { toast } = useToast();
 
-  // Filter workouts by sport
-  const sportSpecificWorkouts = workouts.filter(workout => 
-    workout.sport === sportMode || workout.sport === 'all'
-  );
+  const handleExportWorkout = (workout: WorkoutData) => {
+    exportWorkout({
+      name: workout.name,
+      description: workout.description,
+      structure: {
+        warmup: workout.structure.warmup,
+        mainSet: workout.structure.mainSet,
+        cooldown: workout.structure.cooldown,
+        intervals: workout.intervals
+      },
+      duration_minutes: workout.duration,
+      tss: workout.tss
+    });
+    toast({
+      title: "Workout exported",
+      description: `${workout.name} has been downloaded as JSON`,
+    });
+  };
+
+  const handleAddToCalendar = async (workout: WorkoutData) => {
+    try {
+      const scheduledDate = new Date();
+      scheduledDate.setDate(scheduledDate.getDate() + 1); // Schedule for tomorrow
+      
+      await saveWorkout({
+        name: workout.name,
+        description: workout.description,
+        structure: {
+          warmup: workout.structure.warmup,
+          mainSet: workout.structure.mainSet,
+          cooldown: workout.structure.cooldown,
+          intervals: workout.intervals
+        },
+        duration_minutes: workout.duration,
+        tss: workout.tss,
+        scheduled_date: scheduledDate.toISOString()
+      });
+      
+      toast({
+        title: "Added to calendar",
+        description: `${workout.name} scheduled for tomorrow`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add workout to calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateWorkout = async (workout: WorkoutData) => {
+    try {
+      await saveWorkout({
+        name: workout.name,
+        description: workout.description,
+        structure: {
+          warmup: workout.structure.warmup,
+          mainSet: workout.structure.mainSet,
+          cooldown: workout.structure.cooldown,
+          intervals: workout.intervals
+        },
+        duration_minutes: workout.duration,
+        tss: workout.tss
+      });
+      
+      toast({
+        title: "Workout created",
+        description: `${workout.name} has been saved to your library`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create workout",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getZoneColor = (zone: number) => {
     switch (zone) {
@@ -190,6 +268,11 @@ export function WorkoutLibrary() {
       default: return 'bg-muted/20 text-muted-foreground';
     }
   };
+
+  // Filter workouts by sport
+  const sportSpecificWorkouts = workouts.filter(workout => 
+    workout.sport === sportMode || workout.sport === 'all'
+  );
 
   const filteredWorkouts = sportSpecificWorkouts.filter(workout => {
     const matchesSearch = workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -328,14 +411,26 @@ export function WorkoutLibrary() {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleExportWorkout(workout)}
+                >
                   <Download className="w-3 h-3 mr-1" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleAddToCalendar(workout)}
+                >
                   Add to Calendar
                 </Button>
-                <Button size="sm" className="primary-gradient">
+                <Button 
+                  size="sm" 
+                  className="primary-gradient"
+                  onClick={() => handleCreateWorkout(workout)}
+                >
                   Create Workout
                 </Button>
               </div>

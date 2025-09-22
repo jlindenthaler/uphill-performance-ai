@@ -125,8 +125,8 @@ export function ResearchUpdates() {
   const fetchLatestResearch = async () => {
     setLoading(true);
     try {
-      const result = await fetchResearchUpdates();
-      setUpdates(result.updates || mockUpdates);
+      // Use mock data for now - API integration to be implemented later
+      setUpdates(mockUpdates);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching research updates:', error);

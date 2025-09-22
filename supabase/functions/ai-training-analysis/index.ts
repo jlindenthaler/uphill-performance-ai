@@ -290,22 +290,17 @@ function calculateMetabolicMetricsFromPhysiology(data: any) {
   // Calculate VLaMax (lactate accumulation rate)
   const vlamax = calculateVLaMax(lt1, lt2, ftp);
   
-  // Calculate metabolic efficiency
-  const efficiency = calculateMetabolicEfficiency(vo2max, ftp, bodyWeight);
-  
   // Calculate Fat Max in g/min/kg
   const fatMaxRate = calculateFatMaxRate(fatMaxWatts, vo2max, bodyWeight, fatMaxIntensity);
   
   // Calculate percentiles (simplified - in real app would use population databases)
   const vo2maxPercentile = calculatePercentile(vo2max, 45, 15);
   const vlamaxPercentile = calculatePercentile(vlamax, 0.4, 0.2);
-  const efficiencyPercentile = calculatePercentile(efficiency, 20, 5);
   const fatMaxPercentile = calculatePercentile(fatMaxRate, 0.35, 0.15);
 
   return {
     vo2max: { value: vo2max, percentile: vo2maxPercentile },
     vlamax: { value: vlamax, percentile: vlamaxPercentile },
-    efficiency: { value: efficiency, percentile: efficiencyPercentile },
     fatMax: { value: fatMaxRate, percentile: fatMaxPercentile, unit: 'g/min/kg' }
   };
 }
@@ -315,14 +310,6 @@ function calculateVLaMax(lt1: number, lt2: number, ftp: number) {
   const powerDiff = lt2 - lt1;
   const intensityRange = powerDiff / ftp;
   return Math.max(0.1, Math.min(1.0, 0.3 + (intensityRange * 0.5)));
-}
-
-// Metabolic efficiency calculation
-function calculateMetabolicEfficiency(vo2max: number, ftp: number, bodyWeight: number) {
-  const mechanicalPower = ftp;
-  const vo2AtFTP = (ftp / bodyWeight) / (vo2max * 0.85) * vo2max;
-  const metabolicPower = vo2AtFTP * 4.184 * 60 / 1000;
-  return (mechanicalPower / metabolicPower) * 100;
 }
 
 // Fat Max rate calculation (convert watts to g/min/kg)

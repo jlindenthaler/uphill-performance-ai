@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          avg_heart_rate: number | null
+          avg_pace_per_km: number | null
+          avg_power: number | null
+          avg_speed_kmh: number | null
+          calories: number | null
+          created_at: string
+          date: string
+          distance_meters: number | null
+          duration_seconds: number
+          elevation_gain_meters: number | null
+          external_sync_source: string | null
+          file_path: string | null
+          file_type: string | null
+          garmin_activity_id: string | null
+          gps_data: Json | null
+          id: string
+          intensity_factor: number | null
+          lap_data: Json | null
+          max_heart_rate: number | null
+          max_power: number | null
+          name: string
+          normalized_power: number | null
+          notes: string | null
+          original_filename: string | null
+          sport_mode: string
+          tss: number | null
+          updated_at: string
+          user_id: string
+          variability_index: number | null
+          weather_conditions: Json | null
+        }
+        Insert: {
+          avg_heart_rate?: number | null
+          avg_pace_per_km?: number | null
+          avg_power?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          date: string
+          distance_meters?: number | null
+          duration_seconds?: number
+          elevation_gain_meters?: number | null
+          external_sync_source?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          garmin_activity_id?: string | null
+          gps_data?: Json | null
+          id?: string
+          intensity_factor?: number | null
+          lap_data?: Json | null
+          max_heart_rate?: number | null
+          max_power?: number | null
+          name: string
+          normalized_power?: number | null
+          notes?: string | null
+          original_filename?: string | null
+          sport_mode?: string
+          tss?: number | null
+          updated_at?: string
+          user_id: string
+          variability_index?: number | null
+          weather_conditions?: Json | null
+        }
+        Update: {
+          avg_heart_rate?: number | null
+          avg_pace_per_km?: number | null
+          avg_power?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          date?: string
+          distance_meters?: number | null
+          duration_seconds?: number
+          elevation_gain_meters?: number | null
+          external_sync_source?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          garmin_activity_id?: string | null
+          gps_data?: Json | null
+          id?: string
+          intensity_factor?: number | null
+          lap_data?: Json | null
+          max_heart_rate?: number | null
+          max_power?: number | null
+          name?: string
+          normalized_power?: number | null
+          notes?: string | null
+          original_filename?: string | null
+          sport_mode?: string
+          tss?: number | null
+          updated_at?: string
+          user_id?: string
+          variability_index?: number | null
+          weather_conditions?: Json | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           auto_sync: boolean | null
@@ -59,48 +158,150 @@ export type Database = {
         }
         Relationships: []
       }
-      external_connections: {
+      enhanced_time_availability: {
         Row: {
-          access_token: string | null
+          activity_type: string
           created_at: string
+          day_of_week: number
+          end_time: string
           id: string
-          is_active: boolean | null
-          last_sync: string | null
-          provider: string
-          provider_user_id: string | null
-          refresh_token: string | null
-          sync_settings: Json | null
-          token_expires_at: string | null
+          start_time: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          access_token?: string | null
+          activity_type?: string
           created_at?: string
+          day_of_week: number
+          end_time: string
           id?: string
-          is_active?: boolean | null
-          last_sync?: string | null
-          provider: string
-          provider_user_id?: string | null
-          refresh_token?: string | null
-          sync_settings?: Json | null
-          token_expires_at?: string | null
+          start_time: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          access_token?: string | null
+          activity_type?: string
           created_at?: string
+          day_of_week?: number
+          end_time?: string
           id?: string
-          is_active?: boolean | null
-          last_sync?: string | null
-          provider?: string
-          provider_user_id?: string | null
-          refresh_token?: string | null
-          sync_settings?: Json | null
-          token_expires_at?: string | null
+          start_time?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_type: string
+          id: string
+          location: string | null
+          name: string
+          priority: string
+          status: string
+          target_performance: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_type: string
+          id?: string
+          location?: string | null
+          name: string
+          priority?: string
+          status?: string
+          target_performance?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          location?: string | null
+          name?: string
+          priority?: string
+          status?: string
+          target_performance?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lab_results: {
+        Row: {
+          aet: number | null
+          aet_hr: number | null
+          body_weight: number | null
+          created_at: string
+          critical_power: number | null
+          crossover_point: number | null
+          fat_max: number | null
+          fat_max_intensity: number | null
+          gt: number | null
+          gt_hr: number | null
+          id: string
+          map_value: number | null
+          max_hr: number | null
+          metabolic_efficiency: number | null
+          resting_hr: number | null
+          sport_mode: string
+          updated_at: string
+          user_id: string
+          vla_max: number | null
+          vo2_max: number | null
+          w_prime: number | null
+        }
+        Insert: {
+          aet?: number | null
+          aet_hr?: number | null
+          body_weight?: number | null
+          created_at?: string
+          critical_power?: number | null
+          crossover_point?: number | null
+          fat_max?: number | null
+          fat_max_intensity?: number | null
+          gt?: number | null
+          gt_hr?: number | null
+          id?: string
+          map_value?: number | null
+          max_hr?: number | null
+          metabolic_efficiency?: number | null
+          resting_hr?: number | null
+          sport_mode?: string
+          updated_at?: string
+          user_id: string
+          vla_max?: number | null
+          vo2_max?: number | null
+          w_prime?: number | null
+        }
+        Update: {
+          aet?: number | null
+          aet_hr?: number | null
+          body_weight?: number | null
+          created_at?: string
+          critical_power?: number | null
+          crossover_point?: number | null
+          fat_max?: number | null
+          fat_max_intensity?: number | null
+          gt?: number | null
+          gt_hr?: number | null
+          id?: string
+          map_value?: number | null
+          max_hr?: number | null
+          metabolic_efficiency?: number | null
+          resting_hr?: number | null
+          sport_mode?: string
+          updated_at?: string
+          user_id?: string
+          vla_max?: number | null
+          vo2_max?: number | null
+          w_prime?: number | null
         }
         Relationships: []
       }
@@ -244,6 +445,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string | null
+          garmin_access_token: string | null
+          garmin_connected: boolean | null
+          garmin_token_secret: string | null
           id: string
           timezone: string | null
           units: string | null
@@ -254,6 +458,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          garmin_access_token?: string | null
+          garmin_connected?: boolean | null
+          garmin_token_secret?: string | null
           id?: string
           timezone?: string | null
           units?: string | null
@@ -264,9 +471,123 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          garmin_access_token?: string | null
+          garmin_connected?: boolean | null
+          garmin_token_secret?: string | null
           id?: string
           timezone?: string | null
           units?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recovery_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          effectiveness_rating: number
+          id: string
+          muscle_groups: string[] | null
+          notes: string | null
+          post_fatigue_level: number
+          pre_fatigue_level: number
+          recovery_tools_used: string[] | null
+          session_date: string
+          sport_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          effectiveness_rating: number
+          id?: string
+          muscle_groups?: string[] | null
+          notes?: string | null
+          post_fatigue_level: number
+          pre_fatigue_level: number
+          recovery_tools_used?: string[] | null
+          session_date?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          effectiveness_rating?: number
+          id?: string
+          muscle_groups?: string[] | null
+          notes?: string | null
+          post_fatigue_level?: number
+          pre_fatigue_level?: number
+          recovery_tools_used?: string[] | null
+          session_date?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recovery_tools: {
+        Row: {
+          available: boolean | null
+          created_at: string
+          frequency: string | null
+          id: string
+          notes: string | null
+          sport_mode: string | null
+          tool_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          sport_mode?: string | null
+          tool_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          sport_mode?: string | null
+          tool_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      time_availability: {
+        Row: {
+          created_at: string
+          id: string
+          recovery_hours_per_day: number
+          training_hours_per_day: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recovery_hours_per_day?: number
+          training_hours_per_day?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recovery_hours_per_day?: number
+          training_hours_per_day?: number
           updated_at?: string
           user_id?: string
         }
@@ -308,6 +629,51 @@ export type Database = {
           id?: string
           sport?: string
           tsb?: number | null
+          tss?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workouts: {
+        Row: {
+          completed_date: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          name: string
+          scheduled_date: string | null
+          sport_mode: string
+          structure: Json
+          tss: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          name: string
+          scheduled_date?: string | null
+          sport_mode?: string
+          structure: Json
+          tss?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_date?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          name?: string
+          scheduled_date?: string | null
+          sport_mode?: string
+          structure?: Json
           tss?: number | null
           updated_at?: string
           user_id?: string

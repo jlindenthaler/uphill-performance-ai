@@ -1,8 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserSettings } from "@/components/settings/UserSettings";
 import { AppSettings } from "@/components/settings/AppSettings";
-import { ExternalConnections } from "@/components/settings/ExternalConnections";
-import { User, Settings as SettingsIcon, Link } from "lucide-react";
+import { SimpleTimeSettings } from "@/components/SimpleTimeSettings";
+
+import { User, Settings as SettingsIcon } from "lucide-react";
 
 export function Settings() {
   return (
@@ -20,13 +21,13 @@ export function Settings() {
             <User className="w-4 h-4" />
             User Settings
           </TabsTrigger>
+          <TabsTrigger value="time" className="flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4" />
+            Time & Schedule
+          </TabsTrigger>
           <TabsTrigger value="app" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
             App Settings
-          </TabsTrigger>
-          <TabsTrigger value="connections" className="flex items-center gap-2">
-            <Link className="w-4 h-4" />
-            External Connections
           </TabsTrigger>
         </TabsList>
 
@@ -34,13 +35,14 @@ export function Settings() {
           <UserSettings />
         </TabsContent>
 
+        <TabsContent value="time">
+          <SimpleTimeSettings />
+        </TabsContent>
+
         <TabsContent value="app">
           <AppSettings />
         </TabsContent>
 
-        <TabsContent value="connections">
-          <ExternalConnections />
-        </TabsContent>
       </Tabs>
     </div>
   );

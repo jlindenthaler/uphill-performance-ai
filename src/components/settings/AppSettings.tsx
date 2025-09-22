@@ -3,6 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/hooks/useSettings";
 import { 
   Settings, 
@@ -14,8 +16,14 @@ import {
   Bike,
   Moon,
   Sun,
-  Monitor
+  Monitor,
+  Link,
+  Wifi,
+  Smartphone,
+  Link as LinkIcon,
+  Plus
 } from "lucide-react";
+import { GarminConnection } from "@/components/GarminConnection";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
@@ -239,6 +247,22 @@ export function AppSettings() {
               }
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Connections */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="w-5 h-5 text-blue-500" />
+            Connections
+          </CardTitle>
+          <CardDescription>
+            Connect and manage integrations with external services
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <GarminConnection />
         </CardContent>
       </Card>
     </div>

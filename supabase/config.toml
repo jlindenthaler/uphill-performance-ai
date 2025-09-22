@@ -1,1 +1,13 @@
 project_id = "srwuprrcbfuzvkehvgyt"
+
+[functions.ai-training-analysis]
+verify_jwt = true
+
+[functions.process-activity]
+verify_jwt = true
+
+[functions.get-mapbox-token]
+verify_jwt = false
+
+[functions.garmin-connect]
+verify_jwt = true

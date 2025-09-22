@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,27 +6,111 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserProfile } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useSupabase";
-import { User, Mail, Lock, Globe, Ruler } from "lucide-react";
+
+import { useTimeAvailability } from "@/hooks/useTimeAvailability";
+import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload, Zap } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useSportMode } from "@/contexts/SportModeContext";
+import { GarminConnection } from "@/components/GarminConnection";
+import { RecoveryToolsManager } from "@/components/RecoveryToolsManager";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function UserSettings() {
   const { user } = useAuth();
-  const { profile, loading, updateProfile, resetPassword } = useUserProfile();
+  const { profile, loading, updateProfile, resetPassword, uploadAvatar } = useUserProfile();
+  
+  const { timeAvailability, saveTimeAvailability } = useTimeAvailability();
+  const { toast } = useToast();
+  const { sportMode, isCycling, isRunning, isSwimming } = useSportMode();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || '',
     timezone: profile?.timezone || 'UTC',
     units: profile?.units || 'metric'
   });
+  
+  
+  const [timeData, setTimeData] = useState({
+    training_hours_per_day: timeAvailability?.training_hours_per_day?.toString() || '2',
+    recovery_hours_per_day: timeAvailability?.recovery_hours_per_day?.toString() || '1'
+  });
+
+  // Handle file upload
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a valid image file (JPG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      toast({
+        title: "File too large",
+        description: "Please select an image under 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await uploadAvatar(file);
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile(formData);
+    try {
+      await updateProfile(formData);
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePasswordReset = async () => {
     if (user?.email) {
       await resetPassword(user.email);
+    }
+  };
+
+
+  const handleTimeAvailabilitySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await saveTimeAvailability({
+        training_hours_per_day: parseFloat(timeData.training_hours_per_day),
+        recovery_hours_per_day: parseFloat(timeData.recovery_hours_per_day),
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error saving time preferences",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -66,7 +150,20 @@ export function UserSettings() {
               </AvatarFallback>
             </Avatar>
             <div className="space-y-2">
-              <Button variant="outline" size="sm">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+              >
+                <Upload className="w-4 h-4 mr-2" />
                 Upload Photo
               </Button>
               <p className="text-xs text-muted-foreground">
@@ -183,6 +280,108 @@ export function UserSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recovery Tools & Services */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-green-500" />
+            Recovery Tools & Services
+          </CardTitle>
+          <CardDescription>
+            Manage your recovery methods and track usage frequency
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ErrorBoundary>
+            <RecoveryToolsManager />
+          </ErrorBoundary>
+        </CardContent>
+      </Card>
+
+      {/* Recovery Tools & Services */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-green-500" />
+            Recovery Tools & Services - {sportMode.charAt(0).toUpperCase() + sportMode.slice(1)}
+          </CardTitle>
+          <CardDescription>
+            Track your recovery methods and services for {sportMode}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="massage_sessions">Massage Sessions / Week</Label>
+              <Input
+                id="massage_sessions"
+                type="number"
+                placeholder="2"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ice_baths">Ice Baths / Week</Label>
+              <Input
+                id="ice_baths"
+                type="number"
+                placeholder="3"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sauna_sessions">Sauna Sessions / Week</Label>
+              <Input
+                id="sauna_sessions"
+                type="number"
+                placeholder="2"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="compression_therapy">Compression Therapy</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="stretching_time">Stretching (minutes/day)</Label>
+              <Input
+                id="stretching_time"
+                type="number"
+                placeholder="20"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="foam_rolling">Foam Rolling (minutes/day)</Label>
+              <Input
+                id="foam_rolling"
+                type="number"
+                placeholder="15"
+              />
+            </div>
+          </div>
+          
+          <Button type="submit" className="w-full">
+            Save Recovery Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Lab Test Results - REMOVED - Now in Settings/User Settings */}
+
+      {/* Time Constraints - REMOVED - Now in Settings/Time & Schedule */}
     </div>
   );
 }
