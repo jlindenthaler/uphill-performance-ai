@@ -13,7 +13,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(['wl', 'hr']); // Initialize with power and heart rate
+  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp', 'elevation']);
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -22,13 +22,10 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     if (!activity?.gps_data?.trackPoints) return [];
     
     const trackPoints = activity.gps_data.trackPoints;
-    const startTimeStr = trackPoints[0]?.timestamp;
-    const startTime = startTimeStr ? new Date(startTimeStr).getTime() : 0;
+    const startTime = trackPoints[0]?.timestamp;
     
     return trackPoints.map((point: any, index: number) => {
-      const pointTimeStr = point.timestamp;
-      const pointTime = pointTimeStr ? new Date(pointTimeStr).getTime() : startTime + (index * 1000);
-      const timeElapsed = (pointTime - startTime) / 1000;
+      const timeElapsed = point.timestamp ? (point.timestamp - startTime) / 1000 : index;
       const hours = Math.floor(timeElapsed / 3600);
       const minutes = Math.floor((timeElapsed % 3600) / 60);
       const seconds = Math.floor(timeElapsed % 60);
@@ -49,7 +46,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         hr: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
         wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
-        balance: leftRightBalance, // L:R Balance percentage
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: point.altitude || 0,
@@ -298,7 +294,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   <Line
                     yAxisId="hr"
                     type="monotone"
-                    dataKey="hr"
+                    dataKey="heartRate"
                     stroke="hsl(var(--destructive))"
                     strokeWidth={2}
                     dot={false}
@@ -331,20 +327,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                     strokeDasharray="2 2"
                     dot={false}
                     name="Speed"
-                  />
-                )}
-                
-                {/* Conditionally render Temperature */}
-                {visibleMetrics.includes('temp') && (
-                  <Line
-                    yAxisId="hr"
-                    type="monotone"
-                    dataKey="temp"
-                    stroke="hsl(var(--accent))"
-                    strokeWidth={1}
-                    strokeDasharray="2 4"
-                    dot={false}
-                    name="Temperature"
                   />
                 )}
                 
