@@ -17,117 +17,42 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
-  // Generate timeline data based on real activity structure
+  // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
-    if (!activity) return [];
+    if (!activity?.gps_data?.trackPoints) return [];
     
-    const duration = activity.duration_seconds || 3600;
-    const points = Math.min(Math.floor(duration / 5), 600); // More granular data points every 5 seconds
+    const trackPoints = activity.gps_data.trackPoints;
+    const startTime = trackPoints[0]?.timestamp;
     
-    // Use real activity data as baseline
-    const avgPower = activity.avg_power || 0;
-    const avgHr = activity.avg_heart_rate || 0;
-    const avgCadence = activity.avg_cadence || (isRunning ? 180 : 90);
-    const avgSpeed = activity.avg_speed_kmh || (isRunning ? 12 : 35);
-    const maxPower = activity.max_power || avgPower * 2;
-    const maxHr = activity.max_heart_rate || avgHr * 1.3;
-    
-    return Array.from({ length: points }, (_, i) => {
-      const timeSeconds = (i * duration) / points;
-      const hours = Math.floor(timeSeconds / 3600);
-      const minutes = Math.floor((timeSeconds % 3600) / 60);
-      const seconds = Math.floor(timeSeconds % 60);
+    return trackPoints.map((point: any, index: number) => {
+      const timeElapsed = point.timestamp ? (point.timestamp - startTime) / 1000 : index;
+      const hours = Math.floor(timeElapsed / 3600);
+      const minutes = Math.floor((timeElapsed % 3600) / 60);
+      const seconds = Math.floor(timeElapsed % 60);
       const timeFormatted = hours > 0 
         ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
         : `${minutes}:${seconds.toString().padStart(2, '0')}`;
       
-      const progress = timeSeconds / duration;
+      // Convert speed from m/s to km/h if needed
+      const speedKmh = point.speed ? (point.speed * 3.6) : 0;
       
-      // Create structured workout patterns
-      let power = 0;
-      let heartRate = avgHr * 0.6; // Start with warmup HR
-      let cadence = avgCadence * 0.8;
-      let speed = avgSpeed * 0.7;
-      
-      if (avgPower > 0) {
-        // Simulate structured workout with intervals
-        const cycleLength = 600; // 10-minute cycles
-        const cyclePosition = (timeSeconds % cycleLength) / cycleLength;
-        
-        // Warmup phase (first 10% of workout)
-        if (progress < 0.1) {
-          const warmupProgress = progress / 0.1;
-          power = Math.round(avgPower * 0.4 * (1 + warmupProgress));
-          heartRate = Math.round((avgHr * 0.6) + (avgHr * 0.2 * warmupProgress));
-          cadence = Math.round(avgCadence * (0.7 + warmupProgress * 0.2));
-          speed = Math.round(avgSpeed * (0.6 + warmupProgress * 0.3) * 10) / 10;
-        }
-        // Main workout phase (10% - 85% of workout)
-        else if (progress < 0.85) {
-          // Create interval structure
-          if (cyclePosition < 0.6) { // Work phase (6 minutes)
-            const intervalIntensity = 0.8 + Math.sin(cyclePosition * Math.PI * 3) * 0.3; // Varying intensity
-            power = Math.round(avgPower * intervalIntensity + (Math.random() - 0.5) * avgPower * 0.1);
-            power = Math.max(avgPower * 0.3, Math.min(power, maxPower));
-            
-            heartRate = Math.round(avgHr * (0.7 + intervalIntensity * 0.25));
-            cadence = Math.round(avgCadence * (0.85 + intervalIntensity * 0.2));
-            speed = Math.round(avgSpeed * (0.7 + intervalIntensity * 0.4) * 10) / 10;
-          } else { // Recovery phase (4 minutes)
-            power = Math.round(avgPower * 0.4 + (Math.random() - 0.5) * 20);
-            heartRate = Math.round(avgHr * 0.75);
-            cadence = Math.round(avgCadence * 0.75);
-            speed = Math.round(avgSpeed * 0.6 * 10) / 10;
-          }
-        }
-        // Cooldown phase (last 15% of workout)
-        else {
-          const cooldownProgress = (progress - 0.85) / 0.15;
-          power = Math.round(avgPower * 0.4 * (1 - cooldownProgress * 0.5));
-          heartRate = Math.round(avgHr * (0.75 - cooldownProgress * 0.2));
-          cadence = Math.round(avgCadence * (0.8 - cooldownProgress * 0.2));
-          speed = Math.round(avgSpeed * (0.7 - cooldownProgress * 0.3) * 10) / 10;
-        }
-        
-        // Add some realistic noise to all metrics
-        power += Math.round((Math.random() - 0.5) * 15);
-        heartRate += Math.round((Math.random() - 0.5) * 5);
-        cadence += Math.round((Math.random() - 0.5) * 10);
-        
-        // Ensure values stay within realistic bounds
-        power = Math.max(0, power);
-        heartRate = Math.max(60, Math.min(heartRate, maxHr));
-        cadence = Math.max(40, Math.min(cadence, avgCadence * 1.4));
-        speed = Math.max(0, speed);
-      }
-      
-      // Simulate elevation changes (hills/terrain)
-      const elevationBase = 100;
-      const elevationVariation = Math.sin(progress * Math.PI * 2) * 50 + Math.sin(progress * Math.PI * 6) * 20;
-      const elevation = Math.round(elevationBase + elevationVariation + (Math.random() - 0.5) * 10);
-      
-      // Temperature gradually increases during workout
-      const temperature = Math.round((20 + progress * 5 + Math.random() * 2) * 10) / 10;
-      
-      // Calculate left/right balance (simulate slight imbalance during high intensity)
-      const intensityFactor = power / Math.max(avgPower, 1);
-      const balanceBase = 50 + (intensityFactor > 1.2 ? (Math.random() - 0.5) * 8 : (Math.random() - 0.5) * 4);
-      const balance = Math.round(Math.max(45, Math.min(55, balanceBase)) * 10) / 10;
+      // Handle power balance (convert to percentage if available)
+      const leftRightBalance = point.leftRightBalance ? (point.leftRightBalance / 255 * 100) : 50;
       
       return {
         time: timeFormatted,
-        timeSeconds,
-        power: Math.max(0, power),
-        balance,
-        heartRate: Math.max(60, heartRate),
-        cadence: Math.max(0, cadence),
-        speed: Math.max(0, speed),
-        temperature,
-        elevation,
-        zone: power > 0 ? Math.min(5, Math.max(1, Math.floor(power / (avgPower * 0.5)) + 1)) : 1
+        timeSeconds: timeElapsed,
+        cadence: point.cadence || 0,
+        hr: point.heartRate || 0,
+        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
+        wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
+        speed: Math.round(speedKmh * 10) / 10,
+        temp: point.temperature || 20,
+        elevation: point.altitude || 0,
+        power: point.power || 0
       };
     });
-  }, [activity, isRunning]);
+  }, [activity]);
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {

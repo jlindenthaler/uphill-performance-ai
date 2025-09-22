@@ -243,7 +243,11 @@ function extractGPSData(records: any[]): any {
           heartRate: unwrapValue(record.heartRate),
           power: unwrapValue(record.power),
           speed: unwrapValue(record.speed),
-          cadence: unwrapValue(record.cadence)
+          cadence: unwrapValue(record.cadence),
+          temperature: unwrapValue(record.temperature),
+          leftRightBalance: unwrapValue(record.leftRightBalance),
+          leftPowerPhase: unwrapValue(record.leftPowerPhase),
+          rightPowerPhase: unwrapValue(record.rightPowerPhase)
         });
       }
     }
