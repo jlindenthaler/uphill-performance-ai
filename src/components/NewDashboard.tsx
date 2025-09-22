@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   Calendar, 
   Target, 
@@ -19,7 +20,8 @@ import {
   MapPin,
   Brain,
   Users,
-  Beaker
+  Beaker,
+  Upload
 } from 'lucide-react';
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { useActivities } from '@/hooks/useActivities';
@@ -27,6 +29,7 @@ import { useGoals } from '@/hooks/useGoals';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
+import { ActivityUploadNew } from './ActivityUploadNew';
 
 interface DashboardProps {
   onNavigate: (section: string, openDialog?: boolean) => void;
@@ -57,6 +60,13 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { sportMode } = useSportMode();
   const { isPopulating } = usePMCPopulation();
   const [combinedSports, setCombinedSports] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  const handleUploadSuccess = (activityId?: string) => {
+    console.log('handleUploadSuccess called with activityId:', activityId);
+    // Close the modal immediately
+    setUploadModalOpen(false);
+  };
 
   // Calculate current week metrics
   const currentWeek = trainingHistory.slice(-7);
@@ -319,7 +329,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => onNavigate('activities')}
+              onClick={() => setUploadModalOpen(true)}
             >
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
@@ -520,6 +530,22 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upload Modal */}
+      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              Upload Activity
+            </DialogTitle>
+            <DialogDescription>
+              Upload your training activity files (GPX, TCX, or FIT) to analyze and track your performance.
+            </DialogDescription>
+          </DialogHeader>
+          <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
