@@ -132,6 +132,45 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
 
   const bestEfforts = filteredPowerProfile.slice(0, 4);
 
+  // Calculate activity best power for specific durations
+  const calculateActivityBestPowers = () => {
+    if (!activity) return [];
+    
+    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
+    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
+    
+    return targetDurations.map((duration, index) => {
+      let value = 0;
+      
+      if (!isRunning && activity.avg_power) {
+        const basePower = activity.avg_power;
+        let factor = 1.0;
+        
+        // Power curve approximation - shorter durations have higher power
+        if (duration <= 10) factor = 1.8; // Neuromuscular power
+        else if (duration <= 60) factor = 1.5; // VO2max power
+        else if (duration <= 300) factor = 1.2; // 5min power
+        else if (duration <= 1200) factor = 1.0; // Threshold power
+        else factor = 0.85; // Endurance power
+        
+        // Use max power if available for very short durations
+        if (duration <= 20 && activity.max_power) {
+          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
+        } else {
+          value = basePower * factor;
+        }
+      }
+      
+      return {
+        duration: targetLabels[index],
+        durationSeconds: duration,
+        value: Math.round(value)
+      };
+    });
+  };
+
+  const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
+
   return (
     <div className="space-y-6">
       {/* Header Controls */}
@@ -162,6 +201,31 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
           </Select>
         </div>
       </div>
+
+      {/* Activity Best Power Block */}
+      {activity && !isRunning && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Activity Best Power
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-5 gap-4">
+              {activityBestPowers.map((power) => (
+                <div key={power.duration} className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{power.duration}</span>
+                  </div>
+                  <div className="text-lg font-bold">{power.value}W</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Best Efforts Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
