@@ -32,7 +32,9 @@ import { useGoals } from '@/hooks/useGoals';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
+import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { ActivityUploadNew } from './ActivityUploadNew';
+import { RecoverySessionModal } from './RecoverySessionModal';
 
 interface DashboardProps {
   onNavigate: (section: string, openDialog?: boolean) => void;
@@ -43,6 +45,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { activities, loading: activitiesLoading } = useActivities();
   const { goals, createGoal } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
+  const { tools: recoveryTools } = useRecoveryTools();
 
   // Get the closest dated Priority A goal
   const activeGoal = useMemo(() => {
@@ -65,6 +68,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const [combinedSports, setCombinedSports] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [recoveryModalOpen, setRecoveryModalOpen] = useState(false);
   const [goalForm, setGoalForm] = useState({
     name: '',
     event_date: '',
@@ -98,6 +102,10 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
     } catch (error) {
       console.error('Error creating goal:', error);
     }
+  };
+
+  const handleRecoverySessionSaved = () => {
+    setRecoveryModalOpen(false);
   };
 
   // Calculate current week metrics
@@ -337,7 +345,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => onNavigate('recovery')}
+              onClick={() => setRecoveryModalOpen(true)}
             >
               <div className="flex items-center gap-2">
                 <Heart className="w-4 h-4" />
@@ -677,6 +685,16 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recovery Session Modal */}
+      <Dialog open={recoveryModalOpen} onOpenChange={setRecoveryModalOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <RecoverySessionModal 
+            recoveryTools={recoveryTools} 
+            onSessionSaved={handleRecoverySessionSaved} 
+          />
         </DialogContent>
       </Dialog>
     </div>
