@@ -145,10 +145,58 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   ).slice(0, 7);
 
   // Calculate CTL/ATL/TSB from recent data
-  const latestMetrics = trainingHistory[trainingHistory.length - 1];
-  const ctl = latestMetrics?.ctl || 0;
-  const atl = latestMetrics?.atl || 0;
-  const tsb = latestMetrics?.tsb || 0;
+  const pmcMetrics = useMemo(() => {
+    if (combinedSports) {
+      // For combined sports, we need to aggregate PMC values across all sports
+      // This would require fetching training history from all sports and combining them
+      // For now, we'll use a simplified approach of summing the latest metrics
+      // In a production app, you'd want to recalculate CTL/ATL/TSB from combined TSS history
+      
+      // Calculate basic combined metrics from activities
+      const last42Days = activities.filter(activity => {
+        const activityDate = new Date(activity.date);
+        const fortyTwoDaysAgo = new Date();
+        fortyTwoDaysAgo.setDate(fortyTwoDaysAgo.getDate() - 42);
+        return activityDate >= fortyTwoDaysAgo;
+      });
+      
+      const last7Days = activities.filter(activity => {
+        const activityDate = new Date(activity.date);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return activityDate >= sevenDaysAgo;
+      });
+      
+      // Calculate approximate CTL (42-day exponentially weighted moving average)
+      const totalTSS42 = last42Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
+      const approximateCTL = totalTSS42 / 42; // Simplified approximation
+      
+      // Calculate approximate ATL (7-day exponentially weighted moving average)
+      const totalTSS7 = last7Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
+      const approximateATL = totalTSS7 / 7; // Simplified approximation
+      
+      // Calculate TSB (Training Stress Balance)
+      const approximateTSB = approximateCTL - approximateATL;
+      
+      return {
+        ctl: approximateCTL,
+        atl: approximateATL,
+        tsb: approximateTSB
+      };
+    } else {
+      // Original sport-specific calculation
+      const latestMetrics = trainingHistory[trainingHistory.length - 1];
+      return {
+        ctl: latestMetrics?.ctl || 0,
+        atl: latestMetrics?.atl || 0,
+        tsb: latestMetrics?.tsb || 0
+      };
+    }
+  }, [combinedSports, activities, trainingHistory]);
+  
+  const ctl = pmcMetrics.ctl;
+  const atl = pmcMetrics.atl;
+  const tsb = pmcMetrics.tsb;
 
   // Get TSB status
   const getTSBStatus = (tsb: number) => {
