@@ -25,7 +25,9 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
     const startTime = trackPoints[0]?.timestamp;
     
     return trackPoints.map((point: any, index: number) => {
-      const timeElapsed = point.timestamp ? (point.timestamp - startTime) / 1000 : index;
+      const timeElapsed = point.timestamp && startTime ? 
+        (new Date(point.timestamp).getTime() - new Date(startTime).getTime()) / 1000 : 
+        index;
       const hours = Math.floor(timeElapsed / 3600);
       const minutes = Math.floor((timeElapsed % 3600) / 60);
       const seconds = Math.floor(timeElapsed % 60);
