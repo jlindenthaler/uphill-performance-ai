@@ -283,7 +283,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between" 
-              onClick={() => onNavigate('physiology')}
+              onClick={() => onNavigate('lab-results')}
             >
               <div className="flex items-center gap-2">
                 <Beaker className="w-4 h-4" />
