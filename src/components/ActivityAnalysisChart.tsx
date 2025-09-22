@@ -46,6 +46,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         hr: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
         wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
+        balance: leftRightBalance, // L:R Balance percentage
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: point.altitude || 0,
@@ -294,7 +295,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   <Line
                     yAxisId="hr"
                     type="monotone"
-                    dataKey="heartRate"
+                    dataKey="hr"
                     stroke="hsl(var(--destructive))"
                     strokeWidth={2}
                     dot={false}
@@ -327,6 +328,20 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                     strokeDasharray="2 2"
                     dot={false}
                     name="Speed"
+                  />
+                )}
+                
+                {/* Conditionally render Temperature */}
+                {visibleMetrics.includes('temp') && (
+                  <Line
+                    yAxisId="hr"
+                    type="monotone"
+                    dataKey="temp"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={1}
+                    strokeDasharray="2 4"
+                    dot={false}
+                    name="Temperature"
                   />
                 )}
                 
