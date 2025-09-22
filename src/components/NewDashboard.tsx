@@ -33,6 +33,9 @@ import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
 import { ActivityUploadNew } from './ActivityUploadNew';
+import { RecoverySessionModal } from './RecoverySessionModal';
+import { LabResults } from './LabResults';
+import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 
 interface DashboardProps {
   onNavigate: (section: string, openDialog?: boolean) => void;
@@ -43,6 +46,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { activities, loading: activitiesLoading } = useActivities();
   const { goals, createGoal } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
+  const { tools: recoveryTools } = useRecoveryTools();
 
   // Get the closest dated Priority A goal
   const activeGoal = useMemo(() => {
@@ -65,6 +69,8 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const [combinedSports, setCombinedSports] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [recoveryModalOpen, setRecoveryModalOpen] = useState(false);
+  const [labResultsModalOpen, setLabResultsModalOpen] = useState(false);
   const [goalForm, setGoalForm] = useState({
     name: '',
     event_date: '',
@@ -325,7 +331,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between" 
-              onClick={() => onNavigate('lab-results', true)}
+              onClick={() => setLabResultsModalOpen(true)}
             >
               <div className="flex items-center gap-2">
                 <Beaker className="w-4 h-4" />
@@ -337,7 +343,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
-              onClick={() => onNavigate('recovery')}
+              onClick={() => setRecoveryModalOpen(true)}
             >
               <div className="flex items-center gap-2">
                 <Heart className="w-4 h-4" />
@@ -677,6 +683,32 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recovery Session Modal */}
+      <Dialog open={recoveryModalOpen} onOpenChange={setRecoveryModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-primary" />
+              Log Recovery Session
+            </DialogTitle>
+            <DialogDescription>
+              Track your recovery session details, effectiveness, and tools used
+            </DialogDescription>
+          </DialogHeader>
+          {/* Recovery session form content would go here */}
+          <div className="p-4 text-center text-muted-foreground">
+            Recovery session logging form will be integrated here.
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lab Results Modal */}
+      <Dialog open={labResultsModalOpen} onOpenChange={setLabResultsModalOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <LabResults openAddDialog={labResultsModalOpen} />
         </DialogContent>
       </Dialog>
     </div>
