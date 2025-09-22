@@ -61,7 +61,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/outdoors-v12',
-        center: [0, 0], // Default center
+        center: [151.2211, -33.8797], // St Vincent's Hospital, Sydney - Where the UpHill journey began with my heart transplant
         zoom: 12
       });
 
@@ -128,10 +128,10 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             finishElement.style.cssText = `
               width: 30px;
               height: 30px;
-              background: linear-gradient(45deg, #000 25%, #fff 25%, #fff 50%, #000 50%, #000 75%, #fff 75%);
+              background: linear-gradient(45deg, #ef4444 25%, #fff 25%, #fff 50%, #ef4444 50%, #ef4444 75%, #fff 75%);
               background-size: 8px 8px;
               border-radius: 50%;
-              border: 3px solid #000;
+              border: 3px solid #ef4444;
               cursor: pointer;
               display: flex;
               align-items: center;
