@@ -60,6 +60,8 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       
       // Handle power balance (convert to percentage if available)
       const leftRightBalance = point.leftRightBalance ? (point.leftRightBalance / 255 * 100) : 50;
+      const totalPower = point.power || 0;
+      const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
       
       return {
         time: timeFormatted,
@@ -70,15 +72,21 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         cadence: point.cadence || 0,
         heartRate: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
-        wr: point.power ? Math.round(point.power * ((100 - leftRightBalance) / 100)) : 0, // Right power
+        wr: rPower, // Right power
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: Math.round((point.altitude || 0) * 10) / 10,
-        power: point.power || 0,
-        balance: leftRightBalance
+        power: totalPower,
+        balance: leftRightBalance,
+        rPower: rPower
       };
     });
   }, [activity, xAxisMode]);
+
+  // Check if there's any R power data in the activity
+  const hasRPowerData = useMemo(() => {
+    return timelineData.some(point => point.rPower > 0);
+  }, [timelineData]);
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {
@@ -166,7 +174,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           {payload.map((entry: any, index: number) => {
             const getUnit = (name: string) => {
               if (name === 'Power') return 'W';
-              if (name === 'L:R Balance') return '%';
+              if (name === 'R Power') return 'W';
               if (name === 'Heart Rate') return 'bpm';
               if (name === 'Cadence') return 'rpm';
               if (name === 'Speed') return 'km/h';
@@ -174,6 +182,24 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               if (name === 'Elevation') return 'm';
               return '';
             };
+
+            // Calculate L:R balance for R Power display
+            if (entry.name === 'R Power') {
+              const dataPoint = timelineData.find(d => d.xValue === label);
+              if (dataPoint && dataPoint.power > 0) {
+                const lrBalance = Math.round((1 - dataPoint.rPower / dataPoint.power) * 100);
+                return (
+                  <div key={index}>
+                    <p style={{ color: entry.color }}>
+                      {`R Power: ${entry.value}W`}
+                    </p>
+                    <p style={{ color: entry.color }}>
+                      {`L:R Balance: ${lrBalance}:${100 - lrBalance}`}
+                    </p>
+                  </div>
+                );
+              }
+            }
             
             return (
               <p key={index} style={{ color: entry.color }}>
@@ -226,9 +252,11 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
             <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
               Power
             </ToggleGroupItem>
-            <ToggleGroupItem value="wr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-4/10 text-zone-4 border border-zone-4/20 hover:bg-zone-4/20 data-[state=on]:bg-zone-4 data-[state=on]:text-white shadow-sm transition-all">
-              L:R
-            </ToggleGroupItem>
+            {hasRPowerData && (
+              <ToggleGroupItem value="wr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-4/10 text-zone-4 border border-zone-4/20 hover:bg-zone-4/20 data-[state=on]:bg-zone-4 data-[state=on]:text-white shadow-sm transition-all">
+                L:R
+              </ToggleGroupItem>
+            )}
             <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
               Speed
             </ToggleGroupItem>
@@ -318,16 +346,16 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   />
                 )}
                 
-                {/* Conditionally render L:R Balance */}
-                {visibleMetrics.includes('wr') && (
+                {/* Conditionally render L:R Balance (showing R Power) */}
+                {visibleMetrics.includes('wr') && hasRPowerData && (
                   <Line
-                    yAxisId="hr"
+                    yAxisId="power"
                     type="monotone"
-                    dataKey="balance"
+                    dataKey="rPower"
                     stroke="hsl(var(--zone-4))"
                     strokeWidth={2}
                     dot={false}
-                    name="L:R Balance"
+                    name="R Power"
                   />
                 )}
                 
