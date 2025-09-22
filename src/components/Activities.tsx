@@ -67,6 +67,21 @@ export function Activities() {
     return `${Math.round(watts)}W`;
   };
 
+  const calculateTSS = (durationSeconds?: number, avgPower?: number, ftp: number = 250) => {
+    if (!durationSeconds || !avgPower || durationSeconds <= 0 || ftp <= 0) return undefined;
+    return Math.floor((durationSeconds / 3600) * (avgPower / ftp) * 100);
+  };
+
+  const calculateCalories = (durationSeconds?: number, avgPower?: number) => {
+    if (!durationSeconds) return undefined;
+    if (avgPower) {
+      // More accurate calculation for cycling with power
+      return Math.floor(durationSeconds * 0.75 + (avgPower * durationSeconds) / 1000);
+    }
+    // Basic calculation for activities without power
+    return Math.floor(durationSeconds * 0.75);
+  };
+
   const getSportIcon = (sport: string) => {
     switch (sport) {
       case 'cycling': return '🚴';
@@ -226,12 +241,18 @@ export function Activities() {
               </div>
             )}
             
-            {activity.calories && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Calories</span>
-                <span className="font-medium">{activity.calories} kcal</span>
-              </div>
-            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Calories</span>
+              <span className="font-medium">
+                {activity.calories ? 
+                  `${activity.calories} kcal` : 
+                  (calculateCalories(activity.duration_seconds, activity.avg_power) ? 
+                    `~${calculateCalories(activity.duration_seconds, activity.avg_power)} kcal` : 
+                    'N/A'
+                  )
+                }
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -244,7 +265,13 @@ export function Activities() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Training Stress Score</span>
               <span className="font-medium">
-                {activity.tss ? Math.round(activity.tss) : 'Calculating...'}
+                {activity.tss ? 
+                  Math.round(activity.tss) : 
+                  (calculateTSS(activity.duration_seconds, activity.avg_power) ? 
+                    `~${calculateTSS(activity.duration_seconds, activity.avg_power)}` : 
+                    'N/A'
+                  )
+                }
               </span>
             </div>
             
@@ -425,14 +452,27 @@ export function Activities() {
                             <div className="font-bold text-sm">{formatDistance(activity.distance_meters)}</div>
                           </div>
                           
-                          {activity.sport_mode === 'cycling' && activity.avg_power && (
-                            <div className="px-2">
-                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                <Zap className="h-3 w-3" />
-                                <span className="text-xs font-medium">Avg Power</span>
+                          {activity.sport_mode === 'cycling' && (
+                            <>
+                              {activity.avg_power && (
+                                <div className="px-2">
+                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                    <Zap className="h-3 w-3" />
+                                    <span className="text-xs font-medium">Avg Power</span>
+                                  </div>
+                                  <div className="font-bold text-sm text-zone-3">{activity.avg_power}W</div>
+                                </div>
+                              )}
+                              <div className="px-2">
+                                <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                  <TrendingUp className="h-3 w-3" />
+                                  <span className="text-xs font-medium">Avg Speed</span>
+                                </div>
+                                <div className="font-bold text-sm text-zone-2">
+                                  {formatSpeed(activity.avg_speed_kmh || calculateSpeed(activity.distance_meters, activity.duration_seconds))}
+                                </div>
                               </div>
-                              <div className="font-bold text-sm text-zone-3">{activity.avg_power}W</div>
-                            </div>
+                            </>
                           )}
                           
                           {activity.sport_mode === 'running' && activity.avg_pace_per_km && (
