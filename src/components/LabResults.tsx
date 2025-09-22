@@ -58,12 +58,23 @@ const initialFormData: LabResultFormData = {
   notes: ''
 };
 
-export function LabResults() {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+interface LabResultsProps {
+  openAddDialog?: boolean;
+}
+
+export function LabResults({ openAddDialog = false }: LabResultsProps) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(openAddDialog);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const { sportMode } = useSportMode();
   const { labResults, saveLabResults } = useLabResults();
   const { toast } = useToast();
+
+  // Open dialog when prop changes
+  React.useEffect(() => {
+    if (openAddDialog) {
+      setIsAddDialogOpen(true);
+    }
+  }, [openAddDialog]);
 
   const handleInputChange = (field: keyof LabResultFormData, value: string | Date) => {
     setFormData(prev => ({ ...prev, [field]: value }));

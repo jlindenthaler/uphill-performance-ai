@@ -143,6 +143,10 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     setCurrentDate(direction === 'prev' ? subMonths(currentDate, 1) : addMonths(currentDate, 1));
   };
 
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
   const renderEvent = (event: CalendarEvent) => {
     let bgColor = '';
     let textColor = '';
@@ -214,6 +218,9 @@ export const EnhancedTrainingCalendar: React.FC = () => {
           </h2>
           <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
             <ChevronRight className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={goToToday}>
+            Today
           </Button>
         </div>
       </div>

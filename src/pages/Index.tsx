@@ -19,14 +19,15 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openLabDialog, setOpenLabDialog] = useState(false);
   const isMobile = useIsMobile();
 
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <Dashboard onNavigate={setActiveSection} />;
+        return <Dashboard onNavigate={handleSectionChange} />;
       case 'lab-results':
-        return <LabResults />;
+        return <LabResults openAddDialog={openLabDialog} />;
       case 'calendar':
         return <EnhancedTrainingCalendar />;
       case 'activities':
@@ -44,12 +45,17 @@ const Index = () => {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard onNavigate={setActiveSection} />;
+        return <Dashboard onNavigate={handleSectionChange} />;
     }
   };
 
-  const handleSectionChange = (section: string) => {
+  const handleSectionChange = (section: string, openDialog?: boolean) => {
     setActiveSection(section);
+    if (section === 'lab-results' && openDialog) {
+      setOpenLabDialog(true);
+      // Reset after a brief delay to allow component to receive the prop
+      setTimeout(() => setOpenLabDialog(false), 100);
+    }
     if (isMobile) {
       setSidebarOpen(false);
     }
@@ -92,7 +98,7 @@ const Index = () => {
           <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-border transition-all duration-300 ease-in-out`}>
             <Navigation 
               activeSection={activeSection}
-              onSectionChange={setActiveSection}
+              onSectionChange={handleSectionChange}
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
             />

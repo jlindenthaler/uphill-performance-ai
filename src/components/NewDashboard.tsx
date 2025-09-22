@@ -29,7 +29,7 @@ import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
 
 interface DashboardProps {
-  onNavigate: (section: string) => void;
+  onNavigate: (section: string, openDialog?: boolean) => void;
 }
 
 export function NewDashboard({ onNavigate }: DashboardProps) {
@@ -283,7 +283,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between" 
-              onClick={() => onNavigate('lab-results')}
+              onClick={() => onNavigate('lab-results', true)}
             >
               <div className="flex items-center gap-2">
                 <Beaker className="w-4 h-4" />

@@ -4,7 +4,7 @@ import { SportModeToggle } from "@/components/SportModeToggle";
 import { Home, Calendar, Activity, Target, Heart, Download, Settings, Zap, TrendingUp, BookOpen, Upload, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react";
 interface NavigationProps {
   activeSection: string;
-  onSectionChange: (section: string) => void;
+  onSectionChange: (section: string, openDialog?: boolean) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
