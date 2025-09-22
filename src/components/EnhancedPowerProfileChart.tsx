@@ -173,7 +173,8 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
     { duration: '5s', best: activityBestPowers.find(p => p.duration === '5s')?.value || 0, unit: 'W' },
     { duration: '1min', best: activityBestPowers.find(p => p.duration === '1min')?.value || 0, unit: 'W' },
     { duration: '5min', best: activityBestPowers.find(p => p.duration === '5min')?.value || 0, unit: 'W' },
-    { duration: '20min', best: activityBestPowers.find(p => p.duration === '20min')?.value || 0, unit: 'W' }
+    { duration: '20min', best: activityBestPowers.find(p => p.duration === '20min')?.value || 0, unit: 'W' },
+    { duration: '60min', best: activityBestPowers.find(p => p.duration === '60min')?.value || 0, unit: 'W' }
   ];
 
   return (
@@ -233,7 +234,7 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
       )}
 
       {/* Best Efforts Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {bestEfforts.map((effort) => (
           <Card key={effort.duration} className="relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-zone-1 via-zone-2 to-zone-3"></div>
