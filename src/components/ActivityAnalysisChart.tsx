@@ -13,7 +13,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp']);
+  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp', 'elevation']);
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -34,6 +34,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const baseCadence = isRunning ? 180 : 90;
       const baseSpeed = activity.avg_speed || (isRunning ? 12 : 35);
       const baseTemp = 22; // Base temperature in Celsius
+      const baseElevation = 100; // Base elevation in meters
       
       // Add some variation to make it realistic
       const powerVariation = 0.8 + Math.random() * 0.4;
@@ -41,6 +42,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       const cadenceVariation = 0.85 + Math.random() * 0.3;
       const speedVariation = 0.9 + Math.random() * 0.2;
       const tempVariation = 0.95 + Math.random() * 0.1;
+      const elevationVariation = 0.7 + Math.random() * 0.6; // More variation for elevation
       
       const leftPower = basePower * powerVariation * 0.52; // Slightly more left
       const rightPower = basePower * powerVariation * 0.48; // Slightly less right
@@ -55,6 +57,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         cadence: Math.round(baseCadence * cadenceVariation),
         speed: Math.round(baseSpeed * speedVariation * 10) / 10,
         temperature: Math.round(baseTemp * tempVariation * 10) / 10,
+        elevation: Math.round(baseElevation * elevationVariation),
         // Add zone coloring based on power/HR
         zone: Math.min(4, Math.max(1, Math.floor((basePower * powerVariation) / (basePower * 0.25)) + 1))
       };
@@ -145,6 +148,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               if (name === 'Cadence') return 'rpm';
               if (name === 'Speed') return 'km/h';
               if (name === 'Temperature') return '°C';
+              if (name === 'Elevation') return 'm';
               return '';
             };
             
@@ -208,6 +212,9 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
             <ToggleGroupItem value="temp" className="text-xs px-2 py-1 h-6 bg-accent/20 text-accent border-accent/30 data-[state=on]:bg-accent/40">
               C
             </ToggleGroupItem>
+            <ToggleGroupItem value="elevation" className="text-xs px-2 py-1 h-6 bg-muted/20 text-muted-foreground border-muted/30 data-[state=on]:bg-muted/40">
+              Elev
+            </ToggleGroupItem>
           </ToggleGroup>
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-32">
@@ -258,18 +265,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 />
                 <Tooltip content={<TimelineTooltip />} />
-                
-                {/* Power area with zone coloring */}
-                <Area
-                  yAxisId="power"
-                  type="monotone"
-                  dataKey="power"
-                  stroke="hsl(var(--zone-3))"
-                  fill="hsl(var(--zone-3))"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                  name="Power"
-                />
                 
                 {/* Conditionally render Total Power */}
                 {visibleMetrics.includes('wl') && (
@@ -338,16 +333,17 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   />
                 )}
                 
-                {/* Conditionally render Temperature */}
-                {visibleMetrics.includes('temp') && (
+                {/* Conditionally render Elevation */}
+                {visibleMetrics.includes('elevation') && (
                   <Line
                     yAxisId="hr"
                     type="monotone"
-                    dataKey="temperature"
-                    stroke="hsl(var(--accent))"
+                    dataKey="elevation"
+                    stroke="hsl(var(--muted-foreground))"
                     strokeWidth={1}
+                    strokeDasharray="4 2"
                     dot={false}
-                    name="Temperature"
+                    name="Elevation"
                   />
                 )}
               </ComposedChart>
