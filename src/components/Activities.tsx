@@ -13,6 +13,7 @@ import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
+import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 
 export function Activities() {
   const { activities, loading, deleteActivity } = useActivities();
@@ -176,6 +177,11 @@ export function Activities() {
       {/* Enhanced Power Profile */}
       <div className="mt-6">
         <EnhancedPowerProfileChart activity={activity} />
+      </div>
+
+      {/* Activity Analysis Chart */}
+      <div className="mt-6">
+        <ActivityAnalysisChart activity={activity} />
       </div>
 
       {/* Detailed Metrics */}

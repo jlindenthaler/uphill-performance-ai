@@ -11,7 +11,7 @@ import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { usePMCPopulation } from "@/hooks/usePMCPopulation";
 import { useSportMode } from "@/contexts/SportModeContext";
-import { ActivityAnalysisChart } from "./ActivityAnalysisChart";
+
 import { useState, useMemo } from "react";
 
 export function AnalysisDashboard() {
@@ -266,7 +266,14 @@ export function AnalysisDashboard() {
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-6">
-          <ActivityAnalysisChart activity={null} />
+          <Card className="card-gradient">
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                <p>Activity analysis is available in individual activity details.</p>
+                <p className="text-sm mt-2">Go to Activities tab and expand any activity to see detailed analysis charts.</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="metabolic" className="space-y-6">
