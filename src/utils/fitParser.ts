@@ -101,11 +101,11 @@ export function parseFitFile(file: File): Promise<ParsedActivityData> {
 function extractActivityData(messages: any): ParsedActivityData {
   console.log('Available message types:', Object.keys(messages));
   
-  // Get messages by type - Garmin SDK groups messages by type
-  const sessionMessages = messages.session || [];
-  const activityMessages = messages.activity || [];
-  const recordMessages = messages.record || [];
-  const lapMessages = messages.lap || [];
+  // Get messages by type - Garmin SDK uses different property names
+  const sessionMessages = messages.sessionMesgs || [];
+  const activityMessages = messages.activityMesgs || [];
+  const recordMessages = messages.recordMesgs || [];
+  const lapMessages = messages.lapMesgs || [];
   
   console.log('Session messages:', sessionMessages.length);
   console.log('Activity messages:', activityMessages.length);
@@ -118,32 +118,48 @@ function extractActivityData(messages: any): ParsedActivityData {
   
   console.log('Session data sample:', sessionData);
   console.log('Activity data sample:', activityData);
+  
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
 
+  
   // Determine sport mode
-  const sport = sessionData.sport || sessionData.subSport || activityData.sport || 2;
+  const sport = unwrapValue(sessionData.sport) || unwrapValue(sessionData.subSport) || unwrapValue(activityData.sport) || 2;
   const sportMode = SPORT_MAPPING[sport] || 'cycling';
   
+  console.log('Sport:', sport, 'Sport mode:', sportMode);
+  
   // Calculate basic metrics from session data
-  const duration = sessionData.totalTimerTime || sessionData.totalElapsedTime || 0;
-  const distance = sessionData.totalDistance || 0;
-  const calories = sessionData.totalCalories || 0;
+  const duration = unwrapValue(sessionData.totalTimerTime) || unwrapValue(sessionData.totalElapsedTime) || 0;
+  const distance = unwrapValue(sessionData.totalDistance) || 0;
+  const calories = unwrapValue(sessionData.totalCalories) || 0;
+  
+  console.log('Raw values - Duration:', duration, 'Distance:', distance, 'Calories:', calories);
   
   // Power metrics
-  const avgPower = sessionData.avgPower || null;
-  const maxPower = sessionData.maxPower || null;
-  const normalizedPower = sessionData.normalizedPower || calculateNormalizedPower(recordMessages);
+  const avgPower = unwrapValue(sessionData.avgPower) || null;
+  const maxPower = unwrapValue(sessionData.maxPower) || null;
+  const normalizedPower = unwrapValue(sessionData.normalizedPower) || calculateNormalizedPower(recordMessages);
   
   // Heart rate metrics  
-  const avgHeartRate = sessionData.avgHeartRate || null;
-  const maxHeartRate = sessionData.maxHeartRate || null;
+  const avgHeartRate = unwrapValue(sessionData.avgHeartRate) || null;
+  const maxHeartRate = unwrapValue(sessionData.maxHeartRate) || null;
   
   // Speed and pace calculations
-  const avgSpeed = sessionData.avgSpeed ? sessionData.avgSpeed * 3.6 : 
+  const rawAvgSpeed = unwrapValue(sessionData.avgSpeed);
+  const avgSpeed = rawAvgSpeed ? rawAvgSpeed * 3.6 : 
                    (duration > 0 && distance > 0 ? (distance / duration) * 3.6 : null);
   const avgPace = avgSpeed ? (1000 / (avgSpeed * 1000 / 3600)) : null;
   
+  console.log('Speed calculations - Raw avg speed:', rawAvgSpeed, 'Calculated avg speed:', avgSpeed);
+  
   // Elevation gain
-  const elevationGain = sessionData.totalAscent || calculateElevationGain(recordMessages);
+  const elevationGain = unwrapValue(sessionData.totalAscent) || calculateElevationGain(recordMessages);
   
   // GPS data from record messages
   const gpsData = extractGPSData(recordMessages);
@@ -157,9 +173,16 @@ function extractActivityData(messages: any): ParsedActivityData {
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
   // Get activity timestamp
-  const timestamp = sessionData.startTime || sessionData.timestamp || 
-                   activityData.timestamp || activityData.timeCreated || new Date();
+  const timestamp = unwrapValue(sessionData.startTime) || unwrapValue(sessionData.timestamp) || 
+                   unwrapValue(activityData.timestamp) || unwrapValue(activityData.timeCreated) || new Date();
   const activityDate = new Date(timestamp).toISOString().split('T')[0];
+  
+  console.log('Final extracted values:', {
+    duration_seconds: Math.round(duration),
+    distance_meters: distance ? Math.round(distance) : undefined,
+    avg_speed_kmh: avgSpeed ? Math.round(avgSpeed * 100) / 100 : undefined,
+    sportMode
+  });
   
   return {
     sport_mode: sportMode,
@@ -187,24 +210,35 @@ function extractGPSData(records: any[]): any {
   const coordinates: Array<[number, number]> = [];
   const trackPoints: any[] = [];
   
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
+  
   records.forEach(record => {
-    if (record.positionLat !== undefined && record.positionLong !== undefined) {
+    const lat = unwrapValue(record.positionLat);
+    const lng = unwrapValue(record.positionLong);
+    
+    if (lat !== undefined && lng !== undefined) {
       // Convert semicircles to degrees
-      const lat = record.positionLat * (180 / Math.pow(2, 31));
-      const lng = record.positionLong * (180 / Math.pow(2, 31));
+      const latDeg = lat * (180 / Math.pow(2, 31));
+      const lngDeg = lng * (180 / Math.pow(2, 31));
       
-      if (lat !== 0 && lng !== 0) {
-        coordinates.push([lng, lat]); // GeoJSON format [lng, lat]
+      if (latDeg !== 0 && lngDeg !== 0) {
+        coordinates.push([lngDeg, latDeg]); // GeoJSON format [lng, lat]
         
         trackPoints.push({
-          lat,
-          lng,
-          timestamp: record.timestamp,
-          altitude: record.altitude,
-          heartRate: record.heartRate,
-          power: record.power,
-          speed: record.speed,
-          cadence: record.cadence
+          lat: latDeg,
+          lng: lngDeg,
+          timestamp: unwrapValue(record.timestamp),
+          altitude: unwrapValue(record.altitude),
+          heartRate: unwrapValue(record.heartRate),
+          power: unwrapValue(record.power),
+          speed: unwrapValue(record.speed),
+          cadence: unwrapValue(record.cadence)
         });
       }
     }
@@ -220,8 +254,16 @@ function extractGPSData(records: any[]): any {
 }
 
 function calculateNormalizedPower(records: any[]): number | null {
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
+  
   const powerData = records
-    .map(r => r.power)
+    .map(r => unwrapValue(r.power))
     .filter(p => p !== undefined && p !== null && p > 0);
     
   if (powerData.length === 0) return null;
@@ -243,8 +285,16 @@ function calculateNormalizedPower(records: any[]): number | null {
 }
 
 function calculateElevationGain(records: any[]): number | null {
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
+  
   const elevationData = records
-    .map(r => r.altitude)
+    .map(r => unwrapValue(r.altitude))
     .filter(alt => alt !== undefined && alt !== null);
     
   if (elevationData.length < 2) return null;
