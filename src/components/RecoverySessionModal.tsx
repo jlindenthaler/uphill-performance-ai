@@ -44,7 +44,6 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
   // Auto-calculate effectiveness based on fatigue improvement
   const calculateEffectiveness = () => {
     const improvement = preFatigue[0] - postFatigue[0];
-    const fatigueReduction = postFatigue[0] / preFatigue[0]; // Lower is better
     
     if (improvement >= 4) return 5; // Excellent
     if (improvement >= 3) return 4.5; // Very Good+
@@ -53,8 +52,9 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
     if (improvement >= 1.5) return 3; // Good
     if (improvement >= 1) return 2.5; // Fair+
     if (improvement >= 0.5) return 2; // Fair
-    if (improvement >= 0) return 1.5; // Poor+
-    return 1; // Poor (fatigue increased)
+    if (improvement > 0) return 1.5; // Poor+
+    if (improvement === 0) return 0; // No change
+    return 0; // Poor (fatigue increased)
   };
   
   const effectiveness = calculateEffectiveness();
@@ -243,8 +243,8 @@ export function RecoverySessionModal({ recoveryTools, onSessionSaved }: Recovery
                     {effectiveness === 3 && "Good recovery"}
                     {effectiveness === 2.5 && "Fair+ recovery"}
                     {effectiveness === 2 && "Fair recovery"}
-                    {effectiveness === 1.5 && "Poor+ recovery"}
-                    {effectiveness === 1 && "Poor recovery"}
+                    {effectiveness === 1.5 && "Minor recovery"}
+                    {effectiveness === 0 && "No improvement"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Based on fatigue improvement ({preFatigue[0]} → {postFatigue[0]})
