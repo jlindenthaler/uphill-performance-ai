@@ -9,6 +9,7 @@ import { ResearchUpdates } from "@/components/ResearchUpdates";
 import { Settings } from "@/components/Settings";
 import { EnhancedTrainingCalendar } from "@/components/EnhancedTrainingCalendar";
 import { Activities } from "@/components/Activities";
+import { RecoveryDashboard } from "@/components/RecoveryDashboard";
 import { Goals } from "@/components/Goals";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -30,8 +31,8 @@ const Index = () => {
         return <LabResults openAddDialog={openLabDialog} />;
       case 'calendar':
         return <EnhancedTrainingCalendar />;
-      case 'activities':
-        return <Activities />;
+      case 'recovery':
+        return <RecoveryDashboard />;
       case 'workouts':
         return <WorkoutLibrary />;
       case 'analysis':

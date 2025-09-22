@@ -27,6 +27,10 @@ export function Navigation({
     label: 'Activities',
     icon: Upload
   }, {
+    id: 'recovery',
+    label: 'Recovery',
+    icon: Heart
+  }, {
     id: 'goals',
     label: 'Goals',
     icon: Target
