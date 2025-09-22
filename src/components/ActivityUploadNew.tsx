@@ -98,24 +98,30 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
         
         updateProgress(100, 'complete');
         
+        console.log('Starting activity upload for:', file.name);
         const uploadedActivity = await uploadActivity(file, activityName || undefined);
+        console.log('Activity uploaded successfully:', uploadedActivity);
         
         toast({
           title: 'Activity uploaded successfully',
           description: `${file.name} has been processed and added to your activities.`
         });
 
-        // Call success callback with activity ID
+        // Call success callback with activity ID immediately
         if (onUploadSuccess && uploadedActivity?.id) {
+          console.log('Calling onUploadSuccess with activity ID:', uploadedActivity.id);
           onUploadSuccess(uploadedActivity.id);
         }
 
-        // Clear completed uploads after 2 seconds
+        // Clear completed uploads and trigger refresh after a short delay
         setTimeout(() => {
+          console.log('Clearing upload files and triggering refresh event');
           setUploadingFiles(prev => prev.filter(item => item.file !== file));
-          // Trigger a window event to refresh activities
-          window.dispatchEvent(new CustomEvent('activity-uploaded'));
-        }, 2000);
+          // Trigger a window event to refresh activities with a slight delay
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('activity-uploaded'));
+          }, 500);
+        }, 1500);
 
       } catch (error) {
         setUploadingFiles(prev => prev.map(item => 

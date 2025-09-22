@@ -43,6 +43,7 @@ export function useActivities() {
   const fetchActivities = async (limit?: number) => {
     if (!user) return;
     
+    console.log('Fetching activities for user:', user.id);
     setLoading(true);
     try {
       let query = supabase
@@ -58,6 +59,7 @@ export function useActivities() {
       const { data, error } = await query;
 
       if (error) throw error;
+      console.log('Fetched activities:', data?.length || 0, 'activities');
       setActivities(data || []);
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -69,17 +71,21 @@ export function useActivities() {
   const uploadActivity = async (file: File, activityName?: string) => {
     if (!user) throw new Error('User not authenticated');
 
+    console.log('Starting upload activity process for:', file.name);
     setLoading(true);
     try {
       // Upload file to storage
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      console.log('Uploading file to storage:', fileName);
       const { error: uploadError } = await supabase.storage
         .from('activity-files')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
+      console.log('File uploaded to storage successfully');
 
       // Process the file
+      console.log('Processing file with edge function...');
       const { data: processResult, error: processError } = await supabase.functions
         .invoke('process-activity', {
           body: {
@@ -89,6 +95,7 @@ export function useActivities() {
         });
 
       if (processError) throw processError;
+      console.log('File processed successfully:', processResult);
 
       // Save the activity
       const activityData = {
@@ -100,6 +107,7 @@ export function useActivities() {
         sport_mode: sportMode
       };
 
+      console.log('Saving activity data:', activityData);
       const { data: saveResult, error: saveError } = await supabase.functions
         .invoke('process-activity', {
           body: {
@@ -109,10 +117,10 @@ export function useActivities() {
         });
 
       if (saveError) throw saveError;
+      console.log('Activity saved successfully:', saveResult);
 
-      // Refresh activities list
-      await fetchActivities();
-      
+      // Don't refresh immediately here - let the event handler do it with proper timing
+      console.log('Activity upload complete, returning data');
       return saveResult.activity;
     } catch (error) {
       console.error('Error uploading activity:', error);
@@ -187,6 +195,7 @@ export function useActivities() {
     
     // Listen for activity upload events
     const handleActivityUploaded = () => {
+      console.log('Activity uploaded event received, refreshing activities...');
       fetchActivities();
     };
     

@@ -85,14 +85,16 @@ export function Activities() {
   };
 
   const handleUploadSuccess = (activityId?: string) => {
+    console.log('handleUploadSuccess called with activityId:', activityId);
     // Close the modal immediately
     setUploadModalOpen(false);
     
     if (activityId) {
       // Expand the newly uploaded activity after a brief delay to ensure data is loaded
       setTimeout(() => {
+        console.log('Expanding activity:', activityId);
         setExpandedActivity(activityId);
-      }, 500);
+      }, 1000);
     }
   };
 
