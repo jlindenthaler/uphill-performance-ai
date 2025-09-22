@@ -170,11 +170,11 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
   }
 
   const bestEfforts = [
-    { duration: '5s', best: powerProfile.find(p => p.duration === '5s')?.current || 0, unit: isRunning ? 'min/km' : 'W' },
-    { duration: '1min', best: powerProfile.find(p => p.duration === '1min')?.current || 0, unit: isRunning ? 'min/km' : 'W' },
-    { duration: '5min', best: powerProfile.find(p => p.duration === '5min')?.current || 0, unit: isRunning ? 'min/km' : 'W' },
-    { duration: '20min', best: powerProfile.find(p => p.duration === '20min')?.current || 0, unit: isRunning ? 'min/km' : 'W' },
-    { duration: '60min', best: powerProfile.find(p => p.duration === '60min')?.current || 0, unit: isRunning ? 'min/km' : 'W' }
+    { duration: '5s', best: activityBestPowers.find(p => p.duration === '5s')?.value || 0, unit: 'W' },
+    { duration: '1min', best: activityBestPowers.find(p => p.duration === '1min')?.value || 0, unit: 'W' },
+    { duration: '5min', best: activityBestPowers.find(p => p.duration === '5min')?.value || 0, unit: 'W' },
+    { duration: '20min', best: activityBestPowers.find(p => p.duration === '20min')?.value || 0, unit: 'W' },
+    { duration: '60min', best: activityBestPowers.find(p => p.duration === '60min')?.value || 0, unit: 'W' }
   ];
 
   return (
