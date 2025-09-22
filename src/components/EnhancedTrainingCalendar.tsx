@@ -62,6 +62,12 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     plannedDuration: nextWeekWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) * 60
   };
 
+  // Get PMC values from training history
+  const latestMetrics = trainingHistory.length > 0 ? trainingHistory[trainingHistory.length - 1] : null;
+  const ctl = latestMetrics?.ctl || 0;
+  const atl = latestMetrics?.atl || 0;
+  const tsb = latestMetrics?.tsb || 0;
+
   const weeklyStats = {
     // Current week (completed)
     duration: `${Math.floor(currentWeekStats.duration / 3600)}:${Math.floor((currentWeekStats.duration % 3600) / 60).toString().padStart(2, '0')}`,
@@ -74,10 +80,10 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     nextWeekWorkouts: nextWeekStats.plannedWorkouts,
     nextWeekDuration: `${Math.floor(nextWeekStats.plannedDuration / 3600)}:${Math.floor((nextWeekStats.plannedDuration % 3600) / 60).toString().padStart(2, '0')}`,
     
-    // Static data (would come from user profile/settings)
-    atpFitness: '42',
-    atpFatigue: '35',
-    atpForm: '7',
+    // PMC values from training history
+    atpFitness: Math.round(ctl).toString(),
+    atpFatigue: Math.round(atl).toString(),
+    atpForm: Math.round(tsb).toString(),
     atpPeriod: 'Base 1 - Week 3',
     limiters: ['Endurance', 'Speed Skill']
   };

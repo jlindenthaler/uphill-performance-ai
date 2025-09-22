@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { useActivities } from '@/hooks/useActivities';
+import { useGoals } from '@/hooks/useGoals';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
@@ -31,8 +32,26 @@ interface DashboardProps {
 
 export function NewDashboard({ onNavigate }: DashboardProps) {
   const { trainingHistory } = useTrainingHistory();
-  const { activities } = useActivities();
+  const { activities, loading: activitiesLoading } = useActivities();
+  const { goals } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
+
+  // Get the closest dated Priority A goal
+  const activeGoal = useMemo(() => {
+    const priorityAGoals = goals.filter(goal => 
+      goal.priority === 'A' && 
+      goal.status === 'active' && 
+      new Date(goal.event_date) >= new Date()
+    );
+    
+    if (priorityAGoals.length === 0) return null;
+    
+    return priorityAGoals.reduce((closest, goal) => {
+      const goalDate = new Date(goal.event_date);
+      const closestDate = new Date(closest.event_date);
+      return goalDate < closestDate ? goal : closest;
+    });
+  }, [goals]);
   const { sportMode } = useSportMode();
   const { isPopulating } = usePMCPopulation();
 
@@ -129,8 +148,19 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Goals</p>
-                <p className="text-2xl font-bold">Marathon</p>
-                <p className="text-sm text-muted-foreground mt-1">12 weeks remaining</p>
+                {activeGoal ? (
+                  <>
+                    <p className="text-2xl font-bold">{activeGoal.name}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {Math.ceil((new Date(activeGoal.event_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7))} weeks remaining
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">No Active Goal</p>
+                    <p className="text-sm text-muted-foreground mt-1">Set a Priority A goal</p>
+                  </>
+                )}
               </div>
               <Award className="h-8 w-8 text-zone-3 group-hover:scale-110 transition-transform" />
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -476,6 +476,16 @@ export function Activities() {
                                 <span className="text-xs font-medium">Avg HR</span>
                               </div>
                               <div className="font-bold text-sm text-red-400">{activity.avg_heart_rate} bpm</div>
+                            </div>
+                          )}
+                          
+                          {activity.avg_cadence && (
+                            <div className="px-2">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                                <RotateCcw className="h-3 w-3" />
+                                <span className="text-xs font-medium">Avg Cadence</span>
+                              </div>
+                              <div className="font-bold text-sm text-purple-400">{activity.avg_cadence} rpm</div>
                             </div>
                           )}
                         </div>
