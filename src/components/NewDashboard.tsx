@@ -61,8 +61,12 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
   const completedSessions = currentWeek.filter(day => day.tss > 0).length;
 
-  // Get recent activities (last 7)
-  const recentActivities = activities.slice(0, 7);
+  // Get recent activities (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentActivities = activities.filter(activity => 
+    new Date(activity.date) >= sevenDaysAgo
+  ).slice(0, 7);
 
   // Calculate CTL/ATL/TSB from recent data
   const latestMetrics = trainingHistory[trainingHistory.length - 1];
@@ -288,6 +292,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <Button 
               variant="outline" 
               className="w-full justify-between"
+              onClick={() => onNavigate('goals')}
             >
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4" />
@@ -316,7 +321,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Activity className="w-5 h-5" />
-            Recent Performance
+            Recent Activity
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={() => onNavigate('activities')}>
             View All <ChevronRight className="w-4 h-4 ml-1" />
@@ -337,7 +342,11 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
           ) : (
             <div className="grid gap-3">
               {recentActivities.map((activity, index) => (
-                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors group">
+                <div 
+                  key={activity.id} 
+                  className="flex items-center gap-4 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors group cursor-pointer"
+                  onClick={() => onNavigate('activities')}
+                >
                   <div className="text-lg">{getSportIcon(activity.sport_mode)}</div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate group-hover:text-primary transition-colors">{activity.name}</h3>
@@ -377,88 +386,91 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
-              {/* State Championships */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">State Championships</h3>
-                  <Badge className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1">Priority B</Badge>
-                  <Badge className="text-xs bg-blue-100 text-blue-700 px-2 py-1">criterium</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Mar 15, 2025</span>
-                  <span className="text-blue-600">(-190 days, -28w)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>Local circuit</span>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-muted-foreground">Training Progress</span>
-                    <span className="text-sm font-medium">100%</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
-                  </div>
-                </div>
+            {goals.length === 0 ? (
+              <div className="text-center py-8">
+                <Target className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No goals set</h3>
+                <p className="text-muted-foreground mb-4">
+                  Set your first goal to start tracking progress
+                </p>
+                <Button onClick={() => onNavigate('goals')}>
+                  Set Goal
+                </Button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {goals
+                  .filter(goal => goal.status === 'active')
+                  .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+                  .slice(0, 3)
+                  .map((goal) => {
+                    const goalDate = new Date(goal.event_date);
+                    const today = new Date();
+                    const daysUntil = Math.ceil((goalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const weeksUntil = Math.ceil(daysUntil / 7);
+                    
+                    const getPriorityColor = (priority: string) => {
+                      switch (priority) {
+                        case 'A': return 'bg-red-100 text-red-700';
+                        case 'B': return 'bg-yellow-100 text-yellow-700';
+                        case 'C': return 'bg-blue-100 text-blue-700';
+                        default: return 'bg-gray-100 text-gray-700';
+                      }
+                    };
 
-              {/* Local Criterium Series */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">Local Criterium Series</h3>
-                  <Badge className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1">Priority B</Badge>
-                  <Badge className="text-xs bg-blue-100 text-blue-700 px-2 py-1">criterium</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Feb 15, 2025</span>
-                  <span className="text-blue-600">(-218 days, -32w)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>Local venue</span>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-muted-foreground">Training Progress</span>
-                    <span className="text-sm font-medium">100%</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
-                  </div>
-                </div>
-              </div>
+                    const getEventTypeColor = (eventType: string) => {
+                      switch (eventType) {
+                        case 'criterium': return 'bg-blue-100 text-blue-700';
+                        case 'road race': return 'bg-green-100 text-green-700';
+                        case 'time trial': return 'bg-purple-100 text-purple-700';
+                        default: return 'bg-gray-100 text-gray-700';
+                      }
+                    };
 
-              {/* National Championships Road Race */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">National Championships Road Race</h3>
-                  <Badge className="text-xs bg-red-100 text-red-700 px-2 py-1">Priority A</Badge>
-                  <Badge className="text-xs bg-green-100 text-green-700 px-2 py-1">road race</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Jan 28, 2025</span>
-                  <span className="text-blue-600">(-236 days, -34w)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>Perth, Australia</span>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-muted-foreground">Training Progress</span>
-                    <span className="text-sm font-medium">100%</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{width: '100%'}}></div>
-                  </div>
-                </div>
+                    return (
+                      <div key={goal.id} className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{goal.name}</h3>
+                          <Badge className={`text-xs px-2 py-1 ${getPriorityColor(goal.priority)}`}>
+                            Priority {goal.priority}
+                          </Badge>
+                          <Badge className={`text-xs px-2 py-1 ${getEventTypeColor(goal.event_type)}`}>
+                            {goal.event_type}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          <span>{goalDate.toLocaleDateString()}</span>
+                          <span className="text-blue-600">
+                            ({daysUntil > 0 ? `-${daysUntil} days, -${weeksUntil}w` : 'Past due'})
+                          </span>
+                        </div>
+                        {goal.location && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <span>{goal.location}</span>
+                          </div>
+                        )}
+                        {goal.target_performance && (
+                          <p className="text-sm text-muted-foreground">
+                            Target: {goal.target_performance}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                {goals.filter(goal => goal.status === 'active').length > 3 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mt-4"
+                    onClick={() => onNavigate('goals')}
+                  >
+                    View All Goals
+                  </Button>
+                )}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
