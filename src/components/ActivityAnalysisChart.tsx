@@ -193,10 +193,10 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               BPM
             </ToggleGroupItem>
             <ToggleGroupItem value="wl" className="text-xs px-2 py-1 h-6 bg-zone-3/20 text-zone-3 border-zone-3/30 data-[state=on]:bg-zone-3/40">
-              WL
+              Power
             </ToggleGroupItem>
             <ToggleGroupItem value="wr" className="text-xs px-2 py-1 h-6 bg-zone-4/20 text-zone-4 border-zone-4/30 data-[state=on]:bg-zone-4/40">
-              WR
+              L:R
             </ToggleGroupItem>
             <ToggleGroupItem value="speed" className="text-xs px-2 py-1 h-6 bg-primary/20 text-primary border-primary/30 data-[state=on]:bg-primary/40">
               Speed
