@@ -79,6 +79,45 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
 
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
 
+  // Calculate activity best power for specific durations
+  const calculateActivityBestPowers = () => {
+    if (!activity) return [];
+    
+    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
+    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
+    
+    return targetDurations.map((duration, index) => {
+      let value = 0;
+      
+      if (!isRunning && activity.avg_power) {
+        const basePower = activity.avg_power;
+        let factor = 1.0;
+        
+        // Power curve approximation - shorter durations have higher power
+        if (duration <= 10) factor = 1.8; // Neuromuscular power
+        else if (duration <= 60) factor = 1.5; // VO2max power
+        else if (duration <= 300) factor = 1.2; // 5min power
+        else if (duration <= 1200) factor = 1.0; // Threshold power
+        else factor = 0.85; // Endurance power
+        
+        // Use max power if available for very short durations
+        if (duration <= 20 && activity.max_power) {
+          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
+        } else {
+          value = basePower * factor;
+        }
+      }
+      
+      return {
+        duration: targetLabels[index],
+        durationSeconds: duration,
+        value: Math.round(value)
+      };
+    });
+  };
+
+  const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
+
   // Filter power profile by date range (mock implementation)
   const filteredPowerProfile = useMemo(() => {
     // In a real implementation, this would filter by date
@@ -131,45 +170,6 @@ export function EnhancedPowerProfileChart({ activity }: EnhancedPowerProfileChar
   }
 
   const bestEfforts = filteredPowerProfile.slice(0, 4);
-
-  // Calculate activity best power for specific durations
-  const calculateActivityBestPowers = () => {
-    if (!activity) return [];
-    
-    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
-    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
-    
-    return targetDurations.map((duration, index) => {
-      let value = 0;
-      
-      if (!isRunning && activity.avg_power) {
-        const basePower = activity.avg_power;
-        let factor = 1.0;
-        
-        // Power curve approximation - shorter durations have higher power
-        if (duration <= 10) factor = 1.8; // Neuromuscular power
-        else if (duration <= 60) factor = 1.5; // VO2max power
-        else if (duration <= 300) factor = 1.2; // 5min power
-        else if (duration <= 1200) factor = 1.0; // Threshold power
-        else factor = 0.85; // Endurance power
-        
-        // Use max power if available for very short durations
-        if (duration <= 20 && activity.max_power) {
-          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
-        } else {
-          value = basePower * factor;
-        }
-      }
-      
-      return {
-        duration: targetLabels[index],
-        durationSeconds: duration,
-        value: Math.round(value)
-      };
-    });
-  };
-
-  const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
 
   return (
     <div className="space-y-6">
