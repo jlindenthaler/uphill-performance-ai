@@ -5,6 +5,7 @@ import { useSportMode } from '@/contexts/SportModeContext';
 import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
 import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
+import { useUserTimezone } from './useUserTimezone';
 
 interface Activity {
   id: string;
@@ -41,6 +42,7 @@ interface Activity {
 export function useActivities() {
   const { user } = useAuth();
   const { sportMode } = useSportMode();
+  const { timezone } = useUserTimezone();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -105,7 +107,7 @@ export function useActivities() {
       if (isFileType(['.fit'])) {
         try {
           console.log('Parsing FIT file...');
-          const parsedData: ParsedActivityData = await parseFitFile(file);
+          const parsedData: ParsedActivityData = await parseFitFile(file, timezone);
           console.log('FIT file parsed successfully:', parsedData);
           
           // Merge parsed data with basic activity data

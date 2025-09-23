@@ -1,4 +1,5 @@
 import { Decoder, Stream, Profile, Utils } from '@garmin/fitsdk';
+import { fromUserTimezone } from './dateFormat';
 
 export interface ParsedActivityData {
   name?: string;
@@ -48,7 +49,7 @@ const SPORT_MAPPING: Record<number, string> = {
   // Add more as needed
 };
 
-export function parseFitFile(file: File): Promise<ParsedActivityData> {
+export function parseFitFile(file: File, userTimezone?: string): Promise<ParsedActivityData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -80,7 +81,7 @@ export function parseFitFile(file: File): Promise<ParsedActivityData> {
         console.log('FIT messages parsed:', Object.keys(messages));
         
         // Extract activity data
-        const activityData = extractActivityData(messages);
+        const activityData = extractActivityData(messages, userTimezone);
         
         console.log('Extracted activity data:', activityData);
         resolve(activityData);
@@ -99,7 +100,7 @@ export function parseFitFile(file: File): Promise<ParsedActivityData> {
   });
 }
 
-function extractActivityData(messages: any): ParsedActivityData {
+function extractActivityData(messages: any, userTimezone?: string): ParsedActivityData {
   console.log('Available message types:', Object.keys(messages));
   
   // Get messages by type - Garmin SDK uses different property names
@@ -176,10 +177,19 @@ function extractActivityData(messages: any): ParsedActivityData {
   const intensityFactor = calculateIntensityFactor(normalizedPower);
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
-  // Get activity timestamp
+  // Get activity timestamp and convert to user's timezone
   const timestamp = unwrapValue(sessionData.startTime) || unwrapValue(sessionData.timestamp) || 
                    unwrapValue(activityData.timestamp) || unwrapValue(activityData.timeCreated) || new Date();
-  const activityDate = new Date(timestamp).toISOString().split('T')[0];
+  
+  let activityDate: string;
+  if (userTimezone) {
+    // Convert the timestamp to the user's timezone and extract the date
+    const localTime = fromUserTimezone(new Date(timestamp), userTimezone);
+    activityDate = localTime.toISOString().split('T')[0];
+  } else {
+    // Fallback to UTC date
+    activityDate = new Date(timestamp).toISOString().split('T')[0];
+  }
   
   console.log('Final extracted values:', {
     duration_seconds: Math.round(duration),

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw } from 'lucide-react';
+import { formatActivityDate } from '@/utils/dateFormat';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +20,7 @@ import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 export function Activities() {
   const { activities, loading, deleteActivity } = useActivities();
   const { sportMode } = useSportMode();
+  const { timezone } = useUserTimezone();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [filterSport, setFilterSport] = useState('all');
@@ -117,7 +120,7 @@ export function Activities() {
             <div className="flex items-center space-x-4 text-muted-foreground text-sm">
               <span className="flex items-center space-x-1">
                 <Calendar className="h-3 w-3" />
-                <span>{new Date(activity.date).toLocaleDateString()}</span>
+                <span>{formatActivityDate(activity.date, timezone)}</span>
               </span>
               <Badge variant="outline" className="capitalize">
                 {activity.sport_mode}
@@ -410,7 +413,7 @@ export function Activities() {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{new Date(activity.date).toLocaleDateString()}</span>
+                              <span>{formatActivityDate(activity.date, timezone)}</span>
                             </span>
                             <Badge variant="outline" className="capitalize">
                               {activity.sport_mode}

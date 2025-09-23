@@ -32,6 +32,17 @@ export function UserSettings() {
     timezone: profile?.timezone || 'UTC',
     units: profile?.units || 'metric'
   });
+
+  // Update form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        timezone: profile.timezone || 'UTC',
+        units: profile.units || 'metric'
+      });
+    }
+  }, [profile]);
   
   
   const [timeData, setTimeData] = useState({

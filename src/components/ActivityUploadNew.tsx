@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, File, X, CheckCircle, FileText } from 'lucide-react';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const { toast } = useToast();
   const { uploadActivity, loading } = useActivities();
   const { sportMode, setSportMode } = useSportMode();
+  const { timezone } = useUserTimezone();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
