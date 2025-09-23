@@ -329,11 +329,6 @@ export function Activities() {
     );
   }
 
-  console.log('Activity dates timezone conversion:', {
-    activityDate: activity.date,
-    timezone,
-    formatted: formatActivityDateTime(activity.date, timezone)
-  });
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
