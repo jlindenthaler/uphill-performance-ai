@@ -220,7 +220,7 @@ export const TrainingCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const { goals } = useGoals();
-  const { workouts } = useWorkouts();
+  const { workouts, deleteWorkout } = useWorkouts();
   const { timezone } = useUserTimezone();
 
   const monthStart = startOfMonth(currentDate);
@@ -330,8 +330,7 @@ export const TrainingCalendar: React.FC = () => {
                     <AlertDialogAction 
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => {
-                        // Note: Workout deletion not implemented in useWorkouts hook yet
-                        console.log('Delete workout:', event.id);
+                        deleteWorkout(event.id);
                       }}
                     >
                       Delete

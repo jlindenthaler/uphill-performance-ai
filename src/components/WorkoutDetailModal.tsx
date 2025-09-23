@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, BookOpen, Target, Clock, Zap, Download, Calendar, CheckCircle, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ExternalLink, BookOpen, Target, Clock, Zap, Download, Calendar, CheckCircle, X, MoreHorizontal, Trash2 } from "lucide-react";
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +30,7 @@ interface WorkoutDetailModalProps {
 }
 
 export function WorkoutDetailModal({ workout, open, onClose }: WorkoutDetailModalProps) {
-  const { exportWorkout } = useWorkouts();
+  const { scheduleWorkout, exportWorkout, deleteWorkout } = useWorkouts();
   const { toast } = useToast();
   const { timezone } = useUserTimezone();
 
@@ -85,12 +87,60 @@ export function WorkoutDetailModal({ workout, open, onClose }: WorkoutDetailModa
                 <CardDescription>{workout.description}</CardDescription>
               )}
             </div>
-            <div className="flex gap-2">
-              {zones.map((zone) => (
-                <Badge key={zone} className={getZoneColor(zone)}>
-                  Zone {zone}
-                </Badge>
-              ))}
+            <div className="flex gap-2 items-start">
+              <div className="flex gap-1">
+                {zones.map((zone) => (
+                  <Badge key={zone} className={getZoneColor(zone)}>
+                    Zone {zone}
+                  </Badge>
+                ))}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover border border-border">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive cursor-pointer"
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Workout
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-background border border-border">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the workout "{workout.name}".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={async () => {
+                            if (workout.id) {
+                              await deleteWorkout(workout.id);
+                              toast({
+                                title: "Workout deleted",
+                                description: `${workout.name} has been deleted successfully.`,
+                              });
+                              onClose();
+                            }
+                          }}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>

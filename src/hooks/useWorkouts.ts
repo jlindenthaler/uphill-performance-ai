@@ -80,6 +80,19 @@ export function useWorkouts() {
     await fetchWorkouts();
   };
 
+  const deleteWorkout = async (workoutId: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('workouts')
+      .delete()
+      .eq('id', workoutId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    await fetchWorkouts();
+  };
+
   const exportWorkout = (workout: Workout, format: 'json' | 'tcx' = 'json') => {
     if (format === 'json') {
       const dataStr = JSON.stringify(workout, null, 2);
@@ -107,6 +120,7 @@ export function useWorkouts() {
     saveWorkout,
     scheduleWorkout,
     exportWorkout,
+    deleteWorkout,
     fetchWorkouts
   };
 }

@@ -29,7 +29,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const { goals } = useGoals();
-  const { workouts } = useWorkouts();
+  const { workouts, deleteWorkout } = useWorkouts();
   const { activities, deleteActivity } = useActivities();
   const { trainingHistory } = useTrainingHistory(30);
   const { timezone } = useUserTimezone();
@@ -240,10 +240,11 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                     <AlertDialogAction 
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => {
-                        if (event.type === 'activity') {
+                        if (event.type === 'workout') {
+                          deleteWorkout(event.id);
+                        } else if (event.type === 'activity') {
                           deleteActivity(event.id);
                         }
-                        // Note: Workout deletion not implemented in useWorkouts hook yet
                       }}
                     >
                       Delete
