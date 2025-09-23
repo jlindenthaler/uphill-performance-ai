@@ -16,6 +16,8 @@ import {
   Trash2
 } from "lucide-react";
 import { EnhancedMapView } from "./EnhancedMapView";
+import { formatActivityDateTime } from "@/utils/dateFormat";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 interface Activity {
   id?: string;
@@ -51,6 +53,8 @@ interface ActivityDetailModalProps {
 }
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete }: ActivityDetailModalProps) {
+  const { timezone } = useUserTimezone();
+  
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
@@ -104,7 +108,12 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
           <div className="flex justify-between items-start">
             <DialogTitle className="flex items-center gap-2">
               <span className="text-2xl">{getSportIcon(activity.sport_mode)}</span>
-              {activity.name}
+              <div>
+                <div>{activity.name}</div>
+                <div className="text-sm font-normal text-muted-foreground">
+                  {formatActivityDateTime(activity.date, timezone)}
+                </div>
+              </div>
             </DialogTitle>
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{activity.sport_mode}</Badge>
