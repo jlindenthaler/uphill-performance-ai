@@ -18,7 +18,7 @@ import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 
 export function Activities() {
-  const { activities, loading, deleteActivity } = useActivities();
+  const { activities, loading, deleteActivity, reprocessActivityTimestamps } = useActivities();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
   const [searchTerm, setSearchTerm] = useState('');
@@ -338,10 +338,21 @@ export function Activities() {
             Review activities and upload new training data • Timezone: {timezone}
           </p>
         </div>
-        <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Upload Activity
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={reprocessActivityTimestamps}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Fix Timestamps
+          </Button>
+          <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Upload Activity
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">

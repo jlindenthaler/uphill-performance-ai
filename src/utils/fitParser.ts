@@ -178,12 +178,28 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
   // Get activity timestamp and preserve it as full timestamp
-  const timestamp = unwrapValue(sessionData.startTime) || unwrapValue(sessionData.timestamp) || 
-                   unwrapValue(activityData.timestamp) || unwrapValue(activityData.timeCreated) || new Date();
+  const rawStartTime = unwrapValue(sessionData.startTime);
+  const rawTimestamp = unwrapValue(sessionData.timestamp);
+  const rawActivityTimestamp = unwrapValue(activityData.timestamp);
+  const rawTimeCreated = unwrapValue(activityData.timeCreated);
+  
+  console.log('FIT timestamp extraction:', {
+    rawStartTime,
+    rawTimestamp,
+    rawActivityTimestamp,
+    rawTimeCreated
+  });
+  
+  const timestamp = rawStartTime || rawTimestamp || rawActivityTimestamp || rawTimeCreated || new Date();
   
   // Store the full timestamp, not just the date
   // This allows timezone conversions to be visible when displaying
   const activityDate = new Date(timestamp).toISOString();
+  
+  console.log('Final extracted timestamp:', {
+    original: timestamp,
+    converted: activityDate
+  });
   
   console.log('Final extracted values:', {
     duration_seconds: Math.round(duration),

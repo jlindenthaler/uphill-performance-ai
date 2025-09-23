@@ -109,6 +109,8 @@ export function useActivities() {
           console.log('Parsing FIT file...');
           const parsedData: ParsedActivityData = await parseFitFile(file, timezone);
           console.log('FIT file parsed successfully:', parsedData);
+          console.log('Original activity date (before merge):', activityData.date);
+          console.log('Parsed activity date:', parsedData.date);
           
           // Merge parsed data with basic activity data
           activityData = {
@@ -119,6 +121,8 @@ export function useActivities() {
             // Keep user-selected sport mode if specified, otherwise use parsed
             sport_mode: sportMode !== 'cycling' ? sportMode : parsedData.sport_mode
           };
+          
+          console.log('Final merged activity date:', activityData.date);
         } catch (parseError) {
           console.warn('Failed to parse FIT file, saving basic data:', parseError);
           // Continue with basic data if parsing fails
@@ -264,6 +268,75 @@ export function useActivities() {
     }
   };
 
+  const reprocessActivityTimestamps = async () => {
+    if (!user) return;
+    
+    console.log('Starting activity timestamp reprocessing...');
+    setLoading(true);
+    
+    try {
+      // Get all FIT activities for this user
+      const { data: activities, error: fetchError } = await supabase
+        .from('activities')
+        .select('id, file_path, file_type, original_filename')
+        .eq('user_id', user.id)
+        .eq('file_type', 'fit');
+
+      if (fetchError) throw fetchError;
+
+      console.log(`Found ${activities?.length || 0} FIT activities to reprocess`);
+      
+      for (const activity of activities || []) {
+        if (!activity.file_path) continue;
+        
+        try {
+          // Download the FIT file from storage
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from('activity-files')
+            .download(activity.file_path);
+
+          if (downloadError) {
+            console.warn(`Failed to download file for activity ${activity.id}:`, downloadError);
+            continue;
+          }
+
+          // Create a File object from the downloaded data
+          const file = new File([fileData], activity.original_filename || 'activity.fit');
+          
+          // Re-parse the FIT file
+          const parsedData = await parseFitFile(file, timezone);
+          console.log(`Reparsed activity ${activity.id}, new date:`, parsedData.date);
+          
+          // Update the activity with the correct timestamp
+          const { error: updateError } = await supabase
+            .from('activities')
+            .update({ date: parsedData.date })
+            .eq('id', activity.id)
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.warn(`Failed to update activity ${activity.id}:`, updateError);
+            continue;
+          }
+
+          console.log(`Successfully updated timestamp for activity ${activity.id}`);
+        } catch (error) {
+          console.warn(`Error reprocessing activity ${activity.id}:`, error);
+        }
+      }
+      
+      // Refresh the activities list
+      await fetchActivities();
+      console.log('Activity timestamp reprocessing completed');
+      
+    } catch (error) {
+      console.error('Error during activity timestamp reprocessing:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     activities,
     loading,
@@ -271,6 +344,7 @@ export function useActivities() {
     uploadActivity,
     deleteActivity,
     updateActivity,
-    backfillPowerProfile
+    backfillPowerProfile,
+    reprocessActivityTimestamps
   };
 }
