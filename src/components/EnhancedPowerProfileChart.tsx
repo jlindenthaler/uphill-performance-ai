@@ -203,43 +203,43 @@ export function EnhancedPowerProfileChart({
     unit: 'W'
   }];
   return <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-            {isRunning ? 'Pace Profile' : 'Power Profile'}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Mean maximal {isRunning ? 'pace' : 'power'} across different durations
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="14">Last 14 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="180">Last 6 months</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Header */}
+      <div>
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+          {isRunning ? 'Pace Profile' : 'Power Profile'}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Mean maximal {isRunning ? 'pace' : 'power'} across different durations
+        </p>
       </div>
 
       {/* Activity Best Power Block */}
       {activity && !isRunning && <Card>
-          <CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
               Activity Best Power
             </CardTitle>
-          </CardHeader>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="14">Last 14 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="90">Last 90 days</SelectItem>
+                  <SelectItem value="180">Last 6 months</SelectItem>
+                  <SelectItem value="365">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
           <CardContent>
             <div className="grid grid-cols-5 gap-4">
               {activityBestPowers.map(power => <div key={power.duration} className="text-center">
