@@ -243,7 +243,7 @@ export function EnhancedPowerProfileChart({
                   </div>
                   <div className="text-lg font-bold">{power.value}W</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Best: {getBestPowerForDuration(power.duration)}W ({getDateRangeLabel()})
+                    Best: {getBestPowerForDuration(power.duration)}W
                   </div>
                 </div>)}
             </div>
