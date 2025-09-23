@@ -244,9 +244,9 @@ export function EnhancedPowerProfileChart({
                     <Clock className="w-3 h-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{power.duration}</span>
                   </div>
-                  <div className="text-lg font-bold">{power.value}W</div>
+                  <div className="text-lg font-bold">{formatValue(power.value)}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Best: {getBestPowerForDuration(power.duration)}W
+                    Best: {formatValue(getBestPowerForDuration(power.duration))}
                   </div>
                 </div>)}
             </div>
