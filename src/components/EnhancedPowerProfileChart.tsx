@@ -113,11 +113,8 @@ export function EnhancedPowerProfileChart({
   };
   const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
 
-  // Filter power profile by date range (mock implementation)
-  const filteredPowerProfile = useMemo(() => {
-    // In a real implementation, this would filter by date
-    return powerProfile;
-  }, [powerProfile, dateRange]);
+  // Use the already filtered power profile from the hook
+  const filteredPowerProfile = powerProfile;
   const chartData = useMemo(() => {
     const durations = ['1s', '5s', '10s', '20s', '1min', '5min', '10min', '20min', '60min'];
     return durations.map((duration, index) => {
