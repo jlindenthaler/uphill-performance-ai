@@ -112,37 +112,18 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
               }
             });
 
-            // Add start marker - GREEN as requested
+            // Add start marker - Default style
             const startCoord = coordinates[0];
-            new mapboxgl.Marker({ color: '#22c55e' })
+            new mapboxgl.Marker()
               .setLngLat(startCoord as [number, number])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold text-green-600">🏁 Start</div>'))
+              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
               .addTo(map.current);
 
-            // Create checkered flag finish marker
+            // Add finish marker - Default style
             const endCoord = coordinates[coordinates.length - 1];
-            
-            // Create custom checkered flag element
-            const finishElement = document.createElement('div');
-            finishElement.className = 'finish-marker';
-            finishElement.style.cssText = `
-              width: 30px;
-              height: 30px;
-              background: linear-gradient(45deg, #ef4444 25%, #fff 25%, #fff 50%, #ef4444 50%, #ef4444 75%, #fff 75%);
-              background-size: 8px 8px;
-              border-radius: 50%;
-              border: 3px solid #ef4444;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 16px;
-            `;
-            finishElement.innerHTML = '🏁';
-
-            new mapboxgl.Marker(finishElement)
+            new mapboxgl.Marker()
               .setLngLat(endCoord as [number, number])
-              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">🏁 Finish</div>'))
+              .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
               .addTo(map.current);
 
             // Fit map to route bounds
@@ -195,12 +176,12 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             }
           });
 
-          new mapboxgl.Marker({ color: '#22c55e' })
+          new mapboxgl.Marker()
             .setLngLat(mockRoute[0] as [number, number])
             .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
             .addTo(map.current);
 
-          new mapboxgl.Marker({ color: '#ef4444' })
+          new mapboxgl.Marker()
             .setLngLat(mockRoute[mockRoute.length - 1] as [number, number])
             .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
             .addTo(map.current);
