@@ -155,6 +155,26 @@ export function EnhancedPowerProfileChart({
         </CardContent>
       </Card>;
   }
+  
+  // Get best power for duration from filtered data
+  const getBestPowerForDuration = (duration: string) => {
+    const chartItem = chartData.find(item => item.duration === duration);
+    return chartItem?.rangeFiltered || chartItem?.allTimeBest || 0;
+  };
+
+  // Get date range label
+  const getDateRangeLabel = () => {
+    switch(dateRange) {
+      case '7': return 'Last 7 days';
+      case '14': return 'Last 14 days'; 
+      case '30': return 'Last 30 days';
+      case '90': return 'Last 90 days';
+      case '180': return 'Last 6 months';
+      case '365': return 'Last year';
+      default: return 'Last 90 days';
+    }
+  };
+
   const bestEfforts = [{
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
@@ -222,6 +242,9 @@ export function EnhancedPowerProfileChart({
                     <span className="text-xs text-muted-foreground">{power.duration}</span>
                   </div>
                   <div className="text-lg font-bold">{power.value}W</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Best: {getBestPowerForDuration(power.duration)}W ({getDateRangeLabel()})
+                  </div>
                 </div>)}
             </div>
           </CardContent>
