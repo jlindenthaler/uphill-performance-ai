@@ -237,31 +237,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <ToggleGroup 
-            type="multiple" 
-            value={visibleMetrics} 
-            onValueChange={setVisibleMetrics}
-            className="flex gap-1"
-          >
-            <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
-              RPM
-            </ToggleGroupItem>
-            <ToggleGroupItem value="hr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all">
-              BPM
-            </ToggleGroupItem>
-            <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
-              Power
-            </ToggleGroupItem>
-            <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
-              Speed
-            </ToggleGroupItem>
-            <ToggleGroupItem value="temp" className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all">
-              C
-            </ToggleGroupItem>
-            <ToggleGroupItem value="elevation" className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all">
-              Elev
-            </ToggleGroupItem>
-          </ToggleGroup>
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -307,6 +282,33 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           </div>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <ToggleGroup 
+              type="multiple" 
+              value={visibleMetrics} 
+              onValueChange={setVisibleMetrics}
+              className="flex gap-1 flex-wrap"
+            >
+              <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
+                RPM
+              </ToggleGroupItem>
+              <ToggleGroupItem value="hr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all">
+                BPM
+              </ToggleGroupItem>
+              <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
+                Power
+              </ToggleGroupItem>
+              <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
+                Speed
+              </ToggleGroupItem>
+              <ToggleGroupItem value="temp" className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all">
+                C
+              </ToggleGroupItem>
+              <ToggleGroupItem value="elevation" className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all">
+                Elev
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={timelineData} margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
