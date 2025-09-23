@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EnhancedMapView } from './EnhancedMapView';
 import { Separator } from '@/components/ui/separator';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 
 interface Activity {
   id: string;
@@ -45,6 +47,7 @@ interface ActivityDetailProps {
 }
 
 export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityDetailProps) {
+  const { timezone } = useUserTimezone();
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -98,7 +101,7 @@ export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityD
             <div className="flex items-center space-x-4 text-muted-foreground mt-2">
               <span className="flex items-center space-x-1">
                 <Calendar className="h-4 w-4" />
-                <span>{new Date(activity.date).toLocaleDateString()}</span>
+                <span>{formatActivityDate(activity.date, timezone)}</span>
               </span>
               <Badge variant="outline" className="capitalize">
                 {activity.sport_mode}
@@ -295,7 +298,7 @@ export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityD
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Uploaded</span>
-            <span className="font-medium">{new Date(activity.created_at).toLocaleString()}</span>
+            <span className="font-medium">{formatActivityDateTime(activity.created_at, timezone)}</span>
           </div>
         </CardContent>
       </Card>

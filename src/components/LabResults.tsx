@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { useLabResults } from "@/hooks/useLabResults";
 import { useToast } from "@/hooks/use-toast";
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatDateInUserTimezone } from '@/utils/dateFormat';
 
 interface LabResultFormData {
   testDate: Date;
@@ -70,6 +72,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const { sportMode } = useSportMode();
   const { labResults, saveLabResults } = useLabResults();
   const { toast } = useToast();
+  const { timezone } = useUserTimezone();
 
   // Open dialog when prop changes
   React.useEffect(() => {
@@ -179,7 +182,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.testDate ? format(formData.testDate, "PPP") : <span>Pick a date</span>}
+                {formData.testDate ? formatDateInUserTimezone(formData.testDate, timezone, "PPP") : <span>Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

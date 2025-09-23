@@ -36,6 +36,8 @@ import { ActivityUploadNew } from './ActivityUploadNew';
 import { RecoverySessionModal } from './RecoverySessionModal';
 import { LabResults } from './LabResults';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatActivityDate } from '@/utils/dateFormat';
 
 interface DashboardProps {
   onNavigate: (section: string, openDialog?: boolean) => void;
@@ -47,6 +49,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { goals, createGoal } = useGoals();
   const { metabolicMetrics } = useMetabolicData();
   const { tools: recoveryTools } = useRecoveryTools();
+  const { timezone } = useUserTimezone();
 
   // Get the closest dated Priority A goal
   const activeGoal = useMemo(() => {
@@ -487,7 +490,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate group-hover:text-primary transition-colors">{activity.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(activity.date).toLocaleDateString()}
+                      {formatActivityDate(activity.date, timezone)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 text-sm">
@@ -576,7 +579,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="w-4 h-4" />
-                          <span>{goalDate.toLocaleDateString()}</span>
+                          <span>{formatActivityDate(goalDate, timezone)}</span>
                           <span className="text-blue-600">
                             ({daysUntil > 0 ? `-${daysUntil} days, -${weeksUntil}w` : 'Past due'})
                           </span>

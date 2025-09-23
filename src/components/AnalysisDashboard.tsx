@@ -11,6 +11,8 @@ import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
 import { usePMCPopulation } from "@/hooks/usePMCPopulation";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { formatDateInUserTimezone } from "@/utils/dateFormat";
 
 import { useState, useMemo } from "react";
 
@@ -22,6 +24,7 @@ export function AnalysisDashboard() {
   const [dateRange, setDateRange] = useState('30');
   const [combinedSports, setCombinedSports] = useState(false);
   const { powerProfile, loading: powerLoading } = usePowerProfile(parseInt(dateRange));
+  const { timezone } = useUserTimezone();
 
   const filteredTrainingHistory = useMemo(() => {
     const days = parseInt(dateRange === 'custom' ? '30' : dateRange);
@@ -186,7 +189,7 @@ export function AnalysisDashboard() {
                       />
                       <YAxis />
                       <Tooltip 
-                        labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                        labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                         formatter={(value, name) => [Math.round(Number(value)), String(name).toUpperCase()]}
                       />
                       <Line type="monotone" dataKey="ctl" stroke="hsl(var(--zone-3))" strokeWidth={2} name="CTL" />
@@ -408,11 +411,11 @@ export function AnalysisDashboard() {
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
                       dataKey="date" 
-                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short' })}
+                      tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'MMM')}
                     />
                     <YAxis />
                     <Tooltip 
-                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                      labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                       formatter={(value, name) => [
                         `${value}${isRunning ? ' min/km' : 'W'}`, 
                         name === 'aet' ? 'AeT' : name === 'gt' ? 'GT' : 'MAP'
@@ -522,10 +525,10 @@ export function AnalysisDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={trainingHistory}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" tickFormatter={(value) => new Date(value).getDate().toString()} />
+                      <XAxis dataKey="date" tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'd')} />
                       <YAxis />
                       <Tooltip 
-                        labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                        labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                         formatter={(value) => [`${Math.round(Number(value))} TSS`, '']}
                       />
                       <Bar dataKey="tss" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />

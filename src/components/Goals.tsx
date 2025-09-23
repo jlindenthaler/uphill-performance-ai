@@ -11,10 +11,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Target, Trophy, Calendar, MapPin, Crosshair, Edit, RotateCcw } from "lucide-react";
 import { useGoals, Goal } from "@/hooks/useGoals";
 import { toast } from "@/hooks/use-toast";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { formatDateInUserTimezone } from "@/utils/dateFormat";
 
 export const Goals: React.FC = () => {
   // Hook to manage goals data
   const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
+  const { timezone } = useUserTimezone();
   
   // State for dialog management
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -146,12 +149,7 @@ export const Goals: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    return formatDateInUserTimezone(dateString, timezone, 'MMMM d, yyyy');
   };
 
   if (loading) {

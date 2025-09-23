@@ -7,6 +7,8 @@ import { ExternalLink, BookOpen, Target, Clock, Zap, Download, Calendar, CheckCi
 import { WorkoutBlock } from "./WorkoutBlock";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useToast } from "@/hooks/use-toast";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { formatDateInUserTimezone } from "@/utils/dateFormat";
 
 interface Workout {
   id?: string;
@@ -28,6 +30,7 @@ interface WorkoutDetailModalProps {
 export function WorkoutDetailModal({ workout, open, onClose }: WorkoutDetailModalProps) {
   const { exportWorkout } = useWorkouts();
   const { toast } = useToast();
+  const { timezone } = useUserTimezone();
 
   if (!workout) return null;
 
@@ -110,7 +113,7 @@ export function WorkoutDetailModal({ workout, open, onClose }: WorkoutDetailModa
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">
-                  {new Date(workout.scheduled_date).toLocaleDateString()}
+                  {formatDateInUserTimezone(workout.scheduled_date, timezone)}
                 </span>
               </div>
             )}

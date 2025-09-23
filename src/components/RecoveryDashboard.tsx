@@ -7,6 +7,8 @@ import { RecoveryToolsManager } from "@/components/RecoveryToolsManager";
 import { RecoverySessionModal } from "@/components/RecoverySessionModal";
 import { useRecoverySessions } from "@/hooks/useRecoverySessions";
 import { useRecoveryTools } from "@/hooks/useRecoveryTools";
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatDateInUserTimezone } from '@/utils/dateFormat';
 import { 
   Heart, 
   Plus, 
@@ -25,6 +27,7 @@ import { format } from "date-fns";
 export function RecoveryDashboard() {
   const { sessions, loading, fetchSessions } = useRecoverySessions();
   const { tools } = useRecoveryTools();
+  const { timezone } = useUserTimezone();
 
   // Calculate stats
   const totalSessions = sessions.length;
@@ -174,7 +177,7 @@ export function RecoveryDashboard() {
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {format(new Date(session.session_date), 'MMM dd, yyyy')}
+                            {formatDateInUserTimezone(session.session_date, timezone, 'MMM dd, yyyy')}
                           </div>
                           {session.duration_minutes && (
                             <div className="flex items-center gap-1">

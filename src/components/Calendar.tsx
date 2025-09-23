@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Calendar as CalendarIcon, Clock, Target } from "lucide-react";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { formatDateInUserTimezone } from "@/utils/dateFormat";
 
 interface Workout {
   id: string;
@@ -42,6 +44,7 @@ export function Calendar() {
   ]);
   const [isAddWorkoutOpen, setIsAddWorkoutOpen] = useState(false);
   const { sportMode } = useSportMode();
+  const { timezone } = useUserTimezone();
 
   const workoutTemplates = {
     cycling: [
@@ -117,7 +120,7 @@ export function Calendar() {
             <DialogHeader>
               <DialogTitle>Add Workout</DialogTitle>
               <DialogDescription>
-                Choose a workout template for {selectedDate?.toLocaleDateString()}
+                Choose a workout template for {selectedDate ? formatDateInUserTimezone(selectedDate, timezone) : 'selected date'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -185,7 +188,7 @@ export function Calendar() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5" />
-              {selectedDate?.toLocaleDateString() || "Select Date"}
+              {selectedDate ? formatDateInUserTimezone(selectedDate, timezone) : "Select Date"}
             </CardTitle>
             <CardDescription>
               {selectedDateWorkouts.length} workout{selectedDateWorkouts.length !== 1 ? 's' : ''} planned

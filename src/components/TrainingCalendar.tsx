@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell } from "lucide-re
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatDateInUserTimezone } from '@/utils/dateFormat';
 
 interface CalendarEvent {
   id: string;
@@ -22,6 +24,7 @@ interface WorkoutPopupProps {
 }
 
 const WorkoutPopup: React.FC<WorkoutPopupProps> = ({ workout, onClose }) => {
+  const { timezone } = useUserTimezone();
   // Mock zone data - in a real app this would come from workout.structure
   const zoneData = [
     { zone: 1, label: 'Zone 1: <AeT', color: 'bg-blue-400', power: '150W', duration: '15min' },
@@ -72,7 +75,7 @@ const WorkoutPopup: React.FC<WorkoutPopupProps> = ({ workout, onClose }) => {
               <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
                 <span className="text-xs">📅</span>
               </div>
-              <span className="font-medium">{format(new Date(), 'yyyy')}</span>
+              <span className="font-medium">{formatDateInUserTimezone(new Date(), timezone, 'yyyy')}</span>
             </div>
           </div>
         </div>
@@ -164,7 +167,10 @@ interface GoalPopupProps {
   onClose: () => void;
 }
 
-const GoalPopup: React.FC<GoalPopupProps> = ({ goal, onClose }) => (
+const GoalPopup: React.FC<GoalPopupProps> = ({ goal, onClose }) => {
+  const { timezone } = useUserTimezone();
+  
+  return (
   <Dialog open={true} onOpenChange={onClose}>
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
@@ -176,7 +182,7 @@ const GoalPopup: React.FC<GoalPopupProps> = ({ goal, onClose }) => (
       <div className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground">Event Date</p>
-          <p className="font-medium">{format(new Date(goal.event_date), 'PPP')}</p>
+          <p className="font-medium">{formatDateInUserTimezone(goal.event_date, timezone, 'PPP')}</p>
         </div>
         {goal.location && (
           <div>
@@ -205,13 +211,15 @@ const GoalPopup: React.FC<GoalPopupProps> = ({ goal, onClose }) => (
       </div>
     </DialogContent>
   </Dialog>
-);
+  );
+};
 
 export const TrainingCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const { goals } = useGoals();
   const { workouts } = useWorkouts();
+  const { timezone } = useUserTimezone();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -294,7 +302,7 @@ export const TrainingCalendar: React.FC = () => {
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <h2 className="text-xl font-semibold min-w-[200px] text-center">
-            {format(currentDate, 'MMMM yyyy')}
+            {formatDateInUserTimezone(currentDate, timezone, 'MMMM yyyy')}
           </h2>
           <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
             <ChevronRight className="w-4 h-4" />

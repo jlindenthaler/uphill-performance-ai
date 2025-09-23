@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, TrendingUp, Zap, RefreshCw, ExternalLink, Calendar, Bike, PersonStanding, Waves } from "lucide-react";
 import { useSportMode } from "@/contexts/SportModeContext";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { formatDateInUserTimezone } from "@/utils/dateFormat";
 
 interface ResearchUpdate {
   id: string;
@@ -26,6 +28,7 @@ export function ResearchUpdates() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { sportMode } = useSportMode();
+  const { timezone } = useUserTimezone();
 
   const mockUpdates: ResearchUpdate[] = [
     {
@@ -182,7 +185,7 @@ export function ResearchUpdates() {
           {lastUpdated && (
             <div className="text-sm text-muted-foreground flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              Updated: {lastUpdated.toLocaleDateString()}
+              Updated: {formatDateInUserTimezone(lastUpdated, timezone)}
             </div>
           )}
           <Button onClick={fetchLatestResearch} disabled={loading} className="primary-gradient">
@@ -227,7 +230,7 @@ export function ResearchUpdates() {
                     )}
                   </div>
                   <CardDescription className="text-sm text-muted-foreground">
-                    {update.source} • {new Date(update.date).toLocaleDateString()}
+                    {update.source} • {formatDateInUserTimezone(update.date, timezone)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

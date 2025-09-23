@@ -11,6 +11,8 @@ import { useActivities } from '@/hooks/useActivities';
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
 import { ActivityDetailModal } from './ActivityDetailModal';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { formatDateInUserTimezone } from '@/utils/dateFormat';
 
 interface CalendarEvent {
   id: string;
@@ -28,6 +30,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
   const { workouts } = useWorkouts();
   const { activities } = useActivities();
   const { trainingHistory } = useTrainingHistory(30);
+  const { timezone } = useUserTimezone();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -230,7 +233,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <h2 className="text-xl font-semibold min-w-[200px] text-center">
-            {format(currentDate, 'MMMM yyyy')}
+            {formatDateInUserTimezone(currentDate, timezone, 'MMMM yyyy')}
           </h2>
           <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
             <ChevronRight className="w-4 h-4" />
