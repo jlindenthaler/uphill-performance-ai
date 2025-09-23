@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw } from 'lucide-react';
+import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
@@ -87,11 +89,9 @@ export function Activities() {
   };
 
   const handleDeleteActivity = async (activityId: string) => {
-    if (confirm('Are you sure you want to delete this activity?')) {
-      await deleteActivity(activityId);
-      if (expandedActivity === activityId) {
-        setExpandedActivity(null);
-      }
+    await deleteActivity(activityId);
+    if (expandedActivity === activityId) {
+      setExpandedActivity(null);
     }
   };
 
@@ -111,32 +111,6 @@ export function Activities() {
 
   const renderExpandedActivity = (activity: any) => (
     <div className="space-y-6 pt-4 border-t">
-      {/* Activity Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl">{getSportIcon(activity.sport_mode)}</span>
-          <div>
-            <h3 className="text-xl font-bold">{activity.name}</h3>
-            <div className="flex items-center space-x-4 text-muted-foreground text-sm">
-              <span className="flex items-center space-x-1">
-                <Calendar className="h-3 w-3" />
-                <span>{formatActivityDateTime(activity.date, timezone)}</span>
-              </span>
-              <Badge variant="outline" className="capitalize">
-                {activity.sport_mode}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={() => handleDeleteActivity(activity.id)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -421,7 +395,7 @@ export function Activities() {
                 <CollapsibleTrigger asChild>
                   <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start space-x-4 flex-1">
+                      <div className="flex items-start space-x-4 flex-1" onClick={(e) => e.stopPropagation()}>
                         <div className="relative">
                           <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
                           {activity.tss && activity.tss > 100 && (
@@ -429,21 +403,67 @@ export function Activities() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-lg transition-colors truncate">{activity.name}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatActivityDateTime(activity.date, timezone)}</span>
-                            </span>
-                            <Badge variant="outline" className="capitalize">
-                              {activity.sport_mode}
-                            </Badge>
-                            {activity.tss && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Target className="h-2 w-2 mr-1" />
-                                TSS {Math.round(activity.tss)}
-                              </Badge>
-                            )}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg transition-colors truncate">{activity.name}</h3>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{formatActivityDateTime(activity.date, timezone)}</span>
+                                </span>
+                                <Badge variant="outline" className="capitalize">
+                                  {activity.sport_mode}
+                                </Badge>
+                                {activity.tss && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Target className="h-2 w-2 mr-1" />
+                                    TSS {Math.round(activity.tss)}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover border border-border">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem 
+                                      className="text-destructive focus:text-destructive cursor-pointer"
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete Activity
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="bg-background border border-border">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the activity "{activity.name}".
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        onClick={() => handleDeleteActivity(activity.id)}
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </div>
