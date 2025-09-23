@@ -177,19 +177,13 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
   const intensityFactor = calculateIntensityFactor(normalizedPower);
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
-  // Get activity timestamp and convert to user's timezone
+  // Get activity timestamp and preserve it as full timestamp
   const timestamp = unwrapValue(sessionData.startTime) || unwrapValue(sessionData.timestamp) || 
                    unwrapValue(activityData.timestamp) || unwrapValue(activityData.timeCreated) || new Date();
   
-  let activityDate: string;
-  if (userTimezone) {
-    // Convert the timestamp to the user's timezone and extract the date
-    const localTime = fromUserTimezone(new Date(timestamp), userTimezone);
-    activityDate = localTime.toISOString().split('T')[0];
-  } else {
-    // Fallback to UTC date
-    activityDate = new Date(timestamp).toISOString().split('T')[0];
-  }
+  // Store the full timestamp, not just the date
+  // This allows timezone conversions to be visible when displaying
+  const activityDate = new Date(timestamp).toISOString();
   
   console.log('Final extracted values:', {
     duration_seconds: Math.round(duration),

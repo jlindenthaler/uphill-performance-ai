@@ -93,7 +93,7 @@ export function useActivities() {
       let activityData: any = {
         name: activityName || file.name.replace(/\.[^/.]+$/, ""),
         sport_mode: sportMode,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString(), // Store full timestamp, not just date
         duration_seconds: 0,
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),

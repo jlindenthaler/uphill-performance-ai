@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw } from 'lucide-react';
-import { formatActivityDate } from '@/utils/dateFormat';
+import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -120,7 +120,7 @@ export function Activities() {
             <div className="flex items-center space-x-4 text-muted-foreground text-sm">
               <span className="flex items-center space-x-1">
                 <Calendar className="h-3 w-3" />
-                <span>{formatActivityDate(activity.date, timezone)}</span>
+                <span>{formatActivityDateTime(activity.date, timezone)}</span>
               </span>
               <Badge variant="outline" className="capitalize">
                 {activity.sport_mode}
@@ -312,6 +312,15 @@ export function Activities() {
     </div>
   );
 
+  // Debug timezone and dates
+  if (activities.length > 0) {
+    console.log('Activities timezone debug:', {
+      timezone,
+      firstActivity: activities[0],
+      formattedDate: formatActivityDateTime(activities[0].date, timezone)
+    });
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -320,13 +329,18 @@ export function Activities() {
     );
   }
 
+  console.log('Activity dates timezone conversion:', {
+    activityDate: activity.date,
+    timezone,
+    formatted: formatActivityDateTime(activity.date, timezone)
+  });
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Training</h1>
           <p className="text-muted-foreground mt-2">
-            Review activities and upload new training data
+            Review activities and upload new training data • Timezone: {timezone}
           </p>
         </div>
         <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
@@ -413,7 +427,7 @@ export function Activities() {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{formatActivityDate(activity.date, timezone)}</span>
+                              <span>{formatActivityDateTime(activity.date, timezone)}</span>
                             </span>
                             <Badge variant="outline" className="capitalize">
                               {activity.sport_mode}
