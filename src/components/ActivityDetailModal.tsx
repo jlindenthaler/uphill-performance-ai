@@ -288,7 +288,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {activity.tss && (
                     <div>
-                      <div className="text-sm text-muted-foreground">Training Stress Score</div>
+                      <div className="text-sm text-muted-foreground">Training Load Index</div>
                       <div className="text-lg font-semibold">{activity.tss.toFixed(0)}</div>
                     </div>
                   )}

@@ -248,7 +248,7 @@ export function Activities() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Training Stress Score</span>
+              <span className="text-muted-foreground">Training Load Index</span>
               <span className="font-medium">
                 {activity.tss ? Math.round(activity.tss) : 'N/A'}
               </span>
@@ -417,7 +417,7 @@ export function Activities() {
                                 {activity.tss && (
                                   <Badge variant="secondary" className="text-xs">
                                     <Target className="h-2 w-2 mr-1" />
-                                    TSS {Math.round(activity.tss)}
+                                    TLI {Math.round(activity.tss)}
                                   </Badge>
                                 )}
                               </div>

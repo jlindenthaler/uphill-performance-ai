@@ -129,7 +129,7 @@ export function AnalysisDashboard() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Activity className="w-4 h-4 text-zone-3" />
-                  Chronic Training Load (CTL)
+                  Long-Term Load (LTL)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -142,7 +142,7 @@ export function AnalysisDashboard() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Zap className="w-4 h-4 text-zone-4" />
-                  Acute Training Load (ATL)
+                  Short-Term Load (STL)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -155,7 +155,7 @@ export function AnalysisDashboard() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <tsbStatus.icon className={`w-4 h-4 ${tsbStatus.color}`} />
-                  Training Stress Balance (TSB)
+                  Form Index (FI)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -169,7 +169,7 @@ export function AnalysisDashboard() {
             <CardHeader>
               <CardTitle>Performance Management Chart</CardTitle>
               <CardDescription>
-                CTL (blue), ATL (red), and TSB (yellow) over time
+                LTL (blue), STL (red), and FI (yellow) over time
                 {combinedSports && " - Combined across all sports"}
               </CardDescription>
             </CardHeader>
@@ -192,9 +192,9 @@ export function AnalysisDashboard() {
                         labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                         formatter={(value, name) => [Math.round(Number(value)), String(name).toUpperCase()]}
                       />
-                      <Line type="monotone" dataKey="ctl" stroke="hsl(var(--zone-3))" strokeWidth={2} name="CTL" />
-                      <Line type="monotone" dataKey="atl" stroke="hsl(var(--zone-4))" strokeWidth={2} name="ATL" />
-                      <Line type="monotone" dataKey="tsb" stroke="hsl(var(--chart-5))" strokeWidth={2} name="TSB" />
+                      <Line type="monotone" dataKey="ctl" stroke="hsl(var(--zone-3))" strokeWidth={2} name="LTL" />
+                      <Line type="monotone" dataKey="atl" stroke="hsl(var(--zone-4))" strokeWidth={2} name="STL" />
+                      <Line type="monotone" dataKey="tsb" stroke="hsl(var(--chart-5))" strokeWidth={2} name="FI" />
                     </LineChart>
                   </ResponsiveContainer>
                 )}

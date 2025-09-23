@@ -71,7 +71,7 @@ const WorkoutPopup: React.FC<WorkoutPopupProps> = ({ workout, onClose }) => {
               <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
                 <span className="text-xs">⚡</span>
               </div>
-              <span className="font-medium">TSS: {workout.tss || 95}</span>
+              <span className="font-medium">TLI: {workout.tss || 95}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">

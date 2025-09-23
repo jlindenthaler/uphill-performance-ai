@@ -232,7 +232,7 @@ export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityD
           <CardContent className="space-y-4">
             {activity.tss && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Training Stress Score</span>
+                <span className="text-muted-foreground">Training Load Index</span>
                 <span className="font-medium">{Math.round(activity.tss)}</span>
               </div>
             )}
