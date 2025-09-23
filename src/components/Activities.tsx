@@ -174,11 +174,6 @@ export function Activities() {
         )}
       </div>
 
-      {/* Enhanced Power Profile */}
-      <div className="mt-6">
-        <EnhancedPowerProfileChart activity={activity} />
-      </div>
-
       {/* GPS Route Map */}
       {activity.gps_data && (
         <Card className="mt-6">
