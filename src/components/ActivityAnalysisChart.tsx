@@ -14,7 +14,7 @@ interface ActivityAnalysisChartProps {
 
 export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'wr', 'speed', 'temp', 'elevation']);
+  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'speed', 'temp', 'elevation']);
   const [xAxisMode, setXAxisMode] = useState<'time' | 'distance'>('time');
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
@@ -200,20 +200,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
               return '';
             };
 
-            // Calculate L:R balance for R Power display using payload data directly
-            if (entry.name === 'R Power' && entry.payload) {
-              const totalPower = entry.payload.power;
-              const rPower = entry.payload.rPower;
-              if (totalPower > 0 && rPower > 0) {
-                const rightPercent = Math.round((rPower / totalPower) * 100);
-                const leftPercent = 100 - rightPercent;
-                return (
-                  <p key={index} style={{ color: entry.color }}>
-                    {`L:R Balance: ${leftPercent}:${rightPercent}`}
-                  </p>
-                );
-              }
-            }
             
             return (
               <p key={index} style={{ color: entry.color }}>
@@ -266,11 +252,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
             <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
               Power
             </ToggleGroupItem>
-            {hasRPowerData && (
-              <ToggleGroupItem value="wr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-4/10 text-zone-4 border border-zone-4/20 hover:bg-zone-4/20 data-[state=on]:bg-zone-4 data-[state=on]:text-white shadow-sm transition-all">
-                L:R
-              </ToggleGroupItem>
-            )}
             <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
               Speed
             </ToggleGroupItem>
@@ -360,18 +341,6 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
                   />
                 )}
                 
-                {/* Conditionally render L:R Balance (showing R Power) */}
-                {visibleMetrics.includes('wr') && hasRPowerData && (
-                  <Line
-                    yAxisId="power"
-                    type="monotone"
-                    dataKey="rPower"
-                    stroke="hsl(var(--zone-4))"
-                    strokeWidth={2}
-                    dot={false}
-                    name="R Power"
-                  />
-                )}
                 
                 {/* Conditionally render Heart Rate */}
                 {visibleMetrics.includes('hr') && (
