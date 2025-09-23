@@ -179,18 +179,6 @@ export function Activities() {
         <EnhancedPowerProfileChart activity={activity} />
       </div>
 
-      {/* GPS Route Map */}
-      {activity.gps_data && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Route Map</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-80" />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Activity Analysis Chart */}
       <div className="mt-6">
         <ActivityAnalysisChart activity={activity} />
@@ -294,6 +282,17 @@ export function Activities() {
         </Card>
       </div>
 
+      {/* GPS Route Map */}
+      {activity.gps_data && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Route Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-80" />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activity Notes */}
       {activity.notes && (
