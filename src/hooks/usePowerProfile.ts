@@ -18,9 +18,9 @@ export function usePowerProfile(dateRangeDays?: number) {
   const [loading, setLoading] = useState(false);
 
   const durations = [
+    { seconds: 5, label: '5s' },
     { seconds: 60, label: '1min' },
     { seconds: 300, label: '5min' },
-    { seconds: 600, label: '10min' },
     { seconds: 1200, label: '20min' },
     { seconds: 3600, label: '60min' }
   ];

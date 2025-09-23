@@ -21,9 +21,11 @@ import {
   Wifi,
   Smartphone,
   Link as LinkIcon,
-  Plus
+  Plus,
+  Database
 } from "lucide-react";
 import { GarminConnection } from "@/components/GarminConnection";
+import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
@@ -263,6 +265,22 @@ export function AppSettings() {
         </CardHeader>
         <CardContent>
           <GarminConnection />
+        </CardContent>
+      </Card>
+
+      {/* Data Management */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-purple-500" />
+            Data Management
+          </CardTitle>
+          <CardDescription>
+            Manage and analyze your training data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PowerProfileBackfill />
         </CardContent>
       </Card>
     </div>

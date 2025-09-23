@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
 import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
+import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
 
 interface Activity {
   id: string;
@@ -147,6 +148,22 @@ export function useActivities() {
       } catch (pmcError) {
         console.warn('Failed to update PMC data:', pmcError);
       }
+
+      // Populate power profile data if GPS data is available
+      if (activityData.gps_data) {
+        try {
+          await populatePowerProfileForActivity(
+            user.id,
+            savedActivity.id,
+            activityData.gps_data,
+            activityData.sport_mode,
+            activityData.date
+          );
+          console.log('Power profile data updated successfully');
+        } catch (powerProfileError) {
+          console.warn('Failed to update power profile data:', powerProfileError);
+        }
+      }
       
       return savedActivity;
     } catch (error) {
@@ -233,12 +250,25 @@ export function useActivities() {
     };
   }, [user, sportMode]);
 
+  const backfillPowerProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { backfillPowerProfileData } = await import('@/utils/powerAnalysis');
+      await backfillPowerProfileData(user.id);
+      console.log('Power profile backfill completed');
+    } catch (error) {
+      console.error('Error during power profile backfill:', error);
+    }
+  };
+
   return {
     activities,
     loading,
     fetchActivities,
     uploadActivity,
     deleteActivity,
-    updateActivity
+    updateActivity,
+    backfillPowerProfile
   };
 }
