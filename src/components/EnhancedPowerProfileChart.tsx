@@ -155,7 +155,7 @@ export function EnhancedPowerProfileChart({
         </CardContent>
       </Card>;
   }
-  
+
   // Get best power for duration from filtered data
   const getBestPowerForDuration = (duration: string) => {
     const chartItem = chartData.find(item => item.duration === duration);
@@ -164,17 +164,23 @@ export function EnhancedPowerProfileChart({
 
   // Get date range label
   const getDateRangeLabel = () => {
-    switch(dateRange) {
-      case '7': return 'Last 7 days';
-      case '14': return 'Last 14 days'; 
-      case '30': return 'Last 30 days';
-      case '90': return 'Last 90 days';
-      case '180': return 'Last 6 months';
-      case '365': return 'Last year';
-      default: return 'Last 90 days';
+    switch (dateRange) {
+      case '7':
+        return 'Last 7 days';
+      case '14':
+        return 'Last 14 days';
+      case '30':
+        return 'Last 30 days';
+      case '90':
+        return 'Last 90 days';
+      case '180':
+        return 'Last 6 months';
+      case '365':
+        return 'Last year';
+      default:
+        return 'Last 90 days';
     }
   };
-
   const bestEfforts = [{
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
@@ -251,12 +257,7 @@ export function EnhancedPowerProfileChart({
         </Card>}
 
       {/* Best Efforts Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {bestEfforts.map(effort => <Card key={effort.duration} className="relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-zone-1 via-zone-2 to-zone-3"></div>
-            
-          </Card>)}
-      </div>
+      
 
       {/* Enhanced Power/Pace Curve Chart */}
       <Card>
