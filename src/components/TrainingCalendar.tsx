@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell, MoreHorizontal, Trash2 } from "lucide-react";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
@@ -271,19 +273,75 @@ export const TrainingCalendar: React.FC = () => {
   };
 
   const renderEvent = (event: CalendarEvent) => {
-    const baseClasses = "text-xs p-1 mb-1 rounded cursor-pointer truncate";
+    const baseClasses = "text-xs p-1 mb-1 rounded flex items-center justify-between group hover:opacity-80";
     const typeClasses = event.type === 'workout' 
       ? "bg-blue-100 text-blue-700 hover:bg-blue-200" 
       : "bg-red-100 text-red-700 hover:bg-red-200";
+
+    const handleEventClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setSelectedEvent(event);
+    };
 
     return (
       <div
         key={event.id}
         className={`${baseClasses} ${typeClasses}`}
-        onClick={() => handleEventClick(event)}
         title={event.title}
       >
-        {event.title}
+        <span 
+          className="truncate cursor-pointer flex-1"
+          onClick={handleEventClick}
+        >
+          {event.title}
+        </span>
+        {event.type === 'workout' && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover border border-border">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="h-3 w-3 mr-2" />
+                    Delete Workout
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-background border border-border">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the workout "{event.title}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        // Note: Workout deletion not implemented in useWorkouts hook yet
+                        console.log('Delete workout:', event.id);
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     );
   };

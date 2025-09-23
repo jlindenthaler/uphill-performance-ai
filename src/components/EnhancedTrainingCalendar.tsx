@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useGoals } from '@/hooks/useGoals';
 import { useWorkouts } from '@/hooks/useWorkouts';
@@ -28,7 +30,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const { goals } = useGoals();
   const { workouts } = useWorkouts();
-  const { activities } = useActivities();
+  const { activities, deleteActivity } = useActivities();
   const { trainingHistory } = useTrainingHistory(30);
   const { timezone } = useUserTimezone();
 
@@ -178,7 +180,8 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         break;
     }
 
-    const handleEventClick = () => {
+    const handleEventClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
       if (event.type === 'workout') {
         setSelectedWorkout(event.data);
       } else if (event.type === 'activity') {
@@ -189,16 +192,67 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     return (
       <div
         key={event.id}
-        className={`${bgColor} ${textColor} p-1 mb-1 rounded text-xs ${
-          event.type === 'workout' || event.type === 'activity' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
-        } flex items-center gap-1`}
+        className={`${bgColor} ${textColor} p-1 mb-1 rounded text-xs flex items-center justify-between group hover:opacity-80`}
         title={event.title}
-        onClick={handleEventClick}
       >
-        {icon}
-        <span className="truncate text-xs">{event.title}</span>
-        {event.type === 'activity' && event.data.tss && (
-          <span className="ml-auto text-xs font-medium">{Math.round(event.data.tss)}</span>
+        <div 
+          className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
+          onClick={handleEventClick}
+        >
+          {icon}
+          <span className="truncate text-xs">{event.title}</span>
+          {event.type === 'activity' && event.data.tss && (
+            <span className="ml-auto text-xs font-medium">{Math.round(event.data.tss)}</span>
+          )}
+        </div>
+        {(event.type === 'workout' || event.type === 'activity') && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover border border-border">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="h-3 w-3 mr-2" />
+                    Delete {event.type === 'workout' ? 'Workout' : 'Activity'}
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-background border border-border">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the {event.type} "{event.title}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        if (event.type === 'activity') {
+                          deleteActivity(event.id);
+                        }
+                        // Note: Workout deletion not implemented in useWorkouts hook yet
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     );
