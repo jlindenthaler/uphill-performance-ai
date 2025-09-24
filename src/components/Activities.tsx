@@ -86,9 +86,12 @@ export function Activities() {
 
   const handleActivityToggle = (activityId: string) => {
     try {
+      console.log('Toggling activity:', activityId, 'current expanded:', expandedActivity);
       setExpandedActivity(expandedActivity === activityId ? null : activityId);
     } catch (error) {
       console.error('Error toggling activity:', error);
+      // Reset to safe state on error
+      setExpandedActivity(null);
     }
   };
 
@@ -384,9 +387,12 @@ export function Activities() {
               open={expandedActivity === activity.id}
               onOpenChange={(open) => {
                 try {
+                  console.log('Collapsible onOpenChange:', open, 'for activity:', activity.id);
                   setExpandedActivity(open ? activity.id : null);
                 } catch (error) {
                   console.error('Error in onOpenChange:', error);
+                  // Reset to safe state
+                  setExpandedActivity(null);
                 }
               }}
             >
@@ -563,7 +569,9 @@ export function Activities() {
                 
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
-                    {renderExpandedActivity(activity)}
+                    <div className="border-t">
+                      {renderExpandedActivity(activity)}
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Card>

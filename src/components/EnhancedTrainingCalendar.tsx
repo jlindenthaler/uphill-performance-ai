@@ -35,11 +35,12 @@ export const EnhancedTrainingCalendar: React.FC = () => {
   const { trainingHistory } = useTrainingHistory(90);
   const { timezone } = useUserTimezone();
 
-  // Generate weeks centered around current week - start from 6 weeks ago to show context
+  // Focus on current week - only show current week initially for better performance
   const weeks = useMemo(() => {
-    const weeksToShow = 12;
     const todayWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const startWeek = subWeeks(todayWeek, 6);
+    // Show current week plus 2 weeks before and 3 weeks after for context
+    const weeksToShow = 6;
+    const startWeek = subWeeks(todayWeek, 2);
     
     return Array.from({ length: weeksToShow }, (_, i) => {
       const weekStart = addWeeks(startWeek, i);
@@ -77,11 +78,27 @@ export const EnhancedTrainingCalendar: React.FC = () => {
       tss: weekWorkouts.reduce((sum, w) => sum + (w.tss || 0), 0)
     };
 
-    // Get PMC values for this week from training history
-    const weekMetrics = trainingHistory.find(entry => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= weekStart && entryDate <= weekEnd;
-    });
+    // Get PMC values for this week - find the most recent entry within the week
+    const weekMetrics = trainingHistory
+      .filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= weekStart && entryDate <= weekEnd;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+    // Calculate weekly changes by comparing with previous week
+    const prevWeekStart = subWeeks(weekStart, 1);
+    const prevWeekEnd = endOfWeek(prevWeekStart, { weekStartsOn: 1 });
+    const prevWeekMetrics = trainingHistory
+      .filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= prevWeekStart && entryDate <= prevWeekEnd;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+    const ctlChange = (weekMetrics?.ctl || 0) - (prevWeekMetrics?.ctl || 0);
+    const atlChange = (weekMetrics?.atl || 0) - (prevWeekMetrics?.atl || 0);
+    const tsbChange = (weekMetrics?.tsb || 0) - (prevWeekMetrics?.tsb || 0);
 
     return {
       completed: {
@@ -100,6 +117,11 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         ctl: Math.round(weekMetrics?.ctl || 0),
         atl: Math.round(weekMetrics?.atl || 0),
         tsb: Math.round(weekMetrics?.tsb || 0)
+      },
+      changes: {
+        ctl: Math.round(ctlChange),
+        atl: Math.round(atlChange),
+        tsb: Math.round(tsbChange)
       }
     };
   };
@@ -326,38 +348,6 @@ export const EnhancedTrainingCalendar: React.FC = () => {
             <Card key={weekStart.toISOString()} className={`${isCurrentWeek ? 'ring-2 ring-primary' : ''} overflow-hidden`}>
               <CardContent className="p-0">
                 <div className="grid grid-cols-8 gap-0">
-                  {/* Week Summary - Inline like TrainingPeaks */}
-                  <div className="col-span-1 border-r bg-muted/5 p-3 min-h-[120px] flex flex-col justify-between">
-                    <div className="text-center space-y-1">
-                      <div className="text-xs font-medium text-muted-foreground mb-2">
-                        {formatDateInUserTimezone(weekStart, timezone, 'MMM d')}
-                      </div>
-                      {isCurrentWeek && (
-                        <Badge variant="default" className="text-xs px-1 py-0">Current</Badge>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2 text-center">
-                      <div>
-                        <div className="text-sm font-bold text-ltl">{weekStats.fitness.ctl}</div>
-                        <div className="text-xs text-muted-foreground">LTL</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-stl">{weekStats.fitness.atl}</div>
-                        <div className="text-xs text-muted-foreground">STL</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-fi">{weekStats.fitness.tsb}</div>
-                        <div className="text-xs text-muted-foreground">FI</div>
-                      </div>
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground text-center">
-                      <div>{weekStats.completed.tss} TLI</div>
-                      <div>{weekStats.completed.duration}</div>
-                    </div>
-                  </div>
-
                   {/* Days Grid - 7 columns optimized */}
                   <div className="col-span-7">
                     {/* Compact Day Headers */}
@@ -435,6 +425,44 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                  
+                  {/* Weekly Summary - Right side like TrainingPeaks */}
+                  <div className="col-span-1 border-l bg-muted/5 p-3 min-h-[120px] flex flex-col justify-between">
+                    <div className="text-center space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        {formatDateInUserTimezone(weekStart, timezone, 'MMM d')}
+                      </div>
+                      {isCurrentWeek && (
+                        <Badge variant="default" className="text-xs px-1 py-0">Current</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2 text-center">
+                      <div>
+                        <div className="text-sm font-bold text-ltl">
+                          {weekStats.changes.ctl > 0 ? '+' : ''}{weekStats.changes.ctl}
+                        </div>
+                        <div className="text-xs text-muted-foreground">ΔLong Term Load</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-stl">
+                          {weekStats.changes.atl > 0 ? '+' : ''}{weekStats.changes.atl}
+                        </div>
+                        <div className="text-xs text-muted-foreground">ΔShort Term Load</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-fi">
+                          {weekStats.changes.tsb > 0 ? '+' : ''}{weekStats.changes.tsb}
+                        </div>
+                        <div className="text-xs text-muted-foreground">ΔForm Index</div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground text-center">
+                      <div>{weekStats.completed.tss} TLI</div>
+                      <div>{weekStats.completed.duration}</div>
                     </div>
                   </div>
                 </div>

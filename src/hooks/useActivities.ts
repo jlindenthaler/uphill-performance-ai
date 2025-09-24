@@ -64,7 +64,7 @@ export function useActivities() {
       if (limit) {
         query = query.limit(limit);
       } else {
-        query = query.limit(50); // Performance optimization: load first 50 activities
+        query = query.limit(25); // Performance optimization: load first 25 activities for fast initial load
       }
 
       const { data, error } = await query;
