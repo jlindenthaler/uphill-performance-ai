@@ -17,27 +17,17 @@ export const CP_PROTOCOLS: Record<string, CPProtocol> = {
   '3min-12min-2point': {
     name: '3min + 12min (2-point)',
     efforts: [180, 720], // 3min, 12min
-    maxGap: 3
+    maxGap: 4 // 4 days maximum for multi-day tests
   },
   '3min-6min-3point': {
     name: '3min + 6min (3-point)',
     efforts: [180, 360], // 3min, 6min - can complete on alternate days
-    maxGap: 7
+    maxGap: 4 // 4 days maximum for multi-day tests
   },
   '3min-12min-3point': {
     name: '3min + 12min (3-point)',
     efforts: [180, 720], // 3min, 12min - can complete on alternate days
-    maxGap: 7
-  },
-  '12min-3point': {
-    name: '12min (3-point)',
-    efforts: [720], // 12min single effort, uses historical data
-    maxGap: 30
-  },
-  '20min-3point': {
-    name: '20min (3-point)',
-    efforts: [1200], // 20min single effort, uses historical data
-    maxGap: 30
+    maxGap: 4 // 4 days maximum for multi-day tests
   }
 };
 

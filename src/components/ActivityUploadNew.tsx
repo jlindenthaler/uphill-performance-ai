@@ -237,11 +237,11 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
               type="number"
               value={cpTargetDuration}
               onChange={(e) => setCPTargetDuration(e.target.value)}
-              placeholder="Override duration for single-effort 3-point tests"
+              placeholder="Override duration for multi-effort protocols"
             />
             <p className="text-xs text-muted-foreground">
-              For 3-point protocols: Multi-effort tests can be completed on alternate days. 
-              Single-effort tests (12min, 20min) use historical data for 3-point calculation.
+              Multi-effort tests can be completed on alternate days within 4 days maximum. 
+              Each protocol requires specific durations to be completed for CP & W' calculation.
             </p>
           </div>
         </div>
