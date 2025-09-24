@@ -506,7 +506,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                     </div>
                     {activity.tss && (
                       <Badge variant="secondary" className="text-xs">
-                        TSS {Math.round(activity.tss)}
+                        TLI {Math.round(activity.tss)}
                       </Badge>
                     )}
                   </div>
