@@ -20,17 +20,17 @@ interface PMCData {
 /**
  * Calculate CTL (Chronic Training Load) - 42-day exponentially weighted moving average
  */
-function calculateCTL(previousCTL: number, todayTSS: number): number {
+function calculateCTL(previousCTL: number, todayTLI: number): number {
   const ctlTimeConstant = 42;
-  return previousCTL + (todayTSS - previousCTL) * (1 / ctlTimeConstant);
+  return previousCTL + (todayTLI - previousCTL) * (1 / ctlTimeConstant);
 }
 
 /**
  * Calculate ATL (Acute Training Load) - 7-day exponentially weighted moving average
  */
-function calculateATL(previousATL: number, todayTSS: number): number {
+function calculateATL(previousATL: number, todayTLI: number): number {
   const atlTimeConstant = 7;
-  return previousATL + (todayTSS - previousATL) * (1 / atlTimeConstant);
+  return previousATL + (todayTLI - previousATL) * (1 / atlTimeConstant);
 }
 
 /**

@@ -122,23 +122,23 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
         return activityDate >= sevenDaysAgo;
       });
       
-      const weeklyTSS = allActivities.reduce((sum, activity) => sum + (activity.tss || 0), 0);
+      const weeklyTLI = allActivities.reduce((sum, activity) => sum + (activity.tss || 0), 0);
       const weeklyHours = allActivities.reduce((sum, activity) => sum + ((activity.duration_seconds || 0) / 3600), 0);
       const completedSessions = allActivities.length;
       
-      return { weeklyTSS, weeklyHours, completedSessions };
+      return { weeklyTLI, weeklyHours, completedSessions };
     } else {
       // Original calculation for current sport mode only
       const currentWeek = trainingHistory.slice(-7);
-      const weeklyTSS = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
+      const weeklyTLI = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
       const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
       const completedSessions = currentWeek.filter(day => day.tss > 0).length;
-      
-      return { weeklyTSS, weeklyHours, completedSessions };
+
+      return { weeklyTLI, weeklyHours, completedSessions };
     }
   }, [combinedSports, activities, trainingHistory]);
   
-  const weeklyTSS = currentWeekData.weeklyTSS;
+  const weeklyTLI = currentWeekData.weeklyTLI;
   const weeklyHours = currentWeekData.weeklyHours;
   const completedSessions = currentWeekData.completedSessions;
 
@@ -155,7 +155,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
       // For combined sports, we need to aggregate PMC values across all sports
       // This would require fetching training history from all sports and combining them
       // For now, we'll use a simplified approach of summing the latest metrics
-      // In a production app, you'd want to recalculate CTL/ATL/TSB from combined TSS history
+      // In a production app, you'd want to recalculate CTL/ATL/TSB from combined TLI history
       
       // Calculate basic combined metrics from activities
       const last42Days = activities.filter(activity => {
@@ -173,12 +173,12 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
       });
       
       // Calculate approximate CTL (42-day exponentially weighted moving average)
-      const totalTSS42 = last42Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
-      const approximateCTL = totalTSS42 / 42; // Simplified approximation
+      const totalTLI42 = last42Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
+      const approximateCTL = totalTLI42 / 42; // Simplified approximation
       
       // Calculate approximate ATL (7-day exponentially weighted moving average)
-      const totalTSS7 = last7Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
-      const approximateATL = totalTSS7 / 7; // Simplified approximation
+      const totalTLI7 = last7Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
+      const approximateATL = totalTLI7 / 7; // Simplified approximation
       
       // Calculate TSB (Training Stress Balance)
       const approximateTSB = approximateCTL - approximateATL;
@@ -277,10 +277,10 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Weekly TLI</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold">{Math.round(weeklyTSS)}</p>
+                  <p className="text-2xl font-bold">{Math.round(weeklyTLI)}</p>
                   <span className="text-sm text-muted-foreground">/ {weeklyTarget?.weekly_tli_target || 400}</span>
                 </div>
-                <Progress value={(weeklyTSS / (weeklyTarget?.weekly_tli_target || 400)) * 100} className="mt-2 h-2" />
+                <Progress value={(weeklyTLI / (weeklyTarget?.weekly_tli_target || 400)) * 100} className="mt-2 h-2" />
               </div>
               <Target className="h-8 w-8 text-zone-2 group-hover:scale-110 transition-transform" />
             </div>
@@ -506,7 +506,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                     </div>
                     {activity.tss && (
                       <Badge variant="secondary" className="text-xs">
-                        TSS {Math.round(activity.tss)}
+                        TLI {Math.round(activity.tss)}
                       </Badge>
                     )}
                   </div>

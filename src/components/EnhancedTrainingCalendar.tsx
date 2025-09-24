@@ -265,11 +265,11 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     
     if (activities.length === 0) return null;
 
-    const totalTSS = activities.reduce((sum, activity) => sum + (activity.data.tss || 0), 0);
+    const totalTLI = activities.reduce((sum, activity) => sum + (activity.data.tss || 0), 0);
     const totalDuration = activities.reduce((sum, activity) => sum + (activity.data.duration_seconds || 0), 0);
     
     return {
-      tss: Math.round(totalTSS),
+      tss: Math.round(totalTLI),
       duration: Math.round(totalDuration / 60), // minutes
       distance: activities.reduce((sum, activity) => sum + (activity.data.distance_meters || 0), 0) / 1000 // km
     };

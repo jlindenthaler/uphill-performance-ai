@@ -22,7 +22,7 @@ interface WorkoutData {
   };
   zones: number[];
   duration: number; // minutes
-  tss: number; // Training Stress Score
+  tss: number; // Training Load Index
 }
 
 const workouts: WorkoutData[] = [
