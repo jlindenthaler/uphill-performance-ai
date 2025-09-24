@@ -21,6 +21,29 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Calculate elevation data from GPS coordinates - MOVED TO TOP TO FIX HOOKS ERROR
+  const elevationData = useMemo(() => {
+    if (!gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) return [];
+    
+    let cumulativeDistance = 0;
+    return gpsData.coordinates.map((coord: number[], index: number) => {
+      if (index > 0) {
+        const prevCoord = gpsData.coordinates[index - 1];
+        // Simple distance calculation (Haversine would be more accurate)
+        const deltaLat = coord[1] - prevCoord[1];
+        const deltaLng = coord[0] - prevCoord[0];
+        const distance = Math.sqrt(deltaLat * deltaLat + deltaLng * deltaLng) * 111000; // Rough conversion to meters
+        cumulativeDistance += distance;
+      }
+      
+      return {
+        distance: cumulativeDistance / 1000, // Convert to km
+        elevation: coord[2] || 0, // Altitude if available, otherwise 0
+        index
+      };
+    });
+  }, [gpsData]);
+
   const fetchMapboxToken = async () => {
     try {
       setLoading(true);
@@ -250,29 +273,6 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       </div>
     );
   }
-
-  // Calculate elevation data from GPS coordinates
-  const elevationData = useMemo(() => {
-    if (!gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) return [];
-    
-    let cumulativeDistance = 0;
-    return gpsData.coordinates.map((coord: number[], index: number) => {
-      if (index > 0) {
-        const prevCoord = gpsData.coordinates[index - 1];
-        // Simple distance calculation (Haversine would be more accurate)
-        const deltaLat = coord[1] - prevCoord[1];
-        const deltaLng = coord[0] - prevCoord[0];
-        const distance = Math.sqrt(deltaLat * deltaLat + deltaLng * deltaLng) * 111000; // Rough conversion to meters
-        cumulativeDistance += distance;
-      }
-      
-      return {
-        distance: cumulativeDistance / 1000, // Convert to km
-        elevation: coord[2] || 0, // Altitude if available, otherwise 0
-        index
-      };
-    });
-  }, [gpsData]);
 
   return (
     <div className={`${className} rounded-lg overflow-hidden border relative flex flex-col`}>
