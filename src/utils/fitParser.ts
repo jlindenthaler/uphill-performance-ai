@@ -350,6 +350,15 @@ function calculateTSS(normalizedPower: number | null, duration: number): number 
   return (duration * normalizedPower * intensityFactor) / (assumedFTP * 3600) * 100;
 }
 
+export function calculateTSSWithCustomFTP(normalizedPower: number | null, duration: number, ftp: number): number | null {
+  if (!normalizedPower || duration <= 0 || ftp <= 0) return null;
+  
+  // TSS = (seconds * NP * IF) / (FTP * 3600) * 100
+  const intensityFactor = normalizedPower / ftp;
+  
+  return (duration * normalizedPower * intensityFactor) / (ftp * 3600) * 100;
+}
+
 function calculateIntensityFactor(normalizedPower: number | null): number | null {
   if (!normalizedPower) return null;
   

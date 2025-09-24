@@ -6,6 +6,7 @@ import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
 import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
 import { useUserTimezone } from './useUserTimezone';
+import { useToast } from '@/hooks/use-toast';
 
 interface Activity {
   id: string;
@@ -43,6 +44,7 @@ export function useActivities() {
   const { user } = useAuth();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
+  const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -337,6 +339,106 @@ export function useActivities() {
     }
   };
 
+  const recalculateTLIBasedOnLabResults = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      // Fetch all lab results for the user, ordered by test date
+      const { data: labResults, error: labError } = await supabase
+        .from('lab_results')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('test_date', { ascending: true });
+
+      if (labError) throw labError;
+
+      // Fetch all activities for the user
+      const { data: allActivities, error: activitiesError } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true });
+
+      if (activitiesError) throw activitiesError;
+
+      if (!allActivities || !labResults) return;
+
+      let updatedCount = 0;
+
+      // Process each activity
+      for (const activity of allActivities) {
+        if (!activity.normalized_power || !activity.duration_seconds) continue;
+
+        // Find the most recent lab result before this activity's date
+        const relevantLabResult = labResults
+          .filter(lab => 
+            lab.test_date && 
+            lab.sport_mode === activity.sport_mode &&
+            new Date(lab.test_date) <= new Date(activity.date)
+          )
+          .pop(); // Get the most recent one
+
+        if (!relevantLabResult) continue;
+
+        // Determine FTP using hierarchy: LT2/GT -> VT2 -> skip
+        let ftp: number | null = null;
+        
+        if (relevantLabResult.lt2_power && relevantLabResult.lt2_power > 0) {
+          ftp = relevantLabResult.lt2_power;
+        } else if (relevantLabResult.gt && relevantLabResult.gt > 0) {
+          ftp = relevantLabResult.gt;
+        } else if (relevantLabResult.vt2_power && relevantLabResult.vt2_power > 0) {
+          ftp = relevantLabResult.vt2_power;
+        }
+
+        if (!ftp || ftp <= 0) continue;
+
+        // Recalculate TSS with the determined FTP
+        const { calculateTSSWithCustomFTP } = await import('@/utils/fitParser');
+        const newTSS = calculateTSSWithCustomFTP(
+          activity.normalized_power,
+          activity.duration_seconds,
+          ftp
+        );
+
+        if (newTSS === null || newTSS === activity.tss) continue;
+
+        // Update the activity with new TSS
+        const { error: updateError } = await supabase
+          .from('activities')
+          .update({ tss: newTSS })
+          .eq('id', activity.id);
+
+        if (!updateError) {
+          updatedCount++;
+        }
+      }
+
+      // Refresh activities data
+      await fetchActivities();
+
+      // Trigger PMC recalculation since TSS values changed
+      const { populateTrainingHistory } = await import('@/utils/pmcCalculator');
+      await populateTrainingHistory(user.id);
+
+      toast({
+        title: "TLI Recalculation Complete",
+        description: `Updated ${updatedCount} activities with lab result-based FTP values.`,
+      });
+
+    } catch (error) {
+      console.error('Error recalculating TLI:', error);
+      toast({
+        title: "Error",
+        description: "Failed to recalculate TLI. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     activities,
     loading,
@@ -345,6 +447,7 @@ export function useActivities() {
     deleteActivity,
     updateActivity,
     backfillPowerProfile,
-    reprocessActivityTimestamps
+    reprocessActivityTimestamps,
+    recalculateTLIBasedOnLabResults
   };
 }

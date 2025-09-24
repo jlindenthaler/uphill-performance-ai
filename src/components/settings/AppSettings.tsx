@@ -24,14 +24,15 @@ import {
   Link as LinkIcon,
   Plus,
   Database,
-  RotateCcw
+  RotateCcw,
+  Calculator
 } from "lucide-react";
 import { GarminConnection } from "@/components/GarminConnection";
 import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
-  const { reprocessActivityTimestamps, loading: activitiesLoading } = useActivities();
+  const { reprocessActivityTimestamps, recalculateTLIBasedOnLabResults, loading: activitiesLoading } = useActivities();
 
   if (!settings) return null;
 
@@ -305,6 +306,29 @@ export function AppSettings() {
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Fix Timestamps
+            </Button>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-2">
+                <Calculator className="w-4 h-4" />
+                Recalculate TLI
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Recalculate Training Load Index using lab results (LT2/GT, VT2)
+              </p>
+            </div>
+            <Button
+              onClick={recalculateTLIBasedOnLabResults}
+              variant="outline"
+              size="sm"
+              disabled={activitiesLoading}
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              Recalculate TLI
             </Button>
           </div>
         </CardContent>
