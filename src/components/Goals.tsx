@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Target, Trophy, Calendar, MapPin, Crosshair, Edit, RotateCcw } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Target, Trophy, Calendar, MapPin, Crosshair, Edit, RotateCcw, Activity, Clock } from "lucide-react";
 import { useGoals, Goal } from "@/hooks/useGoals";
+import { useWeeklyTargets } from "@/hooks/useWeeklyTargets";
 import { toast } from "@/hooks/use-toast";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { formatDateInUserTimezone } from "@/utils/dateFormat";
@@ -17,12 +19,14 @@ import { formatDateInUserTimezone } from "@/utils/dateFormat";
 export const Goals: React.FC = () => {
   // Hook to manage goals data
   const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
+  const { weeklyTarget, loading: targetsLoading, createOrUpdateWeeklyTarget } = useWeeklyTargets();
   const { timezone } = useUserTimezone();
   
   // State for dialog management
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [isWeeklyTargetsDialogOpen, setIsWeeklyTargetsDialogOpen] = useState(false);
   
   // State for new goal form
   const [newGoalForm, setNewGoalForm] = useState({
@@ -44,6 +48,12 @@ export const Goals: React.FC = () => {
     priority: 'A',
     status: 'active' as 'active' | 'completed' | 'deferred',
     target_performance: ''
+  });
+
+  // State for weekly targets form
+  const [weeklyTargetsForm, setWeeklyTargetsForm] = useState({
+    weekly_tli_target: weeklyTarget?.weekly_tli_target || 400,
+    weekly_sessions_target: weeklyTarget?.weekly_sessions_target || 12
   });
 
   // Computed values
@@ -129,6 +139,23 @@ export const Goals: React.FC = () => {
     }
   };
 
+  const handleUpdateWeeklyTargets = async () => {
+    const result = await createOrUpdateWeeklyTarget(weeklyTargetsForm);
+    if (result) {
+      toast({
+        title: "Weekly targets updated",
+        description: "Your weekly training targets have been saved."
+      });
+      setIsWeeklyTargetsDialogOpen(false);
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update weekly targets. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Utility functions
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -152,7 +179,17 @@ export const Goals: React.FC = () => {
     return formatDateInUserTimezone(dateString, timezone, 'MMMM d, yyyy');
   };
 
-  if (loading) {
+  // Update weekly targets form when weeklyTarget changes
+  React.useEffect(() => {
+    if (weeklyTarget) {
+      setWeeklyTargetsForm({
+        weekly_tli_target: weeklyTarget.weekly_tli_target,
+        weekly_sessions_target: weeklyTarget.weekly_sessions_target
+      });
+    }
+  }, [weeklyTarget]);
+
+  if (loading || targetsLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -169,13 +206,66 @@ export const Goals: React.FC = () => {
           <p className="text-muted-foreground mt-1">Define your targets and track your journey</p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Set New Goal
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-3">
+          <Dialog open={isWeeklyTargetsDialogOpen} onOpenChange={setIsWeeklyTargetsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Target className="w-4 h-4" />
+                Weekly Targets
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle>Set Weekly Training Targets</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div>
+                  <Label htmlFor="weekly-tli">Weekly TLI Target</Label>
+                  <Input
+                    id="weekly-tli"
+                    type="number"
+                    value={weeklyTargetsForm.weekly_tli_target}
+                    onChange={(e) => setWeeklyTargetsForm({ 
+                      ...weeklyTargetsForm, 
+                      weekly_tli_target: parseInt(e.target.value) || 0 
+                    })}
+                    placeholder="400"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="weekly-sessions">Weekly Sessions Target</Label>
+                  <Input
+                    id="weekly-sessions"
+                    type="number"
+                    value={weeklyTargetsForm.weekly_sessions_target}
+                    onChange={(e) => setWeeklyTargetsForm({ 
+                      ...weeklyTargetsForm, 
+                      weekly_sessions_target: parseInt(e.target.value) || 0 
+                    })}
+                    placeholder="12"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIsWeeklyTargetsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateWeeklyTargets}>
+                  Save Targets
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Set New Goal
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Set New Goal</DialogTitle>
@@ -383,10 +473,11 @@ export const Goals: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -422,6 +513,32 @@ export const Goals: React.FC = () => {
                 <p className="text-sm text-muted-foreground mt-1">All time</p>
               </div>
               <Crosshair className="w-8 h-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Weekly TLI Target</p>
+                <p className="text-3xl font-bold">{weeklyTarget?.weekly_tli_target || 400}</p>
+                <p className="text-sm text-muted-foreground mt-1">Training load goal</p>
+              </div>
+              <Activity className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Weekly Sessions Target</p>
+                <p className="text-3xl font-bold">{weeklyTarget?.weekly_sessions_target || 12}</p>
+                <p className="text-sm text-muted-foreground mt-1">Sessions per week</p>
+              </div>
+              <Clock className="w-8 h-8 text-cyan-500" />
             </div>
           </CardContent>
         </Card>

@@ -638,6 +638,36 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_targets: {
+        Row: {
+          created_at: string
+          id: string
+          sport_mode: string
+          updated_at: string
+          user_id: string
+          weekly_sessions_target: number
+          weekly_tli_target: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id: string
+          weekly_sessions_target?: number
+          weekly_tli_target?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sport_mode?: string
+          updated_at?: string
+          user_id?: string
+          weekly_sessions_target?: number
+          weekly_tli_target?: number
+        }
+        Relationships: []
+      }
       workouts: {
         Row: {
           completed_date: string | null

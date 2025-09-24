@@ -29,6 +29,7 @@ import {
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { useActivities } from '@/hooks/useActivities';
 import { useGoals } from '@/hooks/useGoals';
+import { useWeeklyTargets } from '@/hooks/useWeeklyTargets';
 import { useMetabolicData } from '@/hooks/useMetabolicData';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { usePMCPopulation } from '@/hooks/usePMCPopulation';
@@ -47,6 +48,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { trainingHistory } = useTrainingHistory();
   const { activities, loading: activitiesLoading } = useActivities();
   const { goals, createGoal } = useGoals();
+  const { weeklyTarget } = useWeeklyTargets();
   const { metabolicMetrics } = useMetabolicData();
   const { tools: recoveryTools } = useRecoveryTools();
   const { timezone } = useUserTimezone();
@@ -276,9 +278,9 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                 <p className="text-sm font-medium text-muted-foreground">Weekly TLI</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{Math.round(weeklyTSS)}</p>
-                  <span className="text-sm text-muted-foreground">/ 400</span>
+                  <span className="text-sm text-muted-foreground">/ {weeklyTarget?.weekly_tli_target || 400}</span>
                 </div>
-                <Progress value={(weeklyTSS / 400) * 100} className="mt-2 h-2" />
+                <Progress value={(weeklyTSS / (weeklyTarget?.weekly_tli_target || 400)) * 100} className="mt-2 h-2" />
               </div>
               <Target className="h-8 w-8 text-zone-2 group-hover:scale-110 transition-transform" />
             </div>
@@ -318,9 +320,9 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                 <p className="text-sm font-medium text-muted-foreground">Sessions Complete</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{completedSessions}</p>
-                  <span className="text-sm text-muted-foreground">/ 12 this week</span>
+                  <span className="text-sm text-muted-foreground">/ {weeklyTarget?.weekly_sessions_target || 12} this week</span>
                 </div>
-                <Progress value={(completedSessions / 12) * 100} className="mt-2 h-2" />
+                <Progress value={(completedSessions / (weeklyTarget?.weekly_sessions_target || 12)) * 100} className="mt-2 h-2" />
               </div>
               <Activity className="h-8 w-8 text-zone-4 group-hover:scale-110 transition-transform" />
             </div>
