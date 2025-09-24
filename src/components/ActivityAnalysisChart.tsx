@@ -7,37 +7,36 @@ import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
-
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
-
-export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) {
+export function ActivityAnalysisChart({
+  activity
+}: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
   const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'speed', 'temp', 'elevation']);
   const [xAxisMode, setXAxisMode] = useState<'time' | 'distance'>('time');
-  const { sportMode } = useSportMode();
+  const {
+    sportMode
+  } = useSportMode();
   const isRunning = sportMode === 'running';
 
   // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
     if (!activity?.gps_data?.trackPoints) return [];
-    
     const trackPoints = activity.gps_data.trackPoints;
     const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
     let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
-    
+
     return trackPoints.map((point: any, index: number) => {
       let timeElapsed;
-      
       if (index === 0) {
         timeElapsed = 0;
       } else {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? 
-          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
-        
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+
         // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
         // Larger gaps indicate pauses and should create natural breaks in the timeline
         if (timeInterval <= 10) {
@@ -52,34 +51,26 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
       // Calculate cumulative distance by integrating speed over time
       if (index > 0 && point.speed) {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? 
-          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
-        
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+
         // Use speed (m/s) * time (s) = distance (m)
         const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
         cumulativeDistance += avgSpeed * timeInterval;
       }
-
       const hours = Math.floor(timeElapsed / 3600);
-      const minutes = Math.floor((timeElapsed % 3600) / 60);
+      const minutes = Math.floor(timeElapsed % 3600 / 60);
       const seconds = Math.floor(timeElapsed % 60);
-      const timeFormatted = hours > 0 
-        ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-        : `${minutes}:${seconds.toString().padStart(2, '0')}`;
-      
+      const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
       const distanceKm = cumulativeDistance / 1000;
-      const distanceFormatted = distanceKm < 10 ? 
-        `${distanceKm.toFixed(1)}km` : 
-        `${Math.round(distanceKm)}km`;
-      
+      const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
+
       // Convert speed from m/s to km/h if needed
-      const speedKmh = point.speed ? (point.speed * 3.6) : 0;
-      
+      const speedKmh = point.speed ? point.speed * 3.6 : 0;
+
       // Handle power balance (convert to percentage if available)
-      const leftRightBalance = point.leftRightBalance ? (point.leftRightBalance / 255 * 100) : 50;
+      const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
       const totalPower = point.power || 0;
       const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
-      
       return {
         time: timeFormatted,
         distance: distanceFormatted,
@@ -88,8 +79,10 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         distanceMeters: cumulativeDistance,
         cadence: point.cadence || 0,
         heartRate: point.heartRate || 0,
-        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0, // Left power
-        wr: rPower, // Right power
+        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
+        // Left power
+        wr: rPower,
+        // Right power
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: Math.round((point.altitude || 0) * 10) / 10,
@@ -107,124 +100,129 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {
-    const durations = [
-      { label: '5sec', seconds: 5 },
-      { label: '20sec', seconds: 20 },
-      { label: '2min', seconds: 120 },
-      { label: '10min', seconds: 600 },
-      { label: '30min', seconds: 1800 },
-      { label: '2hrs', seconds: 7200 },
-      { label: '24hrs', seconds: 86400 }
-    ];
-
+    const durations = [{
+      label: '5sec',
+      seconds: 5
+    }, {
+      label: '20sec',
+      seconds: 20
+    }, {
+      label: '2min',
+      seconds: 120
+    }, {
+      label: '10min',
+      seconds: 600
+    }, {
+      label: '30min',
+      seconds: 1800
+    }, {
+      label: '2hrs',
+      seconds: 7200
+    }, {
+      label: '24hrs',
+      seconds: 86400
+    }];
     return durations.map(duration => {
       const avgPower = activity?.avg_power || 0;
       const maxPower = activity?.max_power || avgPower * 1.5;
       const normalizedPower = activity?.normalized_power || avgPower;
-      
       let currentPower = avgPower;
       let comparisonPower = avgPower * 0.9;
-
       if (avgPower > 0) {
         // Realistic power curve based on actual data
-        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);
-        else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);
-        else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;
-        else if (duration.seconds <= 1200) currentPower = normalizedPower;
-        else currentPower = normalizedPower * 0.9;
+        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;else if (duration.seconds <= 1200) currentPower = normalizedPower;else currentPower = normalizedPower * 0.9;
 
         // Comparison range (simulate historical data)
         comparisonPower = currentPower * (0.85 + Math.random() * 0.2);
       }
-
       return {
         duration: duration.label,
         currentRange: Math.round(currentPower),
-        comparisonRange: Math.round(comparisonPower),
+        comparisonRange: Math.round(comparisonPower)
       };
     });
   }, [activity]);
 
   // Generate peak heart rate curve data
   const peakHeartRateData = useMemo(() => {
-    const durations = [
-      { label: '5sec', seconds: 5 },
-      { label: '20sec', seconds: 20 },
-      { label: '2min', seconds: 120 },
-      { label: '10min', seconds: 600 },
-      { label: '30min', seconds: 1800 },
-      { label: '2hrs', seconds: 7200 },
-      { label: '24hrs', seconds: 86400 }
-    ];
-
+    const durations = [{
+      label: '5sec',
+      seconds: 5
+    }, {
+      label: '20sec',
+      seconds: 20
+    }, {
+      label: '2min',
+      seconds: 120
+    }, {
+      label: '10min',
+      seconds: 600
+    }, {
+      label: '30min',
+      seconds: 1800
+    }, {
+      label: '2hrs',
+      seconds: 7200
+    }, {
+      label: '24hrs',
+      seconds: 86400
+    }];
     return durations.map(duration => {
       const avgHr = activity?.avg_heart_rate || 0;
       const maxHr = activity?.max_heart_rate || avgHr * 1.3;
       let currentHr = avgHr;
       let comparisonHr = avgHr * 0.95;
-
       if (avgHr > 0) {
         // Realistic HR curve based on actual data
-        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);
-        else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);
-        else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);
-        else if (duration.seconds <= 1200) currentHr = avgHr;
-        else currentHr = avgHr * 0.92;
-
+        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);else if (duration.seconds <= 1200) currentHr = avgHr;else currentHr = avgHr * 0.92;
         comparisonHr = currentHr * (0.9 + Math.random() * 0.15);
       }
-
       return {
         duration: duration.label,
         currentRange: Math.round(currentHr),
-        comparisonRange: Math.round(comparisonHr),
+        comparisonRange: Math.round(comparisonHr)
       };
     });
   }, [activity]);
 
   // Custom tooltip for timeline
-  const TimelineTooltip = ({ active, payload, label }: any) => {
+  const TimelineTooltip = ({
+    active,
+    payload,
+    label
+  }: any) => {
     if (active && payload && payload.length) {
-      return (
-        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+      return <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{`${xAxisMode === 'time' ? 'Time' : 'Distance'}: ${label}`}</p>
           {payload.map((entry: any, index: number) => {
-            const getUnit = (name: string) => {
-              if (name === 'Power') return 'W';
-              if (name === 'R Power') return 'W';
-              if (name === 'Heart Rate') return 'bpm';
-              if (name === 'Cadence') return 'rpm';
-              if (name === 'Speed') return 'km/h';
-              if (name === 'Temperature') return '°C';
-              if (name === 'Elevation') return 'm';
-              return '';
-            };
-
-            
-            return (
-              <p key={index} style={{ color: entry.color }}>
+          const getUnit = (name: string) => {
+            if (name === 'Power') return 'W';
+            if (name === 'R Power') return 'W';
+            if (name === 'Heart Rate') return 'bpm';
+            if (name === 'Cadence') return 'rpm';
+            if (name === 'Speed') return 'km/h';
+            if (name === 'Temperature') return '°C';
+            if (name === 'Elevation') return 'm';
+            return '';
+          };
+          return <p key={index} style={{
+            color: entry.color
+          }}>
                 {`${entry.name}: ${entry.value}${getUnit(entry.name)}`}
-              </p>
-            );
-          })}
-        </div>
-      );
+              </p>;
+        })}
+        </div>;
     }
     return null;
   };
-
   if (!activity) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">No activity selected for analysis</p>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -257,23 +255,12 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Activity Timeline</CardTitle>
             <div className="flex items-center gap-2">
-              <ToggleGroup 
-                type="single" 
-                value={xAxisMode} 
-                onValueChange={(value) => value && setXAxisMode(value as 'time' | 'distance')}
-                className="flex gap-1"
-              >
-                <ToggleGroupItem 
-                  value="time" 
-                  className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all"
-                >
+              <ToggleGroup type="single" value={xAxisMode} onValueChange={value => value && setXAxisMode(value as 'time' | 'distance')} className="flex gap-1">
+                <ToggleGroupItem value="time" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
                   <Clock className="w-3 h-3 mr-1" />
                   Time
                 </ToggleGroupItem>
-                <ToggleGroupItem 
-                  value="distance" 
-                  className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all"
-                >
+                <ToggleGroupItem value="distance" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
                   <MapPin className="w-3 h-3 mr-1" />
                   Dist
                 </ToggleGroupItem>
@@ -283,12 +270,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <ToggleGroup 
-              type="multiple" 
-              value={visibleMetrics} 
-              onValueChange={setVisibleMetrics}
-              className="flex gap-1 flex-wrap"
-            >
+            <ToggleGroup type="multiple" value={visibleMetrics} onValueChange={setVisibleMetrics} className="flex gap-1 flex-wrap">
               <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
                 RPM
               </ToggleGroupItem>
@@ -311,93 +293,42 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={timelineData} margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
+              <ComposedChart data={timelineData} margin={{
+              top: 20,
+              right: 80,
+              bottom: 20,
+              left: 20
+            }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="xValue"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  yAxisId="power"
-                  orientation="left"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                />
-                <YAxis 
-                  yAxisId="hr"
-                  orientation="right"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                />
+                <XAxis dataKey="xValue" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} interval="preserveStartEnd" />
+                <YAxis yAxisId="power" orientation="left" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
+                <YAxis yAxisId="hr" orientation="right" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
                 <Tooltip content={<TimelineTooltip />} />
                 
                 {/* Conditionally render Total Power */}
-                {visibleMetrics.includes('wl') && (
-                  <Line
-                    yAxisId="power"
-                    type="monotone"
-                    dataKey="power"
-                    stroke="hsl(var(--zone-3))"
-                    strokeWidth={2}
-                    dot={false}
-                    name="Power"
-                  />
-                )}
+                {visibleMetrics.includes('wl') && <Line yAxisId="power" type="monotone" dataKey="power" stroke="hsl(var(--zone-3))" strokeWidth={2} dot={false} name="Power" />}
                 
                 
                 {/* Conditionally render Heart Rate */}
-                {visibleMetrics.includes('hr') && (
-                  <Line
-                    yAxisId="hr"
-                    type="monotone"
-                    dataKey="heartRate"
-                    stroke="hsl(var(--destructive))"
-                    strokeWidth={2}
-                    dot={false}
-                    name="Heart Rate"
-                  />
-                )}
+                {visibleMetrics.includes('hr') && <Line yAxisId="hr" type="monotone" dataKey="heartRate" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} name="Heart Rate" />}
                 
                 {/* Conditionally render Cadence */}
-                {visibleMetrics.includes('cadence') && (
-                  <Line
-                    yAxisId="power"
-                    type="monotone"
-                    dataKey="cadence"
-                    stroke="hsl(var(--zone-1))"
-                    strokeWidth={1}
-                    strokeDasharray="3 3"
-                    dot={false}
-                    name="Cadence"
-                  />
-                )}
+                {visibleMetrics.includes('cadence') && <Line yAxisId="power" type="monotone" dataKey="cadence" stroke="hsl(var(--zone-1))" strokeWidth={1} strokeDasharray="3 3" dot={false} name="Cadence" />}
                 
                 {/* Conditionally render Speed */}
-                {visibleMetrics.includes('speed') && (
-                  <Line
-                    yAxisId="power"
-                    type="monotone"
-                    dataKey="speed"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={1}
-                    strokeDasharray="2 2"
-                    dot={false}
-                    name="Speed"
-                  />
-                )}
+                {visibleMetrics.includes('speed') && <Line yAxisId="power" type="monotone" dataKey="speed" stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="2 2" dot={false} name="Speed" />}
                 
                 {/* Conditionally render Elevation */}
-                {visibleMetrics.includes('elevation') && (
-                  <Line
-                    yAxisId="hr"
-                    type="monotone"
-                    dataKey="elevation"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeWidth={1}
-                    strokeDasharray="4 2"
-                    dot={false}
-                    name="Elevation"
-                  />
-                )}
+                {visibleMetrics.includes('elevation') && <Line yAxisId="hr" type="monotone" dataKey="elevation" stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="4 2" dot={false} name="Elevation" />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -427,46 +358,40 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={peakPowerData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={peakPowerData} margin={{
+                top: 10,
+                right: 30,
+                left: 0,
+                bottom: 0
+              }}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="duration"
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    label={{ value: 'WATTS', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' } }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: 'var(--radius)',
-                    }}
-                    formatter={(value: number) => [`${value}W`, '']}
-                  />
+                  <XAxis dataKey="duration" tick={{
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontSize: 12
+                }} />
+                  <YAxis tick={{
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontSize: 12
+                }} label={{
+                  value: 'WATTS',
+                  angle: -90,
+                  position: 'insideLeft',
+                  style: {
+                    textAnchor: 'middle',
+                    fill: 'hsl(var(--muted-foreground))'
+                  }
+                }} />
+                  <Tooltip contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)'
+                }} formatter={(value: number) => [`${value}W`, '']} />
                   
                   {/* Comparison range area */}
-                  <Area
-                    type="monotone"
-                    dataKey="comparisonRange"
-                    stroke="hsl(var(--zone-4))"
-                    fill="hsl(var(--zone-4))"
-                    fillOpacity={0.4}
-                    strokeWidth={2}
-                    name="Comparison Range"
-                  />
+                  <Area type="monotone" dataKey="comparisonRange" stroke="hsl(var(--zone-4))" fill="hsl(var(--zone-4))" fillOpacity={0.4} strokeWidth={2} name="Comparison Range" />
                   
                   {/* Current range area */}
-                  <Area
-                    type="monotone"
-                    dataKey="currentRange"
-                    stroke="hsl(var(--zone-3))"
-                    fill="hsl(var(--zone-3))"
-                    fillOpacity={0.6}
-                    strokeWidth={2}
-                    name="Current Range"
-                  />
+                  <Area type="monotone" dataKey="currentRange" stroke="hsl(var(--zone-3))" fill="hsl(var(--zone-3))" fillOpacity={0.6} strokeWidth={2} name="Current Range" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -494,47 +419,40 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={peakHeartRateData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={peakHeartRateData} margin={{
+                top: 10,
+                right: 30,
+                left: 0,
+                bottom: 0
+              }}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="duration"
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    label={{ value: 'BPM', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' } }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: 'var(--radius)',
-                    }}
-                    formatter={(value: number) => [`${value} bpm`, '']}
-                  />
+                  <XAxis dataKey="duration" tick={{
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontSize: 12
+                }} />
+                  <YAxis tick={{
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontSize: 12
+                }} label={{
+                  value: 'BPM',
+                  angle: -90,
+                  position: 'insideLeft',
+                  style: {
+                    textAnchor: 'middle',
+                    fill: 'hsl(var(--muted-foreground))'
+                  }
+                }} />
+                  <Tooltip contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)'
+                }} formatter={(value: number) => [`${value} bpm`, '']} />
                   
                   {/* Comparison range area */}
-                  <Area
-                    type="monotone"
-                    dataKey="comparisonRange"
-                    stroke="hsl(var(--destructive))"
-                    fill="hsl(var(--destructive))"
-                    fillOpacity={0.4}
-                    strokeWidth={2}
-                    name="Comparison Range"
-                    strokeDasharray="5 5"
-                  />
+                  <Area type="monotone" dataKey="comparisonRange" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.4} strokeWidth={2} name="Comparison Range" strokeDasharray="5 5" />
                   
                   {/* Current range area */}
-                  <Area
-                    type="monotone"
-                    dataKey="currentRange"
-                    stroke="hsl(var(--destructive))"
-                    fill="hsl(var(--destructive))"
-                    fillOpacity={0.7}
-                    strokeWidth={2}
-                    name="Current Range"
-                  />
+                  <Area type="monotone" dataKey="currentRange" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.7} strokeWidth={2} name="Current Range" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -544,13 +462,7 @@ export function ActivityAnalysisChart({ activity }: ActivityAnalysisChartProps) 
 
       {/* Data Grid Placeholder */}
       <Card className="card-gradient">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center text-muted-foreground">
-            <BarChart3 className="w-5 h-5 mr-2" />
-            Data Grid
-          </div>
-        </CardContent>
+        
       </Card>
-    </div>
-  );
+    </div>;
 }
