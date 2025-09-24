@@ -140,19 +140,26 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
       throw new Error('Failed to obtain access token from Garmin')
     }
 
-    // Store the tokens securely in user profile
-    const { error } = await supabaseClient
-      .from('profiles')
-      .upsert({
-        user_id: userId,
-        garmin_access_token: accessToken,
-        garmin_token_secret: accessTokenSecret,
-        garmin_connected: true
-      })
+    // Store tokens using secure encrypted storage
+    const { error: functionError } = await supabaseClient.rpc('store_garmin_tokens_secure', {
+      p_user_id: userId,
+      p_access_token: accessToken,
+      p_token_secret: accessTokenSecret
+    })
 
-    if (error) {
-      throw new Error('Failed to store Garmin tokens')
+    if (functionError) {
+      throw new Error(`Failed to store encrypted Garmin tokens: ${functionError.message}`)
     }
+
+    // Log security audit
+    await supabaseClient
+      .from('token_access_audit')
+      .insert({
+        user_id: userId,
+        access_type: 'token_stored',
+        ip_address: null, // Could extract from headers if needed
+        user_agent: null
+      })
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -161,7 +168,8 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    console.error('Error handling Garmin callback:', error)
+    // Only log errors, not sensitive data
+    console.error('Error handling Garmin callback:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -171,16 +179,16 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
 
 async function syncGarminActivities(supabaseClient: any, userId: string) {
   try {
-    // Get user's Garmin tokens
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('garmin_access_token, garmin_token_secret')
-      .eq('user_id', userId)
-      .single()
+    // Get user's encrypted Garmin tokens
+    const { data: tokens } = await supabaseClient.rpc('get_garmin_tokens_secure', {
+      p_user_id: userId
+    })
 
-    if (!profile?.garmin_access_token) {
+    if (!tokens || tokens.length === 0) {
       throw new Error('Garmin account not connected')
     }
+
+    const { access_token, token_secret } = tokens[0]
 
     // Fetch activities from Garmin Connect (last 30 days)
     const startDate = new Date()
@@ -189,7 +197,7 @@ async function syncGarminActivities(supabaseClient: any, userId: string) {
 
     const activitiesUrl = `https://connectapi.garmin.com/activitylist-service/activities/search/activities?start=${startDate.toISOString().split('T')[0]}&limit=50`
     
-    const response = await fetchWithGarminAuth(activitiesUrl, profile.garmin_access_token, profile.garmin_token_secret)
+    const response = await fetchWithGarminAuth(activitiesUrl, access_token, token_secret)
     const activities: GarminActivity[] = await response.json()
 
     // Convert and save activities to our database
@@ -223,20 +231,20 @@ async function syncGarminActivities(supabaseClient: any, userId: string) {
 
 async function getActivityDetails(supabaseClient: any, userId: string, activityId: string) {
   try {
-    // Get user's Garmin tokens
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('garmin_access_token, garmin_token_secret')
-      .eq('user_id', userId)
-      .single()
+    // Get user's encrypted Garmin tokens
+    const { data: tokens } = await supabaseClient.rpc('get_garmin_tokens_secure', {
+      p_user_id: userId
+    })
 
-    if (!profile?.garmin_access_token) {
+    if (!tokens || tokens.length === 0) {
       throw new Error('Garmin account not connected')
     }
 
+    const { access_token, token_secret } = tokens[0]
+
     // Fetch detailed activity data including GPS
     const detailsUrl = `https://connectapi.garmin.com/activity-service/activity/${activityId}`
-    const response = await fetchWithGarminAuth(detailsUrl, profile.garmin_access_token, profile.garmin_token_secret)
+    const response = await fetchWithGarminAuth(detailsUrl, access_token, token_secret)
     const activityDetails = await response.json()
 
     return new Response(JSON.stringify({ 

@@ -569,6 +569,36 @@ export type Database = {
         }
         Relationships: []
       }
+      secure_garmin_tokens: {
+        Row: {
+          created_at: string
+          encrypted_access_token: string | null
+          encrypted_token_secret: string | null
+          id: string
+          token_hash: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_access_token?: string | null
+          encrypted_token_secret?: string | null
+          id?: string
+          token_hash?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_access_token?: string | null
+          encrypted_token_secret?: string | null
+          id?: string
+          token_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_availability: {
         Row: {
           created_at: string
@@ -592,6 +622,33 @@ export type Database = {
           recovery_hours_per_day?: number
           training_hours_per_day?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      token_access_audit: {
+        Row: {
+          access_type: string
+          id: string
+          ip_address: unknown | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          id?: string
+          ip_address?: unknown | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          id?: string
+          ip_address?: unknown | null
+          timestamp?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -718,7 +775,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_garmin_tokens_secure: {
+        Args: { p_user_id: string }
+        Returns: {
+          access_token: string
+          token_secret: string
+        }[]
+      }
+      store_garmin_tokens_secure: {
+        Args: {
+          p_access_token: string
+          p_token_secret: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

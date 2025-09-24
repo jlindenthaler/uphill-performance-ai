@@ -1,7 +1,7 @@
 project_id = "srwuprrcbfuzvkehvgyt"
 
 [functions.get-mapbox-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.garmin-connect]
 verify_jwt = true
