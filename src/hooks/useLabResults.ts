@@ -40,6 +40,8 @@ interface LabResults {
   notes?: string;
 }
 
+export { type LabResults };
+
 export function useLabResults() {
   const { user } = useAuth();
   const { sportMode } = useSportMode();

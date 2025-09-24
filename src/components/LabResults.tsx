@@ -13,7 +13,7 @@ import { CalendarIcon, Plus, FlaskConical, TrendingUp, Activity, Edit } from "lu
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSportMode } from "@/contexts/SportModeContext";
-import { useLabResults } from "@/hooks/useLabResults";
+import { useLabResults, type LabResults } from "@/hooks/useLabResults";
 import { useToast } from "@/hooks/use-toast";
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
@@ -74,6 +74,8 @@ interface LabResultsProps {
 
 export function LabResults({ openAddDialog = false, formOnly = false, onFormSubmit }: LabResultsProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(openAddDialog);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingResult, setEditingResult] = useState<LabResults | null>(null);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const { sportMode } = useSportMode();
   const { labResults, allLabResults, saveLabResults } = useLabResults();
@@ -89,6 +91,35 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
 
   const handleInputChange = (field: keyof LabResultFormData, value: string | Date) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEdit = (result: LabResults) => {
+    setEditingResult(result);
+    // Populate form with existing data
+    setFormData({
+      testDate: result.test_date ? new Date(result.test_date) : result.created_at ? new Date(result.created_at) : new Date(),
+      testType: result.test_type || 'comprehensive',
+      sport: sportMode,
+      vo2max: result.vo2_max?.toString() || '',
+      mapPower: result.map_value?.toString() || '',
+      vt1Hr: result.vt1_hr?.toString() || '',
+      vt1Power: result.vt1_power?.toString() || '',
+      vt2Hr: result.vt2_hr?.toString() || '',
+      vt2Power: result.vt2_power?.toString() || '',
+      lt1Hr: result.lt1_hr?.toString() || '',
+      lt1Power: result.lt1_power?.toString() || '',
+      lt2Hr: result.lt2_hr?.toString() || '',
+      lt2Power: result.lt2_power?.toString() || '',
+      rmr: result.rmr?.toString() || '',
+      fatOxRate: result.fat_oxidation_rate?.toString() || '',
+      carbOxRate: result.carb_oxidation_rate?.toString() || '',
+      fatMax: result.fat_max_intensity?.toString() || '',
+      bodyWeight: result.body_weight?.toString() || '',
+      restingHr: result.resting_hr?.toString() || '',
+      maxHr: result.max_hr?.toString() || '',
+      notes: result.notes || ''
+    });
+    setIsEditDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,6 +167,54 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
       toast({
         title: "Error",
         description: "Failed to save lab results. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingResult) return;
+    
+    try {
+      const labData = {
+        vo2_max: parseFloat(formData.vo2max) || undefined,
+        map_value: parseFloat(formData.mapPower) || undefined,
+        vt1_hr: parseInt(formData.vt1Hr) || undefined,
+        vt1_power: parseFloat(formData.vt1Power) || undefined,
+        vt2_hr: parseInt(formData.vt2Hr) || undefined,
+        vt2_power: parseFloat(formData.vt2Power) || undefined,
+        lt1_hr: parseInt(formData.lt1Hr) || undefined,
+        lt1_power: parseFloat(formData.lt1Power) || undefined,
+        lt2_hr: parseInt(formData.lt2Hr) || undefined,
+        lt2_power: parseFloat(formData.lt2Power) || undefined,
+        rmr: parseFloat(formData.rmr) || undefined,
+        fat_oxidation_rate: parseFloat(formData.fatOxRate) || undefined,
+        carb_oxidation_rate: parseFloat(formData.carbOxRate) || undefined,
+        fat_max_intensity: parseFloat(formData.fatMax) || undefined,
+        body_weight: parseFloat(formData.bodyWeight) || undefined,
+        resting_hr: parseInt(formData.restingHr) || undefined,
+        max_hr: parseInt(formData.maxHr) || undefined,
+        test_date: formData.testDate.toISOString(),
+        test_type: formData.testType,
+        notes: formData.notes || undefined,
+      };
+
+      await saveLabResults(labData);
+      
+      toast({
+        title: "Lab Result Updated",
+        description: "Your laboratory results have been updated successfully.",
+      });
+      
+      setIsEditDialogOpen(false);
+      setEditingResult(null);
+      setFormData(initialFormData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update lab results. Please try again.",
         variant: "destructive",
       });
     }
@@ -211,8 +290,8 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const performanceTrends = calculateTrends();
 
   // Extract the form content into a variable for reuse
-  const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
+  const formContent = (isEdit = false) => (
+    <form onSubmit={isEdit ? handleEditSubmit : handleSubmit} className="space-y-6">
       {/* Test Details */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
@@ -453,17 +532,27 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => formOnly ? onFormSubmit?.() : setIsAddDialogOpen(false)}>
+        <Button type="button" variant="outline" onClick={() => {
+          if (formOnly) {
+            onFormSubmit?.();
+          } else if (isEdit) {
+            setIsEditDialogOpen(false);
+            setEditingResult(null);
+            setFormData(initialFormData);
+          } else {
+            setIsAddDialogOpen(false);
+          }
+        }}>
           Cancel
         </Button>
-        <Button type="submit">Save Lab Result</Button>
+        <Button type="submit">{isEdit ? 'Update Lab Result' : 'Save Lab Result'}</Button>
       </div>
     </form>
   );
 
   // If formOnly is true, return just the form content
   if (formOnly) {
-    return formContent;
+    return formContent(false);
   }
 
   return (
@@ -489,7 +578,21 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
               </DialogDescription>
             </DialogHeader>
             
-            {formContent}
+            {formContent(false)}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Lab Result</DialogTitle>
+              <DialogDescription>
+                Update your laboratory test results
+              </DialogDescription>
+            </DialogHeader>
+            
+            {formContent(true)}
           </DialogContent>
         </Dialog>
       </div>
@@ -634,7 +737,10 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">{formatDate(test.test_date || test.created_at)}</span>
-                      <Edit className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-primary" />
+                      <Edit 
+                        className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-primary" 
+                        onClick={() => handleEdit(test)}
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
