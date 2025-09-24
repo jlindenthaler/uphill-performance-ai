@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, FlaskConical, TrendingUp, Activity, Edit } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarIcon, Plus, FlaskConical, TrendingUp, Activity, Edit, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSportMode } from "@/contexts/SportModeContext";
@@ -17,6 +18,7 @@ import { useLabResults, type LabResults } from "@/hooks/useLabResults";
 import { useToast } from "@/hooks/use-toast";
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
+import CPChart from './CPChart';
 
 interface LabResultFormData {
   testDate: Date;
@@ -77,6 +79,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingResult, setEditingResult] = useState<LabResults | null>(null);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
+  const [activeTab, setActiveTab] = useState<'lab-tests' | 'cp-tests'>('lab-tests');
   const { sportMode } = useSportMode();
   const { labResults, allLabResults, saveLabResults } = useLabResults();
   const { toast } = useToast();
@@ -597,220 +600,240 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
         </Dialog>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Latest VO2max</p>
-                <FlaskConical className="w-4 h-4 text-blue-500" />
-              </div>
-              <p className="text-2xl font-bold">
-                {labResults?.vo2_max ? (
-                  <>
-                    {labResults.vo2_max} <span className="text-sm font-normal text-muted-foreground">ml/kg/min</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">No data</span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs for Lab Tests vs CP Tests */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'lab-tests' | 'cp-tests')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="lab-tests" className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" />
+            Lab Tests
+          </TabsTrigger>
+          <TabsTrigger value="cp-tests" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            CP Tests
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">LT2 Power</p>
-                <TrendingUp className="w-4 h-4 text-green-500" />
-              </div>
-              <p className="text-2xl font-bold">
-                {labResults?.lt2_power ? (
-                  <>
-                    {labResults.lt2_power} <span className="text-sm font-normal text-muted-foreground">W</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">No data</span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">RMR</p>
-                <Activity className="w-4 h-4 text-purple-500" />
-              </div>
-              <p className="text-2xl font-bold">
-                {labResults?.rmr ? (
-                  <>
-                    {labResults.rmr} <span className="text-sm font-normal text-muted-foreground">cal/day</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">No data</span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Total Tests</p>
-                <Badge variant="outline" className="text-orange-500 border-orange-500">📊</Badge>
-              </div>
-              <p className="text-2xl font-bold">{allLabResults.length}</p>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Performance Trends - First on mobile */}
-        <div className="space-y-4 lg:order-2">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Performance Trends
-          </h2>
-          
-          <div className="space-y-3">
-            {performanceTrends.map((trend, index) => (
-              <Card key={index}>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{trend.metric}</p>
-                      <div className="flex items-center gap-1">
-                        {trend.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
-                        {trend.trend === 'down' && <TrendingUp className="w-4 h-4 text-red-500 rotate-180" />}
-                        {trend.trend === 'stable' && <div className="w-4 h-0.5 bg-gray-400"></div>}
-                        <span className={`text-sm ${
-                          trend.trend === 'up' ? 'text-green-500' : 
-                          trend.trend === 'down' ? 'text-red-500' : 
-                          'text-gray-500'
-                        }`}>
-                          {trend.change > 0 ? '+' : ''}{trend.change}%
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-2xl font-bold">{trend.value} <span className="text-sm font-normal text-muted-foreground">{trend.unit}</span></p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Lab Test History - Second on mobile */}
-        <div className="lg:col-span-2 space-y-4 lg:order-1">
-          <h2 className="text-xl font-semibold">Laboratory Test History</h2>
-          
-          {allLabResults.length === 0 ? (
+        <TabsContent value="lab-tests" className="space-y-6 mt-6">
+          {/* Key Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">No lab results recorded yet. Add your first test result to get started.</p>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Latest VO2max</p>
+                    <FlaskConical className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {labResults?.vo2_max ? (
+                      <>
+                        {labResults.vo2_max} <span className="text-sm font-normal text-muted-foreground">ml/kg/min</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No data</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
+                  </p>
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            allLabResults.map((test, index) => (
-              <Card key={test.id || index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium">{formatDate(test.test_date || test.created_at)}</span>
-                      <Edit 
-                        className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-primary" 
-                        onClick={() => handleEdit(test)}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {test.test_type?.toUpperCase() || 'LAB TEST'}
-                      </Badge>
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                        {sportMode.toUpperCase()}
-                      </Badge>
-                    </div>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">LT2 Power</p>
+                    <TrendingUp className="w-4 h-4 text-green-500" />
                   </div>
-                  
-                  {/* Test Results Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                    {test.vo2_max && (
-                      <div className="bg-red-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-red-700">VO2max</p>
-                        <p className="text-xl font-bold text-red-800">{test.vo2_max} <span className="text-sm font-normal">ml/kg/min</span></p>
-                      </div>
+                  <p className="text-2xl font-bold">
+                    {labResults?.lt2_power ? (
+                      <>
+                        {labResults.lt2_power} <span className="text-sm font-normal text-muted-foreground">W</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No data</span>
                     )}
-                    {test.lt2_power && (
-                      <div className="bg-orange-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-orange-700">LT2 Power</p>
-                        <p className="text-xl font-bold text-orange-800">{test.lt2_power} <span className="text-sm font-normal">W</span></p>
-                      </div>
-                    )}
-                    {test.map_value && (
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-blue-700">MAP</p>
-                        <p className="text-xl font-bold text-blue-800">{test.map_value} <span className="text-sm font-normal">W</span></p>
-                      </div>
-                    )}
-                    {test.rmr && (
-                      <div className="bg-purple-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-purple-700">RMR</p>
-                        <p className="text-xl font-bold text-purple-800">{test.rmr} <span className="text-sm font-normal">cal/day</span></p>
-                      </div>
-                    )}
-                    {test.fat_oxidation_rate && (
-                      <div className="bg-green-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-green-700">Fat Oxidation</p>
-                        <p className="text-xl font-bold text-green-800">{test.fat_oxidation_rate} <span className="text-sm font-normal">g/min</span></p>
-                      </div>
-                    )}
-                    {test.vt2_hr && (
-                      <div className="bg-pink-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-pink-700">VT2 HR</p>
-                        <p className="text-xl font-bold text-pink-800">{test.vt2_hr} <span className="text-sm font-normal">bpm</span></p>
-                      </div>
-                    )}
-                    {test.body_weight && (
-                      <div className="bg-indigo-50 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-indigo-700">Body Weight</p>
-                        <p className="text-xl font-bold text-indigo-800">{test.body_weight} <span className="text-sm font-normal">kg</span></p>
-                      </div>
-                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">RMR</p>
+                    <Activity className="w-4 h-4 text-purple-500" />
                   </div>
-                  
-                  {/* Notes */}
-                  {test.notes && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Notes</p>
-                      <p className="text-sm">{test.notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
+                  <p className="text-2xl font-bold">
+                    {labResults?.rmr ? (
+                      <>
+                        {labResults.rmr} <span className="text-sm font-normal text-muted-foreground">cal/day</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No data</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {labResults?.updated_at ? formatDate(labResults.updated_at) : 'No date'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Total Tests</p>
+                    <Badge variant="outline" className="text-orange-500 border-orange-500">📊</Badge>
+                  </div>
+                  <p className="text-2xl font-bold">{allLabResults.length}</p>
+                  <p className="text-xs text-muted-foreground">All time</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content for Lab Tests */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Performance Trends - First on mobile */}
+            <div className="space-y-4 lg:order-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Performance Trends
+              </h2>
+              
+              <div className="space-y-3">
+                {performanceTrends.map((trend, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium">{trend.metric}</p>
+                          <div className="flex items-center gap-1">
+                            {trend.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
+                            {trend.trend === 'down' && <TrendingUp className="w-4 h-4 text-red-500 rotate-180" />}
+                            {trend.trend === 'stable' && <div className="w-4 h-0.5 bg-gray-400"></div>}
+                            <span className={`text-sm ${
+                              trend.trend === 'up' ? 'text-green-500' : 
+                              trend.trend === 'down' ? 'text-red-500' : 
+                              'text-gray-500'
+                            }`}>
+                              {trend.change > 0 ? '+' : ''}{trend.change}%
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-2xl font-bold">{trend.value} <span className="text-sm font-normal text-muted-foreground">{trend.unit}</span></p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Lab Test History - Second on mobile */}
+            <div className="lg:col-span-2 space-y-4 lg:order-1">
+              <h2 className="text-xl font-semibold">Laboratory Test History</h2>
+              
+              {allLabResults.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <p className="text-muted-foreground">No lab results recorded yet. Add your first test result to get started.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                allLabResults.map((test, index) => (
+                  <Card key={test.id || index}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium">{formatDate(test.test_date || test.created_at)}</span>
+                          <Edit 
+                            className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-primary" 
+                            onClick={() => handleEdit(test)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {test.test_type?.toUpperCase() || 'LAB TEST'}
+                          </Badge>
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                            {sportMode.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Test Results Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                        {test.vo2_max && (
+                          <div className="bg-red-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-red-700">VO2max</p>
+                            <p className="text-xl font-bold text-red-800">{test.vo2_max} <span className="text-sm font-normal">ml/kg/min</span></p>
+                          </div>
+                        )}
+                        {test.lt2_power && (
+                          <div className="bg-orange-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-orange-700">LT2 Power</p>
+                            <p className="text-xl font-bold text-orange-800">{test.lt2_power} <span className="text-sm font-normal">W</span></p>
+                          </div>
+                        )}
+                        {test.map_value && (
+                          <div className="bg-blue-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-blue-700">MAP</p>
+                            <p className="text-xl font-bold text-blue-800">{test.map_value} <span className="text-sm font-normal">W</span></p>
+                          </div>
+                        )}
+                        {test.rmr && (
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-purple-700">RMR</p>
+                            <p className="text-xl font-bold text-purple-800">{test.rmr} <span className="text-sm font-normal">cal/day</span></p>
+                          </div>
+                        )}
+                        {test.fat_oxidation_rate && (
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-green-700">Fat Oxidation</p>
+                            <p className="text-xl font-bold text-green-800">{test.fat_oxidation_rate} <span className="text-sm font-normal">g/min</span></p>
+                          </div>
+                        )}
+                        {test.vt2_hr && (
+                          <div className="bg-pink-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-pink-700">VT2 HR</p>
+                            <p className="text-xl font-bold text-pink-800">{test.vt2_hr} <span className="text-sm font-normal">bpm</span></p>
+                          </div>
+                        )}
+                        {test.body_weight && (
+                          <div className="bg-indigo-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-indigo-700">Body Weight</p>
+                            <p className="text-xl font-bold text-indigo-800">{test.body_weight} <span className="text-sm font-normal">kg</span></p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Notes */}
+                      {test.notes && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Notes</p>
+                          <p className="text-sm">{test.notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="cp-tests" className="space-y-6 mt-6">
+          <CPChart />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

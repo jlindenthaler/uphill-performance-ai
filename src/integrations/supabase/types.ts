@@ -161,6 +161,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cp_results: {
+        Row: {
+          cp_watts: number
+          created_at: string
+          efforts_rejected: Json
+          efforts_used: Json
+          id: string
+          protocol_used: string
+          sport_mode: string
+          test_date: string
+          updated_at: string
+          user_id: string
+          w_prime_joules: number
+        }
+        Insert: {
+          cp_watts: number
+          created_at?: string
+          efforts_rejected?: Json
+          efforts_used?: Json
+          id?: string
+          protocol_used: string
+          sport_mode?: string
+          test_date: string
+          updated_at?: string
+          user_id: string
+          w_prime_joules: number
+        }
+        Update: {
+          cp_watts?: number
+          created_at?: string
+          efforts_rejected?: Json
+          efforts_used?: Json
+          id?: string
+          protocol_used?: string
+          sport_mode?: string
+          test_date?: string
+          updated_at?: string
+          user_id?: string
+          w_prime_joules?: number
+        }
+        Relationships: []
+      }
       encrypted_garmin_tokens: {
         Row: {
           access_token_hash: string
