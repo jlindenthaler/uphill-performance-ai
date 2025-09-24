@@ -25,19 +25,21 @@ interface CalendarEvent {
 }
 
 export const EnhancedTrainingCalendar: React.FC = () => {
-  const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  // Initialize to current week for immediate proper display
+  const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const { goals } = useGoals();
   const { workouts, deleteWorkout } = useWorkouts();
   const { activities, deleteActivity } = useActivities();
-  const { trainingHistory } = useTrainingHistory(90); // Extended for infinite scroll
+  const { trainingHistory } = useTrainingHistory(90);
   const { timezone } = useUserTimezone();
 
-  // Generate 12 weeks of calendar data (6 before and 5 after current week)
+  // Generate weeks centered around current week - start from 6 weeks ago to show context
   const weeks = useMemo(() => {
     const weeksToShow = 12;
-    const startWeek = subWeeks(currentWeek, 6);
+    const todayWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const startWeek = subWeeks(todayWeek, 6);
     
     return Array.from({ length: weeksToShow }, (_, i) => {
       const weekStart = addWeeks(startWeek, i);
@@ -46,7 +48,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
       
       return { weekStart, weekEnd, days };
     });
-  }, [currentWeek]);
+  }, []);
 
   // Calculate weekly stats for each week
   const getWeeklyStats = (weekStart: Date, weekEnd: Date) => {
@@ -102,15 +104,19 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     };
   };
 
-  // Get events for each day
+  // Get events for each day with improved date handling
   const getEventsForDay = (day: Date): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
 
-    // Add scheduled workouts
+    // Add scheduled workouts with timezone-aware comparison
     workouts.forEach(workout => {
       if (workout.scheduled_date) {
         const workoutDate = new Date(workout.scheduled_date);
-        if (isSameDay(workoutDate, day)) {
+        // Normalize both dates to start of day for proper comparison
+        const normalizedWorkoutDate = new Date(workoutDate.getFullYear(), workoutDate.getMonth(), workoutDate.getDate());
+        const normalizedDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+        
+        if (normalizedWorkoutDate.getTime() === normalizedDay.getTime()) {
           events.push({
             id: workout.id,
             type: 'workout',
@@ -122,10 +128,14 @@ export const EnhancedTrainingCalendar: React.FC = () => {
       }
     });
 
-    // Add completed activities
+    // Add completed activities with improved date comparison
     activities.forEach(activity => {
       const activityDate = new Date(activity.date);
-      if (isSameDay(activityDate, day)) {
+      // Normalize dates for comparison
+      const normalizedActivityDate = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+      const normalizedDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      
+      if (normalizedActivityDate.getTime() === normalizedDay.getTime()) {
         events.push({
           id: activity.id,
           type: 'activity',
@@ -139,7 +149,10 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     // Add goals that fall on this day
     goals.forEach(goal => {
       const goalDate = new Date(goal.event_date);
-      if (isSameDay(goalDate, day)) {
+      const normalizedGoalDate = new Date(goalDate.getFullYear(), goalDate.getMonth(), goalDate.getDate());
+      const normalizedDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      
+      if (normalizedGoalDate.getTime() === normalizedDay.getTime()) {
         events.push({
           id: goal.id,
           type: 'goal',
@@ -303,38 +316,60 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* Infinite Scrolling Calendar */}
-      <div className="space-y-8">
+      {/* Optimized Calendar - TrainingPeaks Style */}
+      <div className="space-y-2">
         {weeks.map(({ weekStart, weekEnd, days }, weekIndex) => {
           const weekStats = getWeeklyStats(weekStart, weekEnd);
           const isCurrentWeek = isSameDay(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
           
           return (
-            <Card key={weekStart.toISOString()} className={isCurrentWeek ? 'ring-2 ring-primary' : ''}>
+            <Card key={weekStart.toISOString()} className={`${isCurrentWeek ? 'ring-2 ring-primary' : ''} overflow-hidden`}>
               <CardContent className="p-0">
-                {/* Week Header */}
-                <div className="p-4 border-b bg-muted/20">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">
-                      {formatDateInUserTimezone(weekStart, timezone, 'MMM d')} - {formatDateInUserTimezone(weekEnd, timezone, 'MMM d, yyyy')}
-                    </h3>
-                    {isCurrentWeek && <Badge variant="default">Current Week</Badge>}
+                <div className="grid grid-cols-8 gap-0">
+                  {/* Week Summary - Inline like TrainingPeaks */}
+                  <div className="col-span-1 border-r bg-muted/5 p-3 min-h-[120px] flex flex-col justify-between">
+                    <div className="text-center space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        {formatDateInUserTimezone(weekStart, timezone, 'MMM d')}
+                      </div>
+                      {isCurrentWeek && (
+                        <Badge variant="default" className="text-xs px-1 py-0">Current</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2 text-center">
+                      <div>
+                        <div className="text-sm font-bold text-ltl">{weekStats.fitness.ctl}</div>
+                        <div className="text-xs text-muted-foreground">LTL</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-stl">{weekStats.fitness.atl}</div>
+                        <div className="text-xs text-muted-foreground">STL</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-fi">{weekStats.fitness.tsb}</div>
+                        <div className="text-xs text-muted-foreground">FI</div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground text-center">
+                      <div>{weekStats.completed.tss} TLI</div>
+                      <div>{weekStats.completed.duration}</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-8 gap-0">
-                  {/* Days Grid - 7 columns */}
-                  <div className="lg:col-span-7">
-                    {/* Day Headers */}
-                    <div className="grid grid-cols-7 border-b">
+                  {/* Days Grid - 7 columns optimized */}
+                  <div className="col-span-7">
+                    {/* Compact Day Headers */}
+                    <div className="grid grid-cols-7 border-b bg-muted/10">
                       {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
-                        <div key={day} className="p-3 text-center font-medium text-muted-foreground border-r last:border-r-0">
+                        <div key={day} className="p-2 text-center text-xs font-medium text-muted-foreground border-r last:border-r-0">
                           {day}
                         </div>
                       ))}
                     </div>
 
-                    {/* Days */}
+                    {/* Compact Days */}
                     <div className="grid grid-cols-7">
                       {days.map((day) => {
                         const events = getEventsForDay(day);
@@ -345,112 +380,61 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                         return (
                           <div
                             key={day.toISOString()}
-                            className={`min-h-[160px] border-r border-b last:border-r-0 p-3 ${
+                            className={`min-h-[120px] border-r border-b last:border-r-0 p-2 ${
                               isDayToday ? 'bg-primary/5 ring-2 ring-primary ring-inset' : 'bg-background'
-                            } ${isWeekend ? 'bg-muted/10' : ''}`}
+                            } ${isWeekend ? 'bg-muted/5' : ''}`}
                           >
-                            {/* Day Number */}
-                            <div className={`text-lg font-semibold mb-3 ${
+                            {/* Compact Day Number */}
+                            <div className={`text-sm font-semibold mb-1 ${
                               isDayToday ? 'text-primary' : 'text-foreground'
                             }`}>
                               {format(day, 'd')}
                             </div>
                             
-                            {/* Day Metrics */}
+                            {/* Compact Day Metrics */}
                             {dayMetrics && (
-                              <div className="text-xs text-muted-foreground mb-3 space-y-1">
+                              <div className="text-xs space-y-0.5 mb-2">
                                 {dayMetrics.tss > 0 && (
-                                  <div className="flex justify-between">
-                                    <span>TLI:</span>
-                                    <span className="font-medium">{dayMetrics.tss}</span>
+                                  <div className="text-center">
+                                    <span className="font-bold text-zone-3">{dayMetrics.tss}</span>
+                                    <span className="text-muted-foreground ml-1">TLI</span>
                                   </div>
                                 )}
                                 {dayMetrics.duration > 0 && (
-                                  <div className="flex justify-between">
-                                    <span>Time:</span>
-                                    <span className="font-medium">{Math.floor(dayMetrics.duration / 60)}h{dayMetrics.duration % 60}m</span>
+                                  <div className="text-xs text-center text-muted-foreground">
+                                    {Math.floor(dayMetrics.duration / 60)}h{dayMetrics.duration % 60}m
                                   </div>
                                 )}
                               </div>
                             )}
                             
-                            {/* Events */}
-                            <div className="space-y-2 overflow-hidden">
-                              {events.slice(0, 4).map(renderEvent)}
-                              {events.length > 4 && (
-                                <div className="text-xs text-muted-foreground">
-                                  +{events.length - 4} more
+                            {/* Compact Events */}
+                            <div className="space-y-1 overflow-hidden">
+                              {events.slice(0, 3).map(event => (
+                                <div
+                                  key={event.id}
+                                  className={`text-xs p-1 rounded cursor-pointer truncate ${
+                                    event.type === 'activity' ? 'bg-green-100 text-green-800' :
+                                    event.type === 'workout' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                                  onClick={() => {
+                                    if (event.type === 'workout') setSelectedWorkout(event.data);
+                                    if (event.type === 'activity') setSelectedActivity(event.data);
+                                  }}
+                                >
+                                  {event.title}
+                                </div>
+                              ))}
+                              {events.length > 3 && (
+                                <div className="text-xs text-muted-foreground text-center">
+                                  +{events.length - 3}
                                 </div>
                               )}
                             </div>
                           </div>
                         );
                       })}
-                    </div>
-                  </div>
-
-                  {/* Weekly Summary - 1 column */}
-                  <div className="lg:col-span-1 border-l bg-muted/10">
-                    <div className="p-4 space-y-4">
-                      <h4 className="font-semibold text-sm">WEEK SUMMARY</h4>
-                      
-                      {/* Fitness Metrics */}
-                      <div className="space-y-2">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600">{weekStats.fitness.ctl}</div>
-                          <div className="text-xs text-muted-foreground">LTL</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-pink-600">{weekStats.fitness.atl}</div>
-                          <div className="text-xs text-muted-foreground">STL</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-orange-600">{weekStats.fitness.tsb}</div>
-                          <div className="text-xs text-muted-foreground">FI</div>
-                        </div>
-                      </div>
-
-                      <hr />
-
-                      {/* Completed Stats */}
-                      <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-blue-600">COMPLETED</h5>
-                        <div className="text-xs space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Time:</span>
-                            <span className="font-medium">{weekStats.completed.duration}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">TLI:</span>
-                            <span className="font-medium">{weekStats.completed.tss}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Dist:</span>
-                            <span className="font-medium">{weekStats.completed.distance}km</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <hr />
-
-                      {/* Planned Stats */}
-                      <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-green-600">PLANNED</h5>
-                        <div className="text-xs space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Workouts:</span>
-                            <span className="font-medium">{weekStats.planned.workouts}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Time:</span>
-                            <span className="font-medium">{weekStats.planned.duration}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">TLI:</span>
-                            <span className="font-medium">{weekStats.planned.tss}</span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>

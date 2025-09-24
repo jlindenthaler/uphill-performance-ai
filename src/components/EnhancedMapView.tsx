@@ -279,40 +279,83 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       {/* Map */}
       <div ref={mapContainer} className="w-full flex-1 min-h-[300px]" />
       
-      {/* Elevation Chart */}
+      {/* Enhanced Elevation Chart */}
       {elevationData.length > 0 && (
-        <div className="w-full h-32 bg-muted/10 border-t p-2">
-          <div className="text-xs font-medium mb-1 text-muted-foreground">Elevation Profile</div>
+        <div className="w-full h-40 bg-muted/10 border-t p-3">
+          <div className="text-xs font-medium mb-2 text-muted-foreground flex justify-between">
+            <span>Elevation Profile</span>
+            <span>
+              {Math.min(...elevationData.map(p => p.elevation)).toFixed(0)}m - {Math.max(...elevationData.map(p => p.elevation)).toFixed(0)}m
+            </span>
+          </div>
           <svg
             width="100%"
-            height="100"
-            viewBox="0 0 400 80"
-            className="w-full h-full"
+            height="120"
+            viewBox="0 0 400 100"
+            className="w-full h-full cursor-crosshair"
           >
+            {/* Grid lines */}
+            <defs>
+              <pattern id="grid" width="40" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 20" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" opacity="0.3"/>
+              </pattern>
+            </defs>
+            <rect width="400" height="100" fill="url(#grid)" />
+            
             {/* Create elevation path */}
             {elevationData.length > 1 && (
               <path
-                d={`M ${elevationData.map((point, index) => 
-                  `${(index / (elevationData.length - 1)) * 400},${80 - ((point.elevation - Math.min(...elevationData.map(p => p.elevation))) / 
-                  (Math.max(...elevationData.map(p => p.elevation)) - Math.min(...elevationData.map(p => p.elevation)))) * 60}`
-                ).join(' L ')}`}
+                d={`M ${elevationData.map((point, index) => {
+                  const x = (index / (elevationData.length - 1)) * 400;
+                  const minElev = Math.min(...elevationData.map(p => p.elevation));
+                  const maxElev = Math.max(...elevationData.map(p => p.elevation));
+                  const range = maxElev - minElev;
+                  const y = range > 0 ? 90 - ((point.elevation - minElev) / range) * 80 : 90;
+                  return `${x},${y}`;
+                }).join(' L ')}`}
                 stroke="hsl(var(--primary))"
                 strokeWidth="2"
                 fill="none"
               />
             )}
             
-            {/* Fill area under curve */}
+            {/* Fill area under curve with gradient */}
             {elevationData.length > 1 && (
-              <path
-                d={`M 0,80 L ${elevationData.map((point, index) => 
-                  `${(index / (elevationData.length - 1)) * 400},${80 - ((point.elevation - Math.min(...elevationData.map(p => p.elevation))) / 
-                  (Math.max(...elevationData.map(p => p.elevation)) - Math.min(...elevationData.map(p => p.elevation)))) * 60}`
-                ).join(' L ')} L 400,80 Z`}
-                fill="hsl(var(--primary))"
-                fillOpacity="0.2"
-              />
+              <>
+                <defs>
+                  <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4"/>
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1"/>
+                  </linearGradient>
+                </defs>
+                <path
+                  d={`M 0,90 L ${elevationData.map((point, index) => {
+                    const x = (index / (elevationData.length - 1)) * 400;
+                    const minElev = Math.min(...elevationData.map(p => p.elevation));
+                    const maxElev = Math.max(...elevationData.map(p => p.elevation));
+                    const range = maxElev - minElev;
+                    const y = range > 0 ? 90 - ((point.elevation - minElev) / range) * 80 : 90;
+                    return `${x},${y}`;
+                  }).join(' L ')} L 400,90 Z`}
+                  fill="url(#elevationGradient)"
+                />
+              </>
             )}
+
+            {/* Distance markers */}
+            {elevationData.length > 0 && [0, 0.25, 0.5, 0.75, 1].map(ratio => {
+              const totalDistance = elevationData[elevationData.length - 1]?.distance || 0;
+              const distance = totalDistance * ratio;
+              const x = ratio * 400;
+              return (
+                <g key={ratio}>
+                  <line x1={x} y1="90" x2={x} y2="95" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.6"/>
+                  <text x={x} y="98" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">
+                    {distance.toFixed(1)}km
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         </div>
       )}

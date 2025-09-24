@@ -60,8 +60,11 @@ export function useActivities() {
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
+      // Default limit for performance - reduced initial load
       if (limit) {
         query = query.limit(limit);
+      } else {
+        query = query.limit(50); // Performance optimization: load first 50 activities
       }
 
       const { data, error } = await query;

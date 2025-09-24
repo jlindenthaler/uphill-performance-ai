@@ -85,7 +85,11 @@ export function Activities() {
   };
 
   const handleActivityToggle = (activityId: string) => {
-    setExpandedActivity(expandedActivity === activityId ? null : activityId);
+    try {
+      setExpandedActivity(expandedActivity === activityId ? null : activityId);
+    } catch (error) {
+      console.error('Error toggling activity:', error);
+    }
   };
 
   const handleDeleteActivity = async (activityId: string) => {
@@ -378,13 +382,23 @@ export function Activities() {
             <Collapsible 
               key={activity.id} 
               open={expandedActivity === activity.id}
-              onOpenChange={() => handleActivityToggle(activity.id)}
+              onOpenChange={(open) => {
+                try {
+                  setExpandedActivity(open ? activity.id : null);
+                } catch (error) {
+                  console.error('Error in onOpenChange:', error);
+                }
+              }}
             >
               <Card className="overflow-hidden">
                 <CollapsibleTrigger asChild>
                   <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start space-x-4 flex-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-start space-x-4 flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleActivityToggle(activity.id);
+                        }}>
                         <div className="relative">
                           <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
                           {activity.tss && activity.tss > 100 && (

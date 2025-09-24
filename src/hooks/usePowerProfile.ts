@@ -38,10 +38,11 @@ export function usePowerProfile(dateRangeDays?: number) {
         .in('duration_seconds', durations.map(d => d.seconds))
         .order('date_achieved', { ascending: false });
 
-      // Add date filter if dateRangeDays is provided
-      if (dateRangeDays) {
+      // Add date filter if dateRangeDays is provided - Fixed to properly filter by date range
+      if (dateRangeDays && dateRangeDays > 0) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
+        cutoffDate.setHours(0, 0, 0, 0); // Start of day for consistent filtering
         query = query.gte('date_achieved', cutoffDate.toISOString());
       }
 
@@ -49,17 +50,23 @@ export function usePowerProfile(dateRangeDays?: number) {
 
       if (error) throw error;
 
-      // Group by duration and get best values
-      const profileMap = new Map();
+      // Create separate maps for range-filtered and all-time records
+      const allTimeProfileMap = new Map();
+      const rangeFilteredProfileMap = new Map();
+      
+      const cutoffDate = dateRangeDays ? new Date(Date.now() - (dateRangeDays * 24 * 60 * 60 * 1000)) : null;
+
       data?.forEach(record => {
         const duration = durations.find(d => d.seconds === record.duration_seconds);
         if (!duration) return;
 
-        const existing = profileMap.get(duration.seconds);
+        const recordDate = new Date(record.date_achieved);
         const value = isRunning ? record.pace_per_km : record.power_watts;
         
+        // All-time best processing
+        const existing = allTimeProfileMap.get(duration.seconds);
         if (!existing || (isRunning ? value < existing.best : value > existing.best)) {
-          profileMap.set(duration.seconds, {
+          allTimeProfileMap.set(duration.seconds, {
             duration: duration.label,
             current: value || 0,
             best: value || 0,
@@ -67,11 +74,28 @@ export function usePowerProfile(dateRangeDays?: number) {
             unit: isRunning ? 'min/km' : 'W'
           });
         }
+
+        // Range-filtered processing if within date range
+        if (!cutoffDate || recordDate >= cutoffDate) {
+          const rangeExisting = rangeFilteredProfileMap.get(duration.seconds);
+          if (!rangeExisting || (isRunning ? value < rangeExisting.best : value > rangeExisting.best)) {
+            rangeFilteredProfileMap.set(duration.seconds, {
+              duration: duration.label,
+              current: value || 0,
+              best: value || 0,
+              date: record.date_achieved,
+              unit: isRunning ? 'min/km' : 'W'
+            });
+          }
+        }
       });
 
+      // Use range-filtered data if available and different from all-time, otherwise use all-time
+      const activeMap = dateRangeDays ? rangeFilteredProfileMap : allTimeProfileMap;
+      
       // Fill in missing durations with placeholder data
       const profile = durations.map(duration => {
-        const existing = profileMap.get(duration.seconds);
+        const existing = activeMap.get(duration.seconds);
         return existing || {
           duration: duration.label,
           current: 0,
