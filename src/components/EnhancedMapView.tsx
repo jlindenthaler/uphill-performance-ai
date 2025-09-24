@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
@@ -251,9 +251,71 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
     );
   }
 
+  // Calculate elevation data from GPS coordinates
+  const elevationData = useMemo(() => {
+    if (!gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) return [];
+    
+    let cumulativeDistance = 0;
+    return gpsData.coordinates.map((coord: number[], index: number) => {
+      if (index > 0) {
+        const prevCoord = gpsData.coordinates[index - 1];
+        // Simple distance calculation (Haversine would be more accurate)
+        const deltaLat = coord[1] - prevCoord[1];
+        const deltaLng = coord[0] - prevCoord[0];
+        const distance = Math.sqrt(deltaLat * deltaLat + deltaLng * deltaLng) * 111000; // Rough conversion to meters
+        cumulativeDistance += distance;
+      }
+      
+      return {
+        distance: cumulativeDistance / 1000, // Convert to km
+        elevation: coord[2] || 0, // Altitude if available, otherwise 0
+        index
+      };
+    });
+  }, [gpsData]);
+
   return (
-    <div className={`${className} rounded-lg overflow-hidden border relative`}>
-      <div ref={mapContainer} className="w-full h-full" />
+    <div className={`${className} rounded-lg overflow-hidden border relative flex flex-col`}>
+      {/* Map */}
+      <div ref={mapContainer} className="w-full flex-1 min-h-[300px]" />
+      
+      {/* Elevation Chart */}
+      {elevationData.length > 0 && (
+        <div className="w-full h-32 bg-muted/10 border-t p-2">
+          <div className="text-xs font-medium mb-1 text-muted-foreground">Elevation Profile</div>
+          <svg
+            width="100%"
+            height="100"
+            viewBox="0 0 400 80"
+            className="w-full h-full"
+          >
+            {/* Create elevation path */}
+            {elevationData.length > 1 && (
+              <path
+                d={`M ${elevationData.map((point, index) => 
+                  `${(index / (elevationData.length - 1)) * 400},${80 - ((point.elevation - Math.min(...elevationData.map(p => p.elevation))) / 
+                  (Math.max(...elevationData.map(p => p.elevation)) - Math.min(...elevationData.map(p => p.elevation)))) * 60}`
+                ).join(' L ')}`}
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                fill="none"
+              />
+            )}
+            
+            {/* Fill area under curve */}
+            {elevationData.length > 1 && (
+              <path
+                d={`M 0,80 L ${elevationData.map((point, index) => 
+                  `${(index / (elevationData.length - 1)) * 400},${80 - ((point.elevation - Math.min(...elevationData.map(p => p.elevation))) / 
+                  (Math.max(...elevationData.map(p => p.elevation)) - Math.min(...elevationData.map(p => p.elevation)))) * 60}`
+                ).join(' L ')} L 400,80 Z`}
+                fill="hsl(var(--primary))"
+                fillOpacity="0.2"
+              />
+            )}
+          </svg>
+        </div>
+      )}
     </div>
   );
 }

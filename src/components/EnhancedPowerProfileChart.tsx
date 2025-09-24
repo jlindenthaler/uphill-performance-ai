@@ -6,9 +6,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
+
 interface EnhancedPowerProfileChartProps {
   activity?: any;
 }
+
 export function EnhancedPowerProfileChart({
   activity
 }: EnhancedPowerProfileChartProps) {
@@ -21,6 +23,7 @@ export function EnhancedPowerProfileChart({
     sportMode
   } = useSportMode();
   const isRunning = sportMode === 'running';
+
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${(seconds / 60).toFixed(2)}m`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
@@ -28,6 +31,7 @@ export function EnhancedPowerProfileChart({
     const minutes = Math.floor(seconds % 3600 / 60);
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   };
+
   const formatValue = (value: number) => {
     if (isRunning) {
       const minutes = Math.floor(value);
@@ -129,6 +133,7 @@ export function EnhancedPowerProfileChart({
       };
     });
   }, [filteredPowerProfile, activityMeanMax]);
+
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center h-64">
@@ -136,6 +141,7 @@ export function EnhancedPowerProfileChart({
         </CardContent>
       </Card>;
   }
+
   if (powerProfile.length === 0) {
     return <Card>
         <CardHeader>
@@ -153,10 +159,10 @@ export function EnhancedPowerProfileChart({
       </Card>;
   }
 
-  // Get best power for duration from filtered data
+  // Get best power for duration from filtered data - Fixed to properly use date range filtering
   const getBestPowerForDuration = (duration: string) => {
-    const chartItem = chartData.find(item => item.duration === duration);
-    return chartItem?.rangeFiltered || chartItem?.allTimeBest || 0;
+    const powerProfileItem = filteredPowerProfile.find(item => item.duration === duration);
+    return powerProfileItem?.best || 0;
   };
 
   // Get date range label
@@ -178,6 +184,7 @@ export function EnhancedPowerProfileChart({
         return 'Last 90 days';
     }
   };
+
   const bestEfforts = [{
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
@@ -199,6 +206,7 @@ export function EnhancedPowerProfileChart({
     best: activityBestPowers.find(p => p.duration === '60min')?.value || 0,
     unit: 'W'
   }];
+
   return <div className="space-y-6">
       {/* Header */}
       <div>
@@ -253,13 +261,58 @@ export function EnhancedPowerProfileChart({
           </CardContent>
         </Card>}
 
-      {/* Best Efforts Cards */}
-      
-
       {/* Enhanced Power/Pace Curve Chart */}
       <Card>
-        
-        
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+            Enhanced {isRunning ? 'Pace' : 'Power'} Profile Chart ({getDateRangeLabel()})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="durationLabel" />
+                <YAxis tickFormatter={formatValue} />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [
+                    formatValue(value), 
+                    name === 'allTimeBest' ? 'All-Time Best' : 
+                    name === 'rangeFiltered' ? 'Range Best' : 
+                    'Activity Mean Max'
+                  ]}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="allTimeBest" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  name="All-Time Best"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="rangeFiltered" 
+                  stroke="hsl(var(--zone-3))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  name="Range Best"
+                />
+                {activity && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="activityMeanMax" 
+                    stroke="hsl(var(--zone-2))" 
+                    strokeWidth={2}
+                    strokeDasharray="2 2"
+                    name="Activity Mean Max"
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
       </Card>
     </div>;
 }
