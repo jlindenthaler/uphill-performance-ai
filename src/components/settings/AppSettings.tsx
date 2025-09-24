@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/hooks/useSettings";
+import { useActivities } from "@/hooks/useActivities";
 import { 
   Settings, 
   Bell, 
@@ -22,13 +23,15 @@ import {
   Smartphone,
   Link as LinkIcon,
   Plus,
-  Database
+  Database,
+  RotateCcw
 } from "lucide-react";
 import { GarminConnection } from "@/components/GarminConnection";
 import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
+  const { reprocessActivityTimestamps, loading: activitiesLoading } = useActivities();
 
   if (!settings) return null;
 
@@ -279,8 +282,31 @@ export function AppSettings() {
             Manage and analyze your training data
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <PowerProfileBackfill />
+          
+          <Separator />
+          
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Fix Timestamps
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Reprocess activity timestamps based on your current timezone
+              </p>
+            </div>
+            <Button
+              onClick={reprocessActivityTimestamps}
+              variant="outline"
+              size="sm"
+              disabled={activitiesLoading}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Fix Timestamps
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
