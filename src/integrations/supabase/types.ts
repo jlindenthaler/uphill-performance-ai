@@ -298,69 +298,108 @@ export type Database = {
           aet: number | null
           aet_hr: number | null
           body_weight: number | null
+          carb_oxidation_rate: number | null
           created_at: string
           critical_power: number | null
           crossover_point: number | null
           fat_max: number | null
           fat_max_intensity: number | null
+          fat_oxidation_rate: number | null
           gt: number | null
           gt_hr: number | null
           id: string
+          lt1_hr: number | null
+          lt1_power: number | null
+          lt2_hr: number | null
+          lt2_power: number | null
           map_value: number | null
           max_hr: number | null
           metabolic_efficiency: number | null
           resting_hr: number | null
+          rmr: number | null
           sport_mode: string
+          test_date: string | null
+          test_type: string | null
           updated_at: string
           user_id: string
           vla_max: number | null
           vo2_max: number | null
+          vt1_hr: number | null
+          vt1_power: number | null
+          vt2_hr: number | null
+          vt2_power: number | null
           w_prime: number | null
         }
         Insert: {
           aet?: number | null
           aet_hr?: number | null
           body_weight?: number | null
+          carb_oxidation_rate?: number | null
           created_at?: string
           critical_power?: number | null
           crossover_point?: number | null
           fat_max?: number | null
           fat_max_intensity?: number | null
+          fat_oxidation_rate?: number | null
           gt?: number | null
           gt_hr?: number | null
           id?: string
+          lt1_hr?: number | null
+          lt1_power?: number | null
+          lt2_hr?: number | null
+          lt2_power?: number | null
           map_value?: number | null
           max_hr?: number | null
           metabolic_efficiency?: number | null
           resting_hr?: number | null
+          rmr?: number | null
           sport_mode?: string
+          test_date?: string | null
+          test_type?: string | null
           updated_at?: string
           user_id: string
           vla_max?: number | null
           vo2_max?: number | null
+          vt1_hr?: number | null
+          vt1_power?: number | null
+          vt2_hr?: number | null
+          vt2_power?: number | null
           w_prime?: number | null
         }
         Update: {
           aet?: number | null
           aet_hr?: number | null
           body_weight?: number | null
+          carb_oxidation_rate?: number | null
           created_at?: string
           critical_power?: number | null
           crossover_point?: number | null
           fat_max?: number | null
           fat_max_intensity?: number | null
+          fat_oxidation_rate?: number | null
           gt?: number | null
           gt_hr?: number | null
           id?: string
+          lt1_hr?: number | null
+          lt1_power?: number | null
+          lt2_hr?: number | null
+          lt2_power?: number | null
           map_value?: number | null
           max_hr?: number | null
           metabolic_efficiency?: number | null
           resting_hr?: number | null
+          rmr?: number | null
           sport_mode?: string
+          test_date?: string | null
+          test_type?: string | null
           updated_at?: string
           user_id?: string
           vla_max?: number | null
           vo2_max?: number | null
+          vt1_hr?: number | null
+          vt1_power?: number | null
+          vt2_hr?: number | null
+          vt2_power?: number | null
           w_prime?: number | null
         }
         Relationships: []
