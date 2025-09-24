@@ -161,6 +161,33 @@ export type Database = {
         }
         Relationships: []
       }
+      encrypted_garmin_tokens: {
+        Row: {
+          access_token_hash: string
+          created_at: string
+          id: string
+          token_secret_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_hash: string
+          created_at?: string
+          id?: string
+          token_secret_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_hash?: string
+          created_at?: string
+          id?: string
+          token_secret_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       enhanced_time_availability: {
         Row: {
           activity_type: string
@@ -190,6 +217,36 @@ export type Database = {
           id?: string
           start_time?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      garmin_token_access_log: {
+        Row: {
+          access_type: string
+          id: string
+          ip_address: unknown | null
+          success: boolean | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          timestamp?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
