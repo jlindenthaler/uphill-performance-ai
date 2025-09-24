@@ -301,7 +301,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         {/* Calendar */}
-        <div className="xl:col-span-3">
+        <div className="xl:col-span-3 w-2/3">
           <Card>
             <CardContent className="p-0">
               {/* Calendar Header */}
@@ -375,7 +375,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         </div>
 
         {/* Summary Panel */}
-        <div className="space-y-4">
+        <div className="space-y-4 w-2/3">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">SUMMARY</CardTitle>
