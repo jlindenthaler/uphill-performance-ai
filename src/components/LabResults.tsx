@@ -36,6 +36,9 @@ interface LabResultFormData {
   fatOxRate: string;
   carbOxRate: string;
   fatMax: string;
+  bodyWeight: string;
+  restingHr: string;
+  maxHr: string;
   notes: string;
 }
 
@@ -57,6 +60,9 @@ const initialFormData: LabResultFormData = {
   fatOxRate: '',
   carbOxRate: '',
   fatMax: '',
+  bodyWeight: '',
+  restingHr: '',
+  maxHr: '',
   notes: ''
 };
 
@@ -70,7 +76,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(openAddDialog);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const { sportMode } = useSportMode();
-  const { labResults, saveLabResults } = useLabResults();
+  const { labResults, allLabResults, saveLabResults } = useLabResults();
   const { toast } = useToast();
   const { timezone } = useUserTimezone();
 
@@ -91,10 +97,25 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
     try {
       const labData = {
         vo2_max: parseFloat(formData.vo2max) || undefined,
-        vla_max: parseFloat(formData.mapPower) || undefined,
-        fat_max: parseFloat(formData.fatOxRate) || undefined,
-        crossover_point: parseFloat(formData.lt1Power) || undefined,
+        map_value: parseFloat(formData.mapPower) || undefined,
+        vt1_hr: parseInt(formData.vt1Hr) || undefined,
+        vt1_power: parseFloat(formData.vt1Power) || undefined,
+        vt2_hr: parseInt(formData.vt2Hr) || undefined,
+        vt2_power: parseFloat(formData.vt2Power) || undefined,
+        lt1_hr: parseInt(formData.lt1Hr) || undefined,
+        lt1_power: parseFloat(formData.lt1Power) || undefined,
+        lt2_hr: parseInt(formData.lt2Hr) || undefined,
+        lt2_power: parseFloat(formData.lt2Power) || undefined,
+        rmr: parseFloat(formData.rmr) || undefined,
+        fat_oxidation_rate: parseFloat(formData.fatOxRate) || undefined,
+        carb_oxidation_rate: parseFloat(formData.carbOxRate) || undefined,
         fat_max_intensity: parseFloat(formData.fatMax) || undefined,
+        body_weight: parseFloat(formData.bodyWeight) || undefined,
+        resting_hr: parseInt(formData.restingHr) || undefined,
+        max_hr: parseInt(formData.maxHr) || undefined,
+        test_date: formData.testDate.toISOString(),
+        test_type: formData.testType,
+        notes: formData.notes || undefined,
       };
 
       await saveLabResults(labData);
@@ -360,6 +381,37 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
               placeholder="65"
               value={formData.fatMax}
               onChange={(e) => handleInputChange('fatMax', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Metrics */}
+      <div className="space-y-4">
+        <h3 className="font-semibold">Additional Metrics</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>Body Weight (kg)</Label>
+            <Input
+              placeholder="70"
+              value={formData.bodyWeight}
+              onChange={(e) => handleInputChange('bodyWeight', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Resting HR (bpm)</Label>
+            <Input
+              placeholder="45"
+              value={formData.restingHr}
+              onChange={(e) => handleInputChange('restingHr', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Max HR (bpm)</Label>
+            <Input
+              placeholder="190"
+              value={formData.maxHr}
+              onChange={(e) => handleInputChange('maxHr', e.target.value)}
             />
           </div>
         </div>
