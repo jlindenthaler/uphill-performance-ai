@@ -128,12 +128,12 @@ export function AnalysisDashboard() {
             <Card className="card-gradient">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-zone-3" />
+                  <Activity className="w-4 h-4 text-ltl" />
                   Long-Term Load (LTL)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-zone-3">{Math.round(currentCTL)}</div>
+                <div className="text-2xl font-bold text-ltl">{Math.round(currentCTL)}</div>
                 <p className="text-xs text-muted-foreground">Fitness level</p>
               </CardContent>
             </Card>
@@ -141,12 +141,12 @@ export function AnalysisDashboard() {
             <Card className="card-gradient">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-zone-4" />
+                  <Zap className="w-4 h-4 text-stl" />
                   Short-Term Load (STL)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-zone-4">{Math.round(currentATL)}</div>
+                <div className="text-2xl font-bold text-stl">{Math.round(currentATL)}</div>
                 <p className="text-xs text-muted-foreground">Fatigue level</p>
               </CardContent>
             </Card>
@@ -154,12 +154,12 @@ export function AnalysisDashboard() {
             <Card className="card-gradient">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <tsbStatus.icon className={`w-4 h-4 ${tsbStatus.color}`} />
+                  <tsbStatus.icon className="w-4 h-4 text-fi" />
                   Form Index (FI)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${tsbStatus.color}`}>{Math.round(currentTSB)}</div>
+                <div className="text-2xl font-bold text-fi">{Math.round(currentTSB)}</div>
                 <p className="text-xs text-muted-foreground">{tsbStatus.status}</p>
               </CardContent>
             </Card>
@@ -192,9 +192,9 @@ export function AnalysisDashboard() {
                         labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                         formatter={(value, name) => [Math.round(Number(value)), String(name).toUpperCase()]}
                       />
-                      <Line type="monotone" dataKey="ctl" stroke="hsl(var(--zone-3))" strokeWidth={2} name="LTL" />
-                      <Line type="monotone" dataKey="atl" stroke="hsl(var(--zone-4))" strokeWidth={2} name="STL" />
-                      <Line type="monotone" dataKey="tsb" stroke="hsl(var(--chart-5))" strokeWidth={2} name="FI" />
+                      <Line type="monotone" dataKey="ctl" stroke="hsl(var(--ltl-blue))" strokeWidth={2} name="LTL" />
+                      <Line type="monotone" dataKey="atl" stroke="hsl(var(--stl-pink))" strokeWidth={2} name="STL" />
+                      <Line type="monotone" dataKey="tsb" stroke="hsl(var(--fi-yellow))" strokeWidth={2} name="FI" />
                     </LineChart>
                   </ResponsiveContainer>
                 )}

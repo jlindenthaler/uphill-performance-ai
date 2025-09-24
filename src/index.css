@@ -43,6 +43,11 @@
     --zone-2: 45 100% 60%;   /* Aerobic Threshold - Yellow */
     --zone-3: 25 100% 60%;   /* VO2Max - Orange */
     --zone-4: 0 100% 60%;    /* Neuromuscular - Red */
+    
+    /* Performance Management Colors */
+    --ltl-blue: 210 100% 60%;   /* LTL - Blue */
+    --stl-pink: 330 100% 70%;   /* STL - Pink */
+    --fi-yellow: 45 100% 60%;   /* FI - Yellow */
 
     /* Performance gradients */
     --gradient-primary: linear-gradient(135deg, hsl(200 100% 50%), hsl(220 100% 60%));

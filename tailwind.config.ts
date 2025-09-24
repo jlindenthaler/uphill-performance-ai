@@ -53,6 +53,9 @@ export default {
           3: "hsl(var(--zone-3))",
           4: "hsl(var(--zone-4))",
         },
+        ltl: "hsl(var(--ltl-blue))",
+        stl: "hsl(var(--stl-pink))",
+        fi: "hsl(var(--fi-yellow))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
