@@ -22,6 +22,12 @@ export interface ParsedActivityData {
   variability_index?: number;
   gps_data?: any;
   lap_data?: any;
+  // CP test specific data
+  activity_type?: string;
+  cp_test_protocol?: string;
+  cp_test_target_duration?: number;
+  power_time_series?: number[];
+  heart_rate_time_series?: number[];
 }
 
 // Sport mapping from FIT to our sport modes
@@ -169,6 +175,10 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
   // GPS data from record messages
   const gpsData = extractGPSData(recordMessages);
   
+  // Time series data for CP analysis
+  const powerTimeSeries = extractTimeSeries(recordMessages, 'power');
+  const heartRateTimeSeries = extractTimeSeries(recordMessages, 'heartRate');
+  
   // Lap data
   const lapData = lapMessages.length > 0 ? lapMessages : null;
   
@@ -227,7 +237,10 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
     intensity_factor: intensityFactor ? Math.round(intensityFactor * 100) / 100 : undefined,
     variability_index: variabilityIndex ? Math.round(variabilityIndex * 100) / 100 : undefined,
     gps_data: gpsData,
-    lap_data: lapData
+    lap_data: lapData,
+    // CP test data will be added by upload handler based on user selection
+    power_time_series: powerTimeSeries,
+    heart_rate_time_series: heartRateTimeSeries
   };
 }
 
@@ -389,4 +402,24 @@ function calculateAverageCadence(records: any[]): number | null {
   if (cadenceData.length === 0) return null;
   
   return cadenceData.reduce((sum, c) => sum + c, 0) / cadenceData.length;
+}
+
+function extractTimeSeries(records: any[], field: string): number[] {
+  // Helper function to unwrap FIT SDK values
+  const unwrapValue = (obj: any) => {
+    if (obj && typeof obj === 'object' && 'value' in obj) {
+      return obj.value !== 'undefined' ? obj.value : undefined;
+    }
+    return obj;
+  };
+
+  const timeSeries: number[] = [];
+  
+  records.forEach(record => {
+    const value = unwrapValue(record[field]);
+    // Add value or 0 for missing data points to maintain time alignment
+    timeSeries.push(value !== undefined && value !== null ? value : 0);
+  });
+  
+  return timeSeries;
 }

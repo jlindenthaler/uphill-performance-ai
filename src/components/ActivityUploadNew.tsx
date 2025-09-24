@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { CP_PROTOCOLS } from '@/utils/cp-detection';
 
 interface ActivityUploadNewProps {
   onUploadSuccess?: (activityId?: string) => void;
@@ -22,6 +24,12 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const [uploadingFiles, setUploadingFiles] = useState<{ file: File; progress: number; status: 'uploading' | 'processing' | 'complete' | 'error' }[]>([]);
   const [activityName, setActivityName] = useState('');
   const [notes, setNotes] = useState('');
+  
+  // CP Test specific states
+  const [isCPTest, setIsCPTest] = useState(false);
+  const [cpProtocol, setCPProtocol] = useState('');
+  const [cpTargetDuration, setCPTargetDuration] = useState('');
+  
   const { toast } = useToast();
   const { uploadActivity, loading } = useActivities();
   const { sportMode, setSportMode } = useSportMode();
@@ -101,7 +109,20 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
         updateProgress(100, 'complete');
         
         console.log('Starting activity upload for:', file.name);
-        const uploadedActivity = await uploadActivity(file, activityName || undefined, notes || undefined);
+        
+        // Prepare CP test metadata if enabled
+        const cpTestData = isCPTest ? {
+          activity_type: 'cp_test',
+          cp_test_protocol: cpProtocol,
+          cp_test_target_duration: cpTargetDuration ? parseInt(cpTargetDuration) : undefined
+        } : undefined;
+        
+        const uploadedActivity = await uploadActivity(
+          file, 
+          activityName || undefined, 
+          notes || undefined,
+          cpTestData
+        );
         console.log('Activity uploaded successfully:', uploadedActivity);
         
         toast({
@@ -142,6 +163,9 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
     setSelectedFiles([]);
     setActivityName('');
     setNotes('');
+    setIsCPTest(false);
+    setCPProtocol('');
+    setCPTargetDuration('');
   };
 
   const removeUploadingFile = (file: File) => {
@@ -175,6 +199,49 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
           />
         </div>
       </div>
+
+      {/* CP Test Toggle */}
+      <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
+        <Switch
+          id="cp-test"
+          checked={isCPTest}
+          onCheckedChange={setIsCPTest}
+        />
+        <Label htmlFor="cp-test" className="text-sm font-medium">
+          Mark as Critical Power Test
+        </Label>
+      </div>
+
+      {/* CP Test Configuration */}
+      {isCPTest && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
+          <div className="space-y-2">
+            <Label htmlFor="cp-protocol">Test Protocol</Label>
+            <Select value={cpProtocol} onValueChange={setCPProtocol}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select protocol" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border z-50">
+                {Object.entries(CP_PROTOCOLS).map(([key, protocol]) => (
+                  <SelectItem key={key} value={key}>
+                    {protocol.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cp-duration">Target Duration (seconds, optional)</Label>
+            <Input
+              id="cp-duration"
+              type="number"
+              value={cpTargetDuration}
+              onChange={(e) => setCPTargetDuration(e.target.value)}
+              placeholder="e.g., 300 for 5min effort"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="space-y-2">

@@ -16,12 +16,15 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
+          activity_type: string | null
           avg_cadence: number | null
           avg_heart_rate: number | null
           avg_pace_per_km: number | null
           avg_power: number | null
           avg_speed_kmh: number | null
           calories: number | null
+          cp_test_protocol: string | null
+          cp_test_target_duration: number | null
           created_at: string
           date: string
           distance_meters: number | null
@@ -49,12 +52,15 @@ export type Database = {
           weather_conditions: Json | null
         }
         Insert: {
+          activity_type?: string | null
           avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null
           avg_speed_kmh?: number | null
           calories?: number | null
+          cp_test_protocol?: string | null
+          cp_test_target_duration?: number | null
           created_at?: string
           date: string
           distance_meters?: number | null
@@ -82,12 +88,15 @@ export type Database = {
           weather_conditions?: Json | null
         }
         Update: {
+          activity_type?: string | null
           avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null
           avg_speed_kmh?: number | null
           calories?: number | null
+          cp_test_protocol?: string | null
+          cp_test_target_duration?: number | null
           created_at?: string
           date?: string
           distance_meters?: number | null

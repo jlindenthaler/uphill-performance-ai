@@ -76,7 +76,16 @@ export function useActivities() {
     }
   };
 
-  const uploadActivity = async (file: File, activityName?: string, notes?: string) => {
+  const uploadActivity = async (
+    file: File, 
+    activityName?: string, 
+    notes?: string,
+    cpTestData?: {
+      activity_type: string;
+      cp_test_protocol: string;
+      cp_test_target_duration?: number;
+    }
+  ) => {
     if (!user) throw new Error('User not authenticated');
 
     console.log('Starting file upload for:', file.name);
@@ -99,7 +108,13 @@ export function useActivities() {
         duration_seconds: 0,
         file_path: fileName,
         file_type: file.type || file.name.split('.').pop(),
-        original_filename: file.name
+        original_filename: file.name,
+        // Add CP test data if provided
+        ...(cpTestData && {
+          activity_type: cpTestData.activity_type,
+          cp_test_protocol: cpTestData.cp_test_protocol,
+          cp_test_target_duration: cpTestData.cp_test_target_duration
+        })
       };
 
       // Try to parse FIT file if it's a .fit file
@@ -170,6 +185,17 @@ export function useActivities() {
           console.log('Power profile data updated successfully');
         } catch (powerProfileError) {
           console.warn('Failed to update power profile data:', powerProfileError);
+        }
+      }
+
+      // Process CP test if this is a CP test activity
+      if (cpTestData?.activity_type === 'cp_test') {
+        try {
+          const { CPProcessingEngine } = await import('@/utils/cpProcessingEngine');
+          CPProcessingEngine.triggerProcessing(user.id);
+          console.log('CP processing triggered for user:', user.id);
+        } catch (cpError) {
+          console.warn('Failed to trigger CP processing:', cpError);
         }
       }
       
