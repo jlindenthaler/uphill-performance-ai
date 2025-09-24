@@ -34,7 +34,7 @@ interface WorkoutData {
   }>;
   zones: number[];
   duration: number; // minutes
-  tss: number; // Training Load Index
+  tss: number; // Training Stress Score
   category: 'vo2max' | 'threshold' | 'tempo' | 'endurance';
   sport: 'cycling' | 'running' | 'swimming' | 'all';
 }
@@ -354,7 +354,7 @@ export function WorkoutLibrary() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">TLI: {workout.tss}</span>
+                  <span className="text-sm">TSS: {workout.tss}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-muted-foreground" />

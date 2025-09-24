@@ -173,7 +173,7 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
   const lapData = lapMessages.length > 0 ? lapMessages : null;
   
   // Calculate training metrics
-  const tss = calculateTLI(normalizedPower, duration);
+  const tss = calculateTSS(normalizedPower, duration);
   const intensityFactor = calculateIntensityFactor(normalizedPower);
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
@@ -339,11 +339,11 @@ function calculateElevationGain(records: any[]): number | null {
   return totalGain;
 }
 
-function calculateTLI(normalizedPower: number | null, duration: number): number | null {
+function calculateTSS(normalizedPower: number | null, duration: number): number | null {
   if (!normalizedPower || duration <= 0) return null;
   
-  // Simplified TLI calculation (assumes FTP of 250W for now)
-  // TLI = (seconds * NP * IF) / (FTP * 3600) * 100
+  // Simplified TSS calculation (assumes FTP of 250W for now)
+  // TSS = (seconds * NP * IF) / (FTP * 3600) * 100
   const assumedFTP = 250;
   const intensityFactor = normalizedPower / assumedFTP;
   

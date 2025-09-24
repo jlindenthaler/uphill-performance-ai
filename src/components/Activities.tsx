@@ -250,7 +250,7 @@ export function Activities() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Training Load Index</span>
               <span className="font-medium">
-                 {activity.tss ? Math.round(activity.tss) : 'N/A'}
+                {activity.tss ? Math.round(activity.tss) : 'N/A'}
               </span>
             </div>
             

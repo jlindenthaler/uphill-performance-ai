@@ -513,7 +513,7 @@ export function AnalysisDashboard() {
           <Card className="card-gradient">
             <CardHeader>
               <CardTitle>Training Stress Score Trends</CardTitle>
-              <CardDescription>Daily TLI over the last 30 days</CardDescription>
+              <CardDescription>Daily TSS over the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -529,7 +529,7 @@ export function AnalysisDashboard() {
                       <YAxis />
                       <Tooltip 
                         labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
-                        formatter={(value) => [`${Math.round(Number(value))} TLI`, '']}
+                        formatter={(value) => [`${Math.round(Number(value))} TSS`, '']}
                       />
                       <Bar dataKey="tss" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
                     </BarChart>
@@ -574,7 +574,7 @@ export function AnalysisDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center p-3 rounded-lg bg-muted/20">
-                  <span className="text-sm">7-day average TLI</span>
+                  <span className="text-sm">7-day average TSS</span>
                   <span className="font-semibold">
                     {Math.round(trainingHistory.slice(-7).reduce((acc, day) => acc + day.tss, 0) / 7)}
                   </span>
