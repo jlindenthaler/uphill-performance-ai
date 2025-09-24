@@ -127,6 +127,15 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
   try {
     console.log('Populating training history for user:', userId);
 
+    // Clear existing training history to ensure clean calculation
+    const { error: deleteError } = await supabase
+      .from('training_history')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) throw deleteError;
+    console.log('Cleared existing training history');
+
     // Fetch all activities for the user
     const { data: activities, error: activitiesError } = await supabase
       .from('activities')
@@ -141,38 +150,84 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       return;
     }
 
-    // Convert activities to training data format
-    const trainingData: TrainingData[] = activities.map(activity => ({
-      date: activity.date,
-      tss: activity.tss || 0,
-      duration_minutes: Math.round(activity.duration_seconds / 60),
-      sport: activity.sport_mode
-    }));
-
-    // Calculate PMC metrics
-    const pmcData = calculatePMCMetrics(trainingData);
-
-  // Upsert PMC data to handle existing records
-  const insertData = pmcData.map(data => ({
-    user_id: userId,
-    date: data.date,
-    tss: data.tss,
-    ctl: data.ctl,
-    atl: data.atl,
-    tsb: data.tsb,
-    duration_minutes: data.duration_minutes,
-    sport: data.sport
-  }));
-
-  const { error: upsertError } = await supabase
-    .from('training_history')
-    .upsert(insertData, {
-      onConflict: 'user_id,date,sport'
+    // Convert activities to training data format and aggregate by date/sport
+    const activityMap = new Map<string, { tss: number; duration_minutes: number; sport: string }>();
+    
+    activities.forEach(activity => {
+      // Convert timestamp to date-only format
+      const dateOnly = new Date(activity.date).toISOString().split('T')[0];
+      const key = `${dateOnly}_${activity.sport_mode}`;
+      
+      const existing = activityMap.get(key);
+      if (existing) {
+        // Aggregate TSS and duration for multiple activities on same day
+        existing.tss += activity.tss || 0;
+        existing.duration_minutes += Math.round(activity.duration_seconds / 60);
+      } else {
+        activityMap.set(key, {
+          tss: activity.tss || 0,
+          duration_minutes: Math.round(activity.duration_seconds / 60),
+          sport: activity.sport_mode
+        });
+      }
+    });
+    
+    // Convert map to training data array
+    const trainingData: TrainingData[] = Array.from(activityMap.entries()).map(([key, data]) => {
+      const [date, sport] = key.split('_');
+      return {
+        date,
+        tss: data.tss,
+        duration_minutes: data.duration_minutes,
+        sport
+      };
     });
 
-    if (upsertError) throw upsertError;
+    // Group by sport for separate PMC calculations
+    const sportGroups = new Map<string, TrainingData[]>();
+    
+    Array.from(activityMap.entries()).forEach(([key, data]) => {
+      const [date, sport] = key.split('_');
+      if (!sportGroups.has(sport)) {
+        sportGroups.set(sport, []);
+      }
+      sportGroups.get(sport)!.push({
+        date,
+        tss: data.tss,
+        duration_minutes: data.duration_minutes,
+        sport
+      });
+    });
 
-    console.log(`Successfully populated ${pmcData.length} training history records`);
+    // Calculate PMC metrics for each sport separately
+    const allPmcData: any[] = [];
+    
+    for (const [sport, trainingData] of sportGroups) {
+      const pmcData = calculatePMCMetrics(trainingData);
+      allPmcData.push(...pmcData.map(data => ({
+        user_id: userId,
+        date: data.date,
+        tss: data.tss,
+        ctl: data.ctl,
+        atl: data.atl,
+        tsb: data.tsb,
+        duration_minutes: data.duration_minutes,
+        sport: data.sport
+      })));
+    }
+
+    // Upsert PMC data to handle existing records
+    if (allPmcData.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('training_history')
+        .upsert(allPmcData, {
+          onConflict: 'user_id,date,sport'
+        });
+
+      if (upsertError) throw upsertError;
+    }
+
+    console.log(`Successfully populated ${allPmcData.length} training history records across ${sportGroups.size} sports`);
   } catch (error) {
     console.error('Error populating training history:', error);
     throw error;
@@ -196,13 +251,38 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
 
     if (!activities || activities.length === 0) return;
 
-    // Convert to training data format
-    const trainingData: TrainingData[] = activities.map(activity => ({
-      date: activity.date,
-      tss: activity.tss || 0,
-      duration_minutes: Math.round(activity.duration_seconds / 60),
-      sport: activity.sport_mode
-    }));
+    // Convert to training data format and aggregate by date/sport
+    const activityMap = new Map<string, { tss: number; duration_minutes: number; sport: string }>();
+    
+    activities.forEach(activity => {
+      // Convert timestamp to date-only format
+      const dateOnly = new Date(activity.date).toISOString().split('T')[0];
+      const key = `${dateOnly}_${activity.sport_mode}`;
+      
+      const existing = activityMap.get(key);
+      if (existing) {
+        // Aggregate TSS and duration for multiple activities on same day
+        existing.tss += activity.tss || 0;
+        existing.duration_minutes += Math.round(activity.duration_seconds / 60);
+      } else {
+        activityMap.set(key, {
+          tss: activity.tss || 0,
+          duration_minutes: Math.round(activity.duration_seconds / 60),
+          sport: activity.sport_mode
+        });
+      }
+    });
+    
+    // Convert map to training data array
+    const trainingData: TrainingData[] = Array.from(activityMap.entries()).map(([key, data]) => {
+      const [date, sport] = key.split('_');
+      return {
+        date,
+        tss: data.tss,
+        duration_minutes: data.duration_minutes,
+        sport
+      };
+    });
 
     // Calculate PMC metrics from the beginning
     const pmcData = calculatePMCMetrics(trainingData);
