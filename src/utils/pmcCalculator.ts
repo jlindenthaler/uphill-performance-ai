@@ -41,7 +41,7 @@ function calculateTSB(ctl: number, atl: number): number {
 }
 
 /**
- * Calculate PMC metrics for a series of training data
+ * Calculate PMC metrics for a series of training data with proper daily decay
  */
 export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
   if (trainingData.length === 0) return [];
@@ -49,11 +49,14 @@ export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
   // Sort by date to ensure chronological order
   const sortedData = [...trainingData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // Fill gaps in data to ensure daily calculations for proper decay
+  const filledData = fillMissingDays(sortedData);
+
   const pmcData: PMCData[] = [];
   let previousCTL = 0;
   let previousATL = 0;
 
-  for (const training of sortedData) {
+  for (const training of filledData) {
     const ctl = calculateCTL(previousCTL, training.tss);
     const atl = calculateATL(previousATL, training.tss);
     const tsb = calculateTSB(ctl, atl);
@@ -73,6 +76,48 @@ export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
   }
 
   return pmcData;
+}
+
+/**
+ * Fill missing days between training activities with zero TSS to ensure proper PMC decay
+ */
+function fillMissingDays(trainingData: TrainingData[]): TrainingData[] {
+  if (trainingData.length === 0) return [];
+
+  const result: TrainingData[] = [];
+  const startDate = new Date(trainingData[0].date);
+  const endDate = new Date(trainingData[trainingData.length - 1].date);
+
+  // Extend to today if the last activity is not today
+  const today = new Date();
+  if (endDate < today) {
+    endDate.setTime(today.getTime());
+  }
+
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dateString = currentDate.toISOString().split('T')[0];
+    
+    // Find if there's training data for this date
+    const existingData = trainingData.find(data => data.date === dateString);
+    
+    if (existingData) {
+      result.push(existingData);
+    } else {
+      // Add zero TSS day for proper decay calculation
+      result.push({
+        date: dateString,
+        tss: 0,
+        duration_minutes: 0,
+        sport: trainingData[0].sport // Use the sport from the first activity
+      });
+    }
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return result;
 }
 
 /**
