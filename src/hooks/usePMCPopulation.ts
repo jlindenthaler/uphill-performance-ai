@@ -30,7 +30,7 @@ export function usePMCPopulation() {
         populatePMCData();
       }, 1000);
     }
-  }, [user]);
+  }, [user, isPopulated, isPopulating]);
 
   return {
     isPopulated,

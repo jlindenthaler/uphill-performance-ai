@@ -107,31 +107,25 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
     // Calculate PMC metrics
     const pmcData = calculatePMCMetrics(trainingData);
 
-    // Clear existing training history for this user
-    const { error: deleteError } = await supabase
-      .from('training_history')
-      .delete()
-      .eq('user_id', userId);
+  // Upsert PMC data to handle existing records
+  const insertData = pmcData.map(data => ({
+    user_id: userId,
+    date: data.date,
+    tss: data.tss,
+    ctl: data.ctl,
+    atl: data.atl,
+    tsb: data.tsb,
+    duration_minutes: data.duration_minutes,
+    sport: data.sport
+  }));
 
-    if (deleteError) throw deleteError;
+  const { error: upsertError } = await supabase
+    .from('training_history')
+    .upsert(insertData, {
+      onConflict: 'user_id,date,sport'
+    });
 
-    // Insert new PMC data
-    const insertData = pmcData.map(data => ({
-      user_id: userId,
-      date: data.date,
-      tss: data.tss,
-      ctl: data.ctl,
-      atl: data.atl,
-      tsb: data.tsb,
-      duration_minutes: data.duration_minutes,
-      sport: data.sport
-    }));
-
-    const { error: insertError } = await supabase
-      .from('training_history')
-      .insert(insertData);
-
-    if (insertError) throw insertError;
+    if (upsertError) throw upsertError;
 
     console.log(`Successfully populated ${pmcData.length} training history records`);
   } catch (error) {
