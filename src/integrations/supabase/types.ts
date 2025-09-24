@@ -35,6 +35,7 @@ export type Database = {
           file_type: string | null
           garmin_activity_id: string | null
           gps_data: Json | null
+          heart_rate_time_series: Json | null
           id: string
           intensity_factor: number | null
           lap_data: Json | null
@@ -44,6 +45,7 @@ export type Database = {
           normalized_power: number | null
           notes: string | null
           original_filename: string | null
+          power_time_series: Json | null
           sport_mode: string
           tss: number | null
           updated_at: string
@@ -71,6 +73,7 @@ export type Database = {
           file_type?: string | null
           garmin_activity_id?: string | null
           gps_data?: Json | null
+          heart_rate_time_series?: Json | null
           id?: string
           intensity_factor?: number | null
           lap_data?: Json | null
@@ -80,6 +83,7 @@ export type Database = {
           normalized_power?: number | null
           notes?: string | null
           original_filename?: string | null
+          power_time_series?: Json | null
           sport_mode?: string
           tss?: number | null
           updated_at?: string
@@ -107,6 +111,7 @@ export type Database = {
           file_type?: string | null
           garmin_activity_id?: string | null
           gps_data?: Json | null
+          heart_rate_time_series?: Json | null
           id?: string
           intensity_factor?: number | null
           lap_data?: Json | null
@@ -116,6 +121,7 @@ export type Database = {
           normalized_power?: number | null
           notes?: string | null
           original_filename?: string | null
+          power_time_series?: Json | null
           sport_mode?: string
           tss?: number | null
           updated_at?: string
