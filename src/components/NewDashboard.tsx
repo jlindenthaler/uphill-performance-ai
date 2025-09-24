@@ -273,7 +273,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Weekly TSS</p>
+                <p className="text-sm font-medium text-muted-foreground">Weekly TLI</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{Math.round(weeklyTSS)}</p>
                   <span className="text-sm text-muted-foreground">/ 400</span>
@@ -382,15 +382,15 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-zone-1">{Math.round(ctl)}</p>
-                <p className="text-xs text-muted-foreground">Fitness (CTL)</p>
+                <p className="text-xs text-muted-foreground">Fitness (LTL)</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-zone-3">{Math.round(atl)}</p>
-                <p className="text-xs text-muted-foreground">Fatigue (ATL)</p>
+                <p className="text-xs text-muted-foreground">Fatigue (STL)</p>
               </div>
               <div>
                 <p className={`text-2xl font-bold ${tsbStatus.color}`}>{Math.round(tsb)}</p>
-                <p className="text-xs text-muted-foreground">Form (TSB)</p>
+                <p className="text-xs text-muted-foreground">Form (FI)</p>
               </div>
             </div>
           </CardContent>

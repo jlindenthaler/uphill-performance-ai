@@ -344,7 +344,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                         <div className="text-xs text-muted-foreground mb-2 space-y-1">
                           {dayMetrics.tss > 0 && (
                             <div className="flex justify-between">
-                              <span>TSS:</span>
+                              <span>TLI:</span>
                               <span className="font-medium">{dayMetrics.tss}</span>
                             </div>
                           )}
@@ -385,15 +385,15 @@ export const EnhancedTrainingCalendar: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-blue-600">Fitness</span>
-                  <span className="text-lg font-bold text-blue-600">{weeklyStats.atpFitness} CTL</span>
+                  <span className="text-lg font-bold text-blue-600">{weeklyStats.atpFitness} LTL</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-pink-600">Fatigue</span>
-                  <span className="text-lg font-bold text-pink-600">{weeklyStats.atpFatigue} ATL</span>
+                  <span className="text-lg font-bold text-pink-600">{weeklyStats.atpFatigue} STL</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-orange-600">Form</span>
-                  <span className="text-lg font-bold text-orange-600">{weeklyStats.atpForm} TSB</span>
+                  <span className="text-lg font-bold text-orange-600">{weeklyStats.atpForm} FI</span>
                 </div>
               </div>
 
@@ -411,7 +411,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
                   <span className="font-medium">{weeklyStats.distance} km</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">TSS</span>
+                  <span className="text-sm text-muted-foreground">TLI</span>
                   <span className="font-medium">{weeklyStats.tss}</span>
                 </div>
                 <div className="flex justify-between">
