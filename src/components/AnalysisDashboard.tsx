@@ -584,7 +584,7 @@ export function AnalysisDashboard() {
                   <span className="font-semibold text-green-500">↗ +12%</span>
                 </div>
                 <div className="flex justify-between items-center p-3 rounded-lg bg-muted/20">
-                  <span className="text-sm">Intensity factor</span>
+                  <span className="text-sm">Intensity index</span>
                   <span className="font-semibold">0.85</span>
                 </div>
                 <div className="flex justify-between items-center p-3 rounded-lg bg-muted/20">

@@ -294,13 +294,13 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                   )}
                   {activity.intensity_factor && (
                     <div>
-                      <div className="text-sm text-muted-foreground">Intensity Factor</div>
+                      <div className="text-sm text-muted-foreground">Intensity Index</div>
                       <div className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</div>
                     </div>
                   )}
                   {activity.variability_index && (
                     <div>
-                      <div className="text-sm text-muted-foreground">Variability Index</div>
+                      <div className="text-sm text-muted-foreground">Effort Ratio</div>
                       <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
                     </div>
                   )}

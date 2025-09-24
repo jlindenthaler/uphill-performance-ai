@@ -256,14 +256,14 @@ export function Activities() {
             
             {activity.intensity_factor && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Intensity Factor</span>
+                <span className="text-muted-foreground">Intensity Index</span>
                 <span className="font-medium">{activity.intensity_factor.toFixed(2)}</span>
               </div>
             )}
             
             {activity.variability_index && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Variability Index</span>
+                <span className="text-muted-foreground">Effort Ratio</span>
                 <span className="font-medium">{activity.variability_index.toFixed(2)}</span>
               </div>
             )}
