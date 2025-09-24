@@ -377,10 +377,10 @@ export const EnhancedTrainingCalendar: React.FC = () => {
         {/* Summary Panel */}
         <div className="space-y-4 w-2/3">
           <Card>
-            <CardHeader>
+            <CardHeader className="w-2/3">
               <CardTitle className="text-lg">SUMMARY</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 w-2/3">
               {/* Fitness Metrics */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
