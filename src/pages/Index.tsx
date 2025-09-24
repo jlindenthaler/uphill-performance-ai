@@ -97,8 +97,8 @@ const Index = () => {
         </>
       ) : (
         <>
-          {/* Desktop Sidebar */}
-          <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-border transition-all duration-300 ease-in-out`}>
+          {/* Desktop Sidebar - Fixed Position */}
+          <div className={`fixed left-0 top-0 h-screen ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-border transition-all duration-300 ease-in-out z-30`}>
             <Navigation 
               activeSection={activeSection}
               onSectionChange={handleSectionChange}
@@ -107,8 +107,8 @@ const Index = () => {
             />
           </div>
 
-          {/* Desktop Main Content */}
-          <div className="flex-1 overflow-auto">
+          {/* Desktop Main Content - Offset for Fixed Sidebar */}
+          <div className={`flex-1 overflow-auto transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
             <div className="p-6">
               {renderContent()}
             </div>
