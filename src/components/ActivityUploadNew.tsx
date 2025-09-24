@@ -237,8 +237,12 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
               type="number"
               value={cpTargetDuration}
               onChange={(e) => setCPTargetDuration(e.target.value)}
-              placeholder="e.g., 300 for 5min effort"
+              placeholder="Override duration for single-effort 3-point tests"
             />
+            <p className="text-xs text-muted-foreground">
+              For 3-point protocols: Multi-effort tests can be completed on alternate days. 
+              Single-effort tests (12min, 20min) use historical data for 3-point calculation.
+            </p>
           </div>
         </div>
       )}

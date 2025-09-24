@@ -116,7 +116,7 @@ export class CPProcessingEngine {
   ): Promise<void> {
     try {
       const { calculateCPFromEfforts } = await import('./cp-detection');
-      const cpResult = calculateCPFromEfforts(protocolSet.efforts);
+      const cpResult = calculateCPFromEfforts(protocolSet.efforts, protocolSet.protocol);
 
       if (!cpResult) {
         console.log('Could not calculate CP from efforts:', protocolSet.efforts);

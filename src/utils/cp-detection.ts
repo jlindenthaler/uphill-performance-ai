@@ -14,25 +14,30 @@ interface CPProtocol {
 }
 
 export const CP_PROTOCOLS: Record<string, CPProtocol> = {
-  '3min-12min': {
-    name: '3min + 12min Protocol',
+  '3min-12min-2point': {
+    name: '3min + 12min (2-point)',
     efforts: [180, 720], // 3min, 12min
     maxGap: 3
   },
-  '5min-20min': {
-    name: '5min + 20min Protocol', 
-    efforts: [300, 1200], // 5min, 20min
-    maxGap: 3
+  '3min-6min-3point': {
+    name: '3min + 6min (3-point)',
+    efforts: [180, 360], // 3min, 6min - can complete on alternate days
+    maxGap: 7
   },
-  '8min-30min': {
-    name: '8min + 30min Protocol',
-    efforts: [480, 1800], // 8min, 30min
-    maxGap: 3
+  '3min-12min-3point': {
+    name: '3min + 12min (3-point)',
+    efforts: [180, 720], // 3min, 12min - can complete on alternate days
+    maxGap: 7
   },
-  'ramp-test': {
-    name: 'Ramp Test',
-    efforts: [1200], // 20min ramp
-    maxGap: 1
+  '12min-3point': {
+    name: '12min (3-point)',
+    efforts: [720], // 12min single effort, uses historical data
+    maxGap: 30
+  },
+  '20min-3point': {
+    name: '20min (3-point)',
+    efforts: [1200], // 20min single effort, uses historical data
+    maxGap: 30
   }
 };
 
@@ -83,7 +88,10 @@ export function detectCPEfforts(
   if (!protocolConfig) return [];
   
   const efforts: CPEffort[] = [];
-  const durationsToTest = targetDuration ? [targetDuration] : protocolConfig.efforts;
+  // Priority logic: for single-effort 3-point protocols, target duration can override
+  // For multi-effort protocols, use protocol-defined efforts
+  const is3PointSingleEffort = protocol.includes('3point') && protocolConfig.efforts.length === 1;
+  const durationsToTest = (targetDuration && is3PointSingleEffort) ? [targetDuration] : protocolConfig.efforts;
   
   for (const duration of durationsToTest) {
     const maxPower = calculateMeanMaximalPower(powerData, duration, sampleRate);
@@ -153,11 +161,74 @@ function getEffortRejectionReason(power: number, duration: number, protocol: str
 /**
  * Calculate CP and W' from two-point model
  */
-export function calculateCPFromEfforts(efforts: CPEffort[]): CPResult | null {
+/**
+ * Calculate CP using 3-point model (more accurate)
+ * Uses P = W'/t + CP model with non-linear regression
+ */
+export function calculateCP3Point(efforts: CPEffort[]): CPResult | null {
+  const validEfforts = efforts.filter(e => e.isValid);
+  
+  if (validEfforts.length < 3) {
+    return null;
+  }
+  
+  // Sort efforts by duration for better analysis
+  validEfforts.sort((a, b) => a.duration - b.duration);
+  
+  // Use iterative approach to find best CP and W' fit
+  let bestCP = 0;
+  let bestWPrime = 0;
+  let bestRSquared = 0;
+  
+  // Test range of CP values (10% to 90% of minimum power)
+  const minPower = Math.min(...validEfforts.map(e => e.power));
+  const maxPower = Math.max(...validEfforts.map(e => e.power));
+  
+  for (let cp = minPower * 0.1; cp <= minPower * 0.9; cp += 1) {
+    // Calculate W' for each effort: W' = (P - CP) * t
+    const wPrimeValues = validEfforts.map(e => (e.power - cp) * e.duration);
+    const avgWPrime = wPrimeValues.reduce((sum, w) => sum + w, 0) / wPrimeValues.length;
+    
+    // Calculate R-squared for this CP/W' combination
+    const predictions = validEfforts.map(e => cp + (avgWPrime / e.duration));
+    const actualPowers = validEfforts.map(e => e.power);
+    const meanPower = actualPowers.reduce((sum, p) => sum + p, 0) / actualPowers.length;
+    
+    const ssRes = predictions.reduce((sum, pred, i) => sum + Math.pow(actualPowers[i] - pred, 2), 0);
+    const ssTot = actualPowers.reduce((sum, p) => sum + Math.pow(p - meanPower, 2), 0);
+    const rSquared = 1 - (ssRes / ssTot);
+    
+    if (rSquared > bestRSquared) {
+      bestRSquared = rSquared;
+      bestCP = cp;
+      bestWPrime = avgWPrime;
+    }
+  }
+  
+  return {
+    protocol: 'three-point',
+    cp_watts: Math.round(bestCP),
+    w_prime_joules: Math.round(bestWPrime),
+    efforts_used: validEfforts,
+    efforts_rejected: efforts.filter(e => !e.isValid),
+    test_date: new Date().toISOString(),
+    r_squared: bestRSquared
+  };
+}
+
+export function calculateCPFromEfforts(efforts: CPEffort[], protocolName?: string): CPResult | null {
   const validEfforts = efforts.filter(e => e.isValid);
   
   if (validEfforts.length < 2) {
     return null;
+  }
+  
+  // Determine if this is a 3-point protocol
+  const is3Point = protocolName?.includes('3point') || validEfforts.length >= 3;
+  
+  // Use 3-point calculation if appropriate
+  if (is3Point && validEfforts.length >= 3) {
+    return calculateCP3Point(efforts);
   }
   
   // Two-point CP model: P = W'/t + CP
@@ -216,7 +287,7 @@ export function processCPTestActivity(
   // For multi-effort protocols, try to calculate CP immediately
   let cpResult: CPResult | null = null;
   if (efforts.filter(e => e.isValid).length >= 2) {
-    cpResult = calculateCPFromEfforts(efforts);
+    cpResult = calculateCPFromEfforts(efforts, protocol);
   }
   
   return { efforts, cpResult };
@@ -301,7 +372,7 @@ export function findCompleteProtocolSets(
         protocol,
         activities: set.activities.map(a => a.id),
         efforts: allEfforts,
-        canCalculateCP: hasAllDurations && allEfforts.length >= 2
+        canCalculateCP: hasAllDurations && allEfforts.length >= (protocol.includes('3point') ? 3 : 2)
       });
     }
   });
