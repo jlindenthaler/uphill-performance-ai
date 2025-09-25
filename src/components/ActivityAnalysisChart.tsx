@@ -6,7 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { Activity, Clock, Heart, Zap, BarChart3, MapPin, Gauge, Thermometer } from 'lucide-react';
+import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
@@ -14,176 +14,89 @@ export function ActivityAnalysisChart({
   activity
 }: ActivityAnalysisChartProps) {
   const [dateRange, setDateRange] = useState('90');
-  const [visibleMetrics, setVisibleMetrics] = useState(['power', 'hr', 'speed', 'cadence']);
+  const [visibleMetrics, setVisibleMetrics] = useState(['cadence', 'hr', 'wl', 'speed', 'temp', 'elevation']);
   const [xAxisMode, setXAxisMode] = useState<'time' | 'distance'>('time');
   const {
     sportMode
   } = useSportMode();
   const isRunning = sportMode === 'running';
 
-  // Calculate intelligent time interval based on activity duration
-  const getTimeInterval = (durationSeconds: number): number => {
-    if (durationSeconds < 1800) return 300; // 5 minutes for < 30 min
-    if (durationSeconds < 7200) return 600; // 10 minutes for < 2 hours
-    if (durationSeconds < 14400) return 900; // 15 minutes for < 4 hours
-    return 1200; // 20 minutes for >= 4 hours
-  };
-
-  // Process and aggregate timeline data by time intervals
+  // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
     if (!activity?.gps_data?.trackPoints) return [];
     const trackPoints = activity.gps_data.trackPoints;
-    const durationSeconds = activity?.duration_seconds || 3600;
-    const intervalSeconds = getTimeInterval(durationSeconds);
-    
+    const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
-    let cumulativeRecordingTime = 0;
-    
-    // First pass: calculate cumulative times and distances for all points
-    const processedPoints = trackPoints.map((point: any, index: number) => {
+    let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
+
+    return trackPoints.map((point: any, index: number) => {
       let timeElapsed;
       if (index === 0) {
         timeElapsed = 0;
       } else {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp 
-          ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 
-          : 1;
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
 
+        // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
+        // Larger gaps indicate pauses and should create natural breaks in the timeline
         if (timeInterval <= 10) {
           cumulativeRecordingTime += timeInterval;
         } else {
+          // For large gaps, create a null data point to break the line
           cumulativeRecordingTime += timeInterval;
         }
         timeElapsed = cumulativeRecordingTime;
       }
 
-      // Calculate cumulative distance
+      // Calculate cumulative distance by integrating speed over time
       if (index > 0 && point.speed) {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp 
-          ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 
-          : 1;
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+
+        // Use speed (m/s) * time (s) = distance (m)
         const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
         cumulativeDistance += avgSpeed * timeInterval;
       }
+      const hours = Math.floor(timeElapsed / 3600);
+      const minutes = Math.floor(timeElapsed % 3600 / 60);
+      const seconds = Math.floor(timeElapsed % 60);
+      const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      const distanceKm = cumulativeDistance / 1000;
+      const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
 
+      // Convert speed from m/s to km/h if needed
       const speedKmh = point.speed ? point.speed * 3.6 : 0;
+
+      // Handle power balance (convert to percentage if available)
       const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
       const totalPower = point.power || 0;
       const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
-
       return {
+        time: timeFormatted,
+        distance: distanceFormatted,
+        xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
         timeSeconds: timeElapsed,
         distanceMeters: cumulativeDistance,
         cadence: point.cadence || 0,
         heartRate: point.heartRate || 0,
-        power: totalPower,
-        lPower: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
-        rPower: rPower,
+        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
+        // Left power
+        wr: rPower,
+        // Right power
         speed: Math.round(speedKmh * 10) / 10,
-        temperature: point.temperature || 20,
+        temp: point.temperature || 20,
         elevation: Math.round((point.altitude || 0) * 10) / 10,
-        balance: leftRightBalance
+        power: totalPower,
+        balance: leftRightBalance,
+        rPower: rPower
       };
     });
-
-    // Second pass: aggregate data into time intervals
-    const aggregatedData: any[] = [];
-    const maxTime = Math.max(...processedPoints.map(p => p.timeSeconds));
-    
-    for (let intervalStart = 0; intervalStart < maxTime; intervalStart += intervalSeconds) {
-      const intervalEnd = intervalStart + intervalSeconds;
-      const pointsInInterval = processedPoints.filter(p => 
-        p.timeSeconds >= intervalStart && p.timeSeconds < intervalEnd
-      );
-
-      if (pointsInInterval.length > 0) {
-        // Calculate averages for the interval
-        const avgData = {
-          cadence: Math.round(pointsInInterval.reduce((sum, p) => sum + p.cadence, 0) / pointsInInterval.length),
-          heartRate: Math.round(pointsInInterval.reduce((sum, p) => sum + p.heartRate, 0) / pointsInInterval.length),
-          power: Math.round(pointsInInterval.reduce((sum, p) => sum + p.power, 0) / pointsInInterval.length),
-          lPower: Math.round(pointsInInterval.reduce((sum, p) => sum + p.lPower, 0) / pointsInInterval.length),
-          rPower: Math.round(pointsInInterval.reduce((sum, p) => sum + p.rPower, 0) / pointsInInterval.length),
-          speed: Math.round((pointsInInterval.reduce((sum, p) => sum + p.speed, 0) / pointsInInterval.length) * 10) / 10,
-          temperature: Math.round(pointsInInterval.reduce((sum, p) => sum + p.temperature, 0) / pointsInInterval.length),
-          elevation: Math.round((pointsInInterval.reduce((sum, p) => sum + p.elevation, 0) / pointsInInterval.length) * 10) / 10
-        };
-
-        const timeMinutes = Math.floor(intervalStart / 60);
-        const hours = Math.floor(timeMinutes / 60);
-        const mins = timeMinutes % 60;
-        const timeFormatted = hours > 0 ? `${hours}:${mins.toString().padStart(2, '0')}` : `${mins}:00`;
-        
-        const lastPointInInterval = pointsInInterval[pointsInInterval.length - 1];
-        const distanceKm = lastPointInInterval.distanceMeters / 1000;
-        const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
-
-        aggregatedData.push({
-          time: timeFormatted,
-          distance: distanceFormatted,
-          xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
-          timeSeconds: intervalStart,
-          distanceMeters: lastPointInInterval.distanceMeters,
-          ...avgData
-        });
-      }
-    }
-
-    return aggregatedData;
   }, [activity, xAxisMode]);
 
   // Check if there's any R power data in the activity
   const hasRPowerData = useMemo(() => {
     return timelineData.some(point => point.rPower > 0);
   }, [timelineData]);
-
-  // Metric groups configuration with axis assignments
-  const metricGroups = {
-    power: {
-      label: 'Power (W)',
-      icon: Zap,
-      yAxis: 'left',
-      color: 'hsl(var(--zone-3))',
-      metrics: ['power', hasRPowerData ? 'lPower' : null, hasRPowerData ? 'rPower' : null].filter(Boolean)
-    },
-    hr: {
-      label: 'Heart Rate (bpm)',
-      icon: Heart,
-      yAxis: 'right',
-      color: 'hsl(var(--destructive))',
-      metrics: ['heartRate']
-    },
-    speed: {
-      label: isRunning ? 'Pace (min/km)' : 'Speed (km/h)',
-      icon: Gauge,
-      yAxis: 'leftSecondary',
-      color: 'hsl(var(--primary))',
-      metrics: ['speed']
-    },
-    cadence: {
-      label: 'Cadence (rpm)',
-      icon: Activity,
-      yAxis: 'rightSecondary',
-      color: 'hsl(var(--zone-1))',
-      metrics: ['cadence']
-    },
-    temperature: {
-      label: 'Temperature (°C)',
-      icon: Thermometer,
-      yAxis: 'rightSecondary',
-      color: 'hsl(var(--accent))',
-      metrics: ['temperature']
-    },
-    elevation: {
-      label: 'Elevation (m)',
-      icon: MapPin,
-      yAxis: 'right',
-      color: 'hsl(var(--muted-foreground))',
-      metrics: ['elevation']
-    }
-  };
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {
@@ -282,30 +195,20 @@ export function ActivityAnalysisChart({
       return <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{`${xAxisMode === 'time' ? 'Time' : 'Distance'}: ${label}`}</p>
           {payload.map((entry: any, index: number) => {
-          const getUnit = (dataKey: string) => {
-            if (dataKey === 'power' || dataKey === 'lPower' || dataKey === 'rPower') return 'W';
-            if (dataKey === 'heartRate') return 'bpm';
-            if (dataKey === 'cadence') return 'rpm';
-            if (dataKey === 'speed') return isRunning ? 'min/km' : 'km/h';
-            if (dataKey === 'temperature') return '°C';
-            if (dataKey === 'elevation') return 'm';
+          const getUnit = (name: string) => {
+            if (name === 'Power') return 'W';
+            if (name === 'R Power') return 'W';
+            if (name === 'Heart Rate') return 'bpm';
+            if (name === 'Cadence') return 'rpm';
+            if (name === 'Speed') return 'km/h';
+            if (name === 'Temperature') return '°C';
+            if (name === 'Elevation') return 'm';
             return '';
-          };
-          const getName = (dataKey: string) => {
-            if (dataKey === 'power') return 'Power';
-            if (dataKey === 'lPower') return 'L Power';
-            if (dataKey === 'rPower') return 'R Power';
-            if (dataKey === 'heartRate') return 'Heart Rate';
-            if (dataKey === 'cadence') return 'Cadence';
-            if (dataKey === 'speed') return isRunning ? 'Pace' : 'Speed';
-            if (dataKey === 'temperature') return 'Temperature';
-            if (dataKey === 'elevation') return 'Elevation';
-            return entry.dataKey;
           };
           return <p key={index} style={{
             color: entry.color
           }}>
-                {`${getName(entry.dataKey)}: ${entry.value}${getUnit(entry.dataKey)}`}
+                {`${entry.name}: ${entry.value}${getUnit(entry.name)}`}
               </p>;
         })}
         </div>;
@@ -367,161 +270,65 @@ export function ActivityAnalysisChart({
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(metricGroups).map(([key, group]) => {
-                const IconComponent = group.icon;
-                return (
-                  <ToggleGroup key={key} type="multiple" value={visibleMetrics} onValueChange={setVisibleMetrics}>
-                    <ToggleGroupItem 
-                      value={key} 
-                      className="text-xs px-3 py-1.5 h-8 rounded-md border transition-all flex items-center gap-1.5"
-                      style={{
-                        borderColor: visibleMetrics.includes(key) ? group.color : 'hsl(var(--border))',
-                        backgroundColor: visibleMetrics.includes(key) ? group.color : 'transparent',
-                        color: visibleMetrics.includes(key) ? 'white' : group.color
-                      }}
-                    >
-                      <IconComponent className="w-3 h-3" />
-                      {group.label}
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                );
-              })}
-            </div>
-            
-            {/* Y-Axis Legend */}
-            <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 border-l-2 border-zone-3"></div>
-                <span>Left: Power</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 border-r-2 border-destructive"></div>
-                <span>Right: HR, Elevation</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 border-l border-primary"></div>
-                <span>L2: Speed</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 border-r border-zone-1"></div>
-                <span>R2: Cadence, Temp</span>
-              </div>
-            </div>
+            <ToggleGroup type="multiple" value={visibleMetrics} onValueChange={setVisibleMetrics} className="flex gap-1 flex-wrap">
+              <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
+                RPM
+              </ToggleGroupItem>
+              <ToggleGroupItem value="hr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all">
+                BPM
+              </ToggleGroupItem>
+              <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
+                Power
+              </ToggleGroupItem>
+              <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
+                Speed
+              </ToggleGroupItem>
+              <ToggleGroupItem value="temp" className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all">
+                C
+              </ToggleGroupItem>
+              <ToggleGroupItem value="elevation" className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all">
+                Elev
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
-          <div className="h-80">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={timelineData} margin={{
-                top: 20,
-                right: 60,
-                bottom: 20,
-                left: 60
-              }}>
+              top: 20,
+              right: 80,
+              bottom: 20,
+              left: 20
+            }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="xValue" 
-                  tick={{
-                    fill: 'hsl(var(--muted-foreground))',
-                    fontSize: 10
-                  }} 
-                  interval="preserveStartEnd"
-                />
-                
-                {/* Left Y-Axis - Power */}
-                <YAxis 
-                  yAxisId="left" 
-                  orientation="left" 
-                  tick={{
-                    fill: 'hsl(var(--zone-3))',
-                    fontSize: 10
-                  }}
-                  label={{
-                    value: 'Power (W)',
-                    angle: -90,
-                    position: 'insideLeft',
-                    style: { textAnchor: 'middle', fill: 'hsl(var(--zone-3))' }
-                  }}
-                />
-                
-                {/* Right Y-Axis - Heart Rate */}
-                <YAxis 
-                  yAxisId="right" 
-                  orientation="right" 
-                  tick={{
-                    fill: 'hsl(var(--destructive))',
-                    fontSize: 10
-                  }}
-                  label={{
-                    value: 'HR (bpm) / Elevation (m)',
-                    angle: 90,
-                    position: 'insideRight',
-                    style: { textAnchor: 'middle', fill: 'hsl(var(--destructive))' }
-                  }}
-                />
-                
-                {/* Secondary Left Y-Axis - Speed */}
-                <YAxis 
-                  yAxisId="leftSecondary" 
-                  orientation="left" 
-                  tick={{
-                    fill: 'hsl(var(--primary))',
-                    fontSize: 9
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                
-                {/* Secondary Right Y-Axis - Cadence */}
-                <YAxis 
-                  yAxisId="rightSecondary" 
-                  orientation="right" 
-                  tick={{
-                    fill: 'hsl(var(--zone-1))',
-                    fontSize: 9
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                
+                <XAxis dataKey="xValue" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} interval="preserveStartEnd" />
+                <YAxis yAxisId="power" orientation="left" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
+                <YAxis yAxisId="hr" orientation="right" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
                 <Tooltip content={<TimelineTooltip />} />
                 
-                {/* Power Metrics - Left Axis */}
-                {visibleMetrics.includes('power') && (
-                  <>
-                    <Line yAxisId="left" type="monotone" dataKey="power" stroke="hsl(var(--zone-3))" strokeWidth={2.5} dot={false} name="Power" />
-                    {hasRPowerData && (
-                      <>
-                        <Line yAxisId="left" type="monotone" dataKey="lPower" stroke="hsl(var(--zone-2))" strokeWidth={1.5} dot={false} name="L Power" />
-                        <Line yAxisId="left" type="monotone" dataKey="rPower" stroke="hsl(var(--zone-4))" strokeWidth={1.5} dot={false} name="R Power" />
-                      </>
-                    )}
-                  </>
-                )}
+                {/* Conditionally render Total Power */}
+                {visibleMetrics.includes('wl') && <Line yAxisId="power" type="monotone" dataKey="power" stroke="hsl(var(--zone-3))" strokeWidth={2} dot={false} name="Power" />}
                 
-                {/* Heart Rate - Right Axis */}
-                {visibleMetrics.includes('hr') && (
-                  <Line yAxisId="right" type="monotone" dataKey="heartRate" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} name="Heart Rate" />
-                )}
                 
-                {/* Speed - Secondary Left Axis */}
-                {visibleMetrics.includes('speed') && (
-                  <Line yAxisId="leftSecondary" type="monotone" dataKey="speed" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="4 2" dot={false} name="Speed" />
-                )}
+                {/* Conditionally render Heart Rate */}
+                {visibleMetrics.includes('hr') && <Line yAxisId="hr" type="monotone" dataKey="heartRate" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} name="Heart Rate" />}
                 
-                {/* Cadence - Secondary Right Axis */}
-                {visibleMetrics.includes('cadence') && (
-                  <Line yAxisId="rightSecondary" type="monotone" dataKey="cadence" stroke="hsl(var(--zone-1))" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Cadence" />
-                )}
+                {/* Conditionally render Cadence */}
+                {visibleMetrics.includes('cadence') && <Line yAxisId="power" type="monotone" dataKey="cadence" stroke="hsl(var(--zone-1))" strokeWidth={1} strokeDasharray="3 3" dot={false} name="Cadence" />}
                 
-                {/* Temperature - Secondary Right Axis */}
-                {visibleMetrics.includes('temperature') && (
-                  <Line yAxisId="rightSecondary" type="monotone" dataKey="temperature" stroke="hsl(var(--accent))" strokeWidth={1.5} strokeDasharray="6 2" dot={false} name="Temperature" />
-                )}
+                {/* Conditionally render Speed */}
+                {visibleMetrics.includes('speed') && <Line yAxisId="power" type="monotone" dataKey="speed" stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="2 2" dot={false} name="Speed" />}
                 
-                {/* Elevation - Right Axis */}
-                {visibleMetrics.includes('elevation') && (
-                  <Line yAxisId="right" type="monotone" dataKey="elevation" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="2 4" dot={false} name="Elevation" />
-                )}
+                {/* Conditionally render Elevation */}
+                {visibleMetrics.includes('elevation') && <Line yAxisId="hr" type="monotone" dataKey="elevation" stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="4 2" dot={false} name="Elevation" />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
