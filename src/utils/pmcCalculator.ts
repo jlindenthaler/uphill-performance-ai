@@ -41,38 +41,108 @@ function calculateTSB(ctl: number, atl: number): number {
 }
 
 /**
- * Calculate PMC metrics for a series of training data
+ * Fill gaps in training data with zero TSS days
  */
-export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
+function fillTrainingDataGaps(trainingData: TrainingData[]): TrainingData[] {
   if (trainingData.length === 0) return [];
 
   // Sort by date to ensure chronological order
   const sortedData = [...trainingData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const pmcData: PMCData[] = [];
-  let previousCTL = 0;
-  let previousATL = 0;
-
-  for (const training of sortedData) {
-    const ctl = calculateCTL(previousCTL, training.tss);
-    const atl = calculateATL(previousATL, training.tss);
-    const tsb = calculateTSB(ctl, atl);
-
-    pmcData.push({
-      date: training.date,
-      tss: training.tss,
-      ctl,
-      atl,
-      tsb,
-      duration_minutes: training.duration_minutes,
-      sport: training.sport
-    });
-
-    previousCTL = ctl;
-    previousATL = atl;
+  
+  // Get date range from first activity to today (or 7 days ago to allow for recent decay)
+  const startDate = new Date(sortedData[0].date);
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() - 1); // Include yesterday
+  
+  // Create a map of existing activities by date-sport combination
+  const activityMap = new Map<string, TrainingData>();
+  sortedData.forEach(activity => {
+    const key = `${activity.date}-${activity.sport}`;
+    activityMap.set(key, activity);
+  });
+  
+  // Get all unique sports from the data
+  const sports = [...new Set(sortedData.map(d => d.sport))];
+  
+  // Fill gaps for each sport
+  const filledData: TrainingData[] = [];
+  
+  for (const sport of sports) {
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const key = `${dateStr}-${sport}`;
+      
+      if (activityMap.has(key)) {
+        // Use existing activity data
+        filledData.push(activityMap.get(key)!);
+      } else {
+        // Fill gap with zero TSS
+        filledData.push({
+          date: dateStr,
+          tss: 0,
+          duration_minutes: 0,
+          sport: sport
+        });
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
+  
+  return filledData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
 
-  return pmcData;
+/**
+ * Calculate PMC metrics for a series of training data with proper decay handling
+ */
+export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
+  if (trainingData.length === 0) return [];
+
+  // Fill gaps in training data to ensure proper decay calculation
+  const filledData = fillTrainingDataGaps(trainingData);
+  
+  // Group by sport and calculate PMC for each sport separately
+  const sportGroups = new Map<string, TrainingData[]>();
+  filledData.forEach(data => {
+    if (!sportGroups.has(data.sport)) {
+      sportGroups.set(data.sport, []);
+    }
+    sportGroups.get(data.sport)!.push(data);
+  });
+  
+  const allPmcData: PMCData[] = [];
+  
+  // Calculate PMC for each sport
+  sportGroups.forEach((sportData, sport) => {
+    let previousCTL = 0;
+    let previousATL = 0;
+    
+    for (const training of sportData) {
+      const ctl = calculateCTL(previousCTL, training.tss);
+      const atl = calculateATL(previousATL, training.tss);
+      const tsb = calculateTSB(ctl, atl);
+
+      // Only include records that have actual data or significant PMC values
+      if (training.tss > 0 || ctl > 1 || atl > 1) {
+        allPmcData.push({
+          date: training.date,
+          tss: training.tss,
+          ctl,
+          atl,
+          tsb,
+          duration_minutes: training.duration_minutes,
+          sport: training.sport
+        });
+      }
+
+      previousCTL = ctl;
+      previousATL = atl;
+    }
+  });
+
+  return allPmcData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 /**
