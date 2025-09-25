@@ -44,6 +44,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const [weeks, setWeeks] = useState<Date[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts();
@@ -67,9 +68,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
   // Center the current week in viewport on initial load
   useEffect(() => {
-    if (weeks.length > 0 && scrollContainerRef.current) {
+    if (weeks.length > 0 && scrollContainerRef.current && isInitialLoad) {
       setTimeout(() => {
-        if (scrollContainerRef.current) {
+        if (scrollContainerRef.current && isInitialLoad) {
           const weekHeight = 180; // Height per week row
           const { clientHeight } = scrollContainerRef.current;
           const currentWeekIndex = 4; // Current week is at index 4 in the weeks array
@@ -81,10 +82,13 @@ export const InfiniteTrainingCalendar: React.FC = () => {
             top: Math.max(0, targetScrollTop),
             behavior: 'smooth'
           });
+          
+          // Mark initial load as complete
+          setIsInitialLoad(false);
         }
-      }, 100); // Small delay to ensure DOM is rendered
+      }, 500); // Longer delay to ensure month dropdown doesn't interfere
     }
-  }, [weeks.length]);
+  }, [weeks.length, isInitialLoad]);
 
   // Generate month options for dropdown (2 years back, 2 years forward)
   const generateMonthOptions = () => {
@@ -143,6 +147,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   };
 
   const handleMonthSelect = (monthValue: string) => {
+    // Don't override scroll position during initial load
+    if (isInitialLoad) return;
+    
     const selectedMonth = monthOptions.find(option => option.value === monthValue);
     if (selectedMonth) {
       const firstWeekOfMonth = startOfWeek(startOfMonth(selectedMonth.date), { weekStartsOn: 1 });
