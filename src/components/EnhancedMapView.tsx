@@ -21,9 +21,18 @@ export function EnhancedMapView({ gpsData, className = "w-full h-96", activity }
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Calculate elevation data from GPS coordinates - MOVED TO TOP TO FIX HOOKS ERROR
+  // Calculate elevation data from cached data or GPS coordinates
   const elevationData = useMemo(() => {
+    // First try to use cached elevation profile if available
+    if (activity?.elevation_profile?.elevationData) {
+      console.log('Using cached elevation profile data for performance');
+      return activity.elevation_profile.elevationData;
+    }
+    
+    // Fallback to real-time calculation if no cache available
     if (!gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) return [];
+    
+    console.log('Calculating elevation profile in real-time (no cache available)');
     
     let cumulativeDistance = 0;
     return gpsData.coordinates.map((coord: number[], index: number) => {
@@ -42,7 +51,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-96", activity }
         index
       };
     });
-  }, [gpsData]);
+  }, [gpsData, activity]);
 
   const fetchMapboxToken = async () => {
     try {

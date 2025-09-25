@@ -15,8 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
-import { EnhancedMapView } from './EnhancedMapView';
-import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
+import { LazyMapView } from './LazyMapView';
+import { LazyPowerProfileChart } from './LazyPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 
 export function Activities() {
@@ -158,19 +158,19 @@ export function Activities() {
         )}
       </div>
 
-      {/* Enhanced Power Profile */}
+      {/* Enhanced Power Profile - Lazy Loaded */}
       <div className="mt-6">
-        <EnhancedPowerProfileChart activity={activity} />
+        <LazyPowerProfileChart activity={activity} />
       </div>
       
-      {/* GPS Route Map */}
+      {/* GPS Route Map - Lazy Loaded */}
       {activity.gps_data && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Route Map</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-96" />
+            <LazyMapView gpsData={activity.gps_data} activity={activity} className="w-full h-96" />
           </CardContent>
         </Card>
       )}

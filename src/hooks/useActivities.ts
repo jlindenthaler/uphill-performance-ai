@@ -11,6 +11,7 @@ import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
 import { useUserTimezone } from './useUserTimezone';
 import { useToast } from '@/hooks/use-toast';
+import { calculatePowerCurveCache, calculateElevationProfileCache, calculateSummaryMetricsCache } from '@/utils/cacheCalculations';
 
 interface Activity {
   id: string;
@@ -242,13 +243,42 @@ export function useActivities() {
         }
       }
 
-      console.log('Saving activity data:', activityData);
+      // Pre-calculate and cache heavy computations for performance optimization
+      let powerCurveCache = {};
+      let elevationProfileCache = null;
+      let summaryMetricsCache = null;
+
+      if (activityData.gps_data?.trackPoints) {
+        console.log('Pre-calculating power curve cache...');
+        powerCurveCache = calculatePowerCurveCache(
+          activityData.gps_data,
+          activityData.sport_mode
+        );
+      }
+
+      if (activityData.gps_data?.coordinates) {
+        console.log('Pre-calculating elevation profile cache...');
+        elevationProfileCache = calculateElevationProfileCache(activityData.gps_data);
+      }
+
+      // Calculate summary metrics
+      console.log('Pre-calculating summary metrics cache...');
+      summaryMetricsCache = calculateSummaryMetricsCache(
+        activityData,
+        powerCurveCache,
+        elevationProfileCache
+      );
+
+      console.log('Saving activity data with cached calculations:', activityData);
       const { data: savedActivity, error: saveError } = await supabase
         .from('activities')
         .insert({
           ...activityData,
           user_id: user.id,
           notes: notes || null,
+          power_curve_cache: powerCurveCache,
+          elevation_profile: elevationProfileCache,
+          summary_metrics: summaryMetricsCache,
         })
         .select()
         .single();

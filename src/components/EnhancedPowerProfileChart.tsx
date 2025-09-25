@@ -46,9 +46,27 @@ export function EnhancedPowerProfileChart({
     return `${Math.round(value)}W`;
   };
 
-  // Calculate real activity mean max power from GPS data
+  // Calculate real activity mean max power from cached data or GPS data
   const calculateActivityMeanMax = () => {
+    // First try to use cached power curve data if available
+    if (activity?.power_curve_cache) {
+      console.log('Using cached power curve data for performance');
+      const cache = activity.power_curve_cache;
+      
+      return Object.entries(cache).map(([durationStr, data]: [string, any]) => {
+        const durationSeconds = parseInt(durationStr);
+        return {
+          duration: formatDuration(durationSeconds),
+          durationSeconds,
+          activityMeanMax: data.value
+        };
+      });
+    }
+    
+    // Fallback to real-time calculation if no cache available
     if (!activity || !activity.gps_data?.trackPoints) return [];
+    
+    console.log('Calculating power curve in real-time (no cache available)');
     
     // Dynamic durations based on activity duration
     const records = activity.gps_data.trackPoints;
