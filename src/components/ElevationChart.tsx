@@ -42,8 +42,9 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
         const elevation = point.altitude || point.elevation || 0;
         return {
           index,
-          distance: (cumulativeDistance / 1000).toFixed(2), // Convert to km
+          distance: cumulativeDistance / 1000, // Convert to km as number
           elevation: Math.round(elevation),
+          distanceKm: cumulativeDistance / 1000,
           formattedDistance: `${(cumulativeDistance / 1000).toFixed(1)} km`
         };
       }).filter(point => point.elevation > 0);
@@ -57,8 +58,9 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
         
         return {
           index,
-          distance: distance.toFixed(2),
+          distance: distance,
           elevation: Math.round(elevation),
+          distanceKm: distance,
           formattedDistance: `${distance.toFixed(1)} km`
         };
       }).filter(point => point.elevation > 0);
@@ -78,14 +80,48 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
       
       return {
         index,
-        distance: distance.toFixed(2),
+        distance: distance,
         elevation: Math.round(elevation),
+        distanceKm: distance,
         formattedDistance: `${distance.toFixed(1)} km`
       };
     });
   }, [activity, gpsData]);
 
   const chartData = elevationData.length > 0 ? elevationData : mockElevationData;
+
+  // Calculate intelligent distance interval based on total distance
+  const distanceInterval = useMemo(() => {
+    if (!chartData.length) return 1; // 1km default
+    
+    const totalDistance = chartData[chartData.length - 1]?.distanceKm || 0;
+    
+    if (totalDistance < 5) return 0.5; // 0.5km intervals
+    if (totalDistance < 15) return 1; // 1km intervals
+    if (totalDistance < 50) return 2; // 2km intervals
+    if (totalDistance < 100) return 5; // 5km intervals
+    return 10; // 10km intervals
+  }, [chartData]);
+
+  // Generate custom ticks based on distance interval
+  const getCustomDistanceTicks = () => {
+    if (!chartData.length) return undefined;
+    
+    const ticks = [];
+    const maxDistance = chartData[chartData.length - 1]?.distanceKm || 0;
+    
+    for (let distance = 0; distance <= maxDistance; distance += distanceInterval) {
+      // Find closest data point to this distance
+      const closestPoint = chartData.reduce((prev, curr) => 
+        Math.abs(curr.distanceKm - distance) < Math.abs(prev.distanceKm - distance) ? curr : prev
+      );
+      if (closestPoint) {
+        ticks.push(closestPoint.formattedDistance);
+      }
+    }
+    
+    return ticks;
+  };
 
   const handleMouseMove = (data: any) => {
     if (data && data.activePayload?.[0]) {
@@ -151,12 +187,13 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
                 dataKey="formattedDistance"
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                ticks={getCustomDistanceTicks()}
               />
               <YAxis 
                 domain={['dataMin - 10', 'dataMax + 10']}
                 className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                tickFormatter={(value) => `${value}m`}
+                tick={false}
+                axisLine={false}
               />
               <Tooltip
                 contentStyle={{
