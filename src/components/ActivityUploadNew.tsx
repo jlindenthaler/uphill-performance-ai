@@ -25,6 +25,11 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const [activityName, setActivityName] = useState('');
   const [notes, setNotes] = useState('');
   
+  // Auto-detection preview states
+  const [detectedSport, setDetectedSport] = useState<string>('');
+  const [suggestedName, setSuggestedName] = useState<string>('');
+  const [isDetecting, setIsDetecting] = useState(false);
+  
   // CP Test specific states
   const [isCPTest, setIsCPTest] = useState(false);
   const [cpProtocol, setCPProtocol] = useState('');
@@ -61,7 +66,7 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
     }
   };
 
-  const addFiles = (files: File[]) => {
+  const addFiles = async (files: File[]) => {
     const validFiles = files.filter(file => {
       const extension = file.name.split('.').pop()?.toLowerCase();
       return ['gpx', 'tcx', 'fit'].includes(extension || '');
@@ -75,11 +80,112 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
       });
     }
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+      
+      // Auto-detect for the first file
+      if (validFiles.length === 1) {
+        await detectActivityInfo(validFiles[0]);
+      }
+    }
+  };
+
+  const detectActivityInfo = async (file: File) => {
+    setIsDetecting(true);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      
+      let detectedInfo: { sport_mode: string; name?: string; timestamp?: Date } | null = null;
+      
+      if (extension === 'fit') {
+        const { parseFitFile } = await import('@/utils/fitParser');
+        const parsed = await parseFitFile(file, timezone);
+        detectedInfo = {
+          sport_mode: parsed.sport_mode,
+          name: parsed.name,
+          timestamp: new Date(parsed.date)
+        };
+      } else if (extension === 'gpx') {
+        const { parseGPXFile } = await import('@/utils/gpxParser');
+        const { analyzeGPSTrack, inferActivityTypeFromGPS } = await import('@/utils/activityDetection');
+        const parsed = await parseGPXFile(file);
+        
+        // Try GPS inference if no sport detected
+        let sportMode = parsed.sport_mode;
+        if (!sportMode || sportMode === 'cycling') {
+          const analysis = analyzeGPSTrack(parsed.trackPoints);
+          const inferred = inferActivityTypeFromGPS(analysis);
+          if (inferred.confidence > 0.6) {
+            sportMode = inferred.sport_mode;
+          }
+        }
+        
+        detectedInfo = {
+          sport_mode: sportMode,
+          name: parsed.name,
+          timestamp: new Date(parsed.date)
+        };
+      } else if (extension === 'tcx') {
+        const { parseTCXFile } = await import('@/utils/tcxParser');
+        const parsed = await parseTCXFile(file);
+        detectedInfo = {
+          sport_mode: parsed.sport_mode,
+          name: parsed.name,
+          timestamp: new Date(parsed.date)
+        };
+      }
+      
+      if (detectedInfo) {
+        const validSportMode = ['cycling', 'running', 'swimming'].includes(detectedInfo.sport_mode) 
+          ? detectedInfo.sport_mode as 'cycling' | 'running' | 'swimming'
+          : 'cycling';
+          
+        setDetectedSport(validSportMode);
+        setSportMode(validSportMode); // Now properly typed
+        
+        // Generate name if not provided in file
+        if (!detectedInfo.name && detectedInfo.timestamp) {
+          const { generateActivityName } = await import('@/utils/activityNaming');
+          const suggestedName = generateActivityName({
+            sport_mode: validSportMode,
+            timestamp: detectedInfo.timestamp
+          });
+          setSuggestedName(suggestedName);
+          if (!activityName) { // Only set if user hasn't entered a name
+            setActivityName(suggestedName);
+          }
+        } else if (detectedInfo.name) {
+          setSuggestedName(detectedInfo.name);
+          if (!activityName) {
+            setActivityName(detectedInfo.name);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Auto-detection failed:', error);
+      // Set default suggested name based on time
+      const { generateActivityName } = await import('@/utils/activityNaming');
+      const defaultName = generateActivityName({
+        sport_mode: sportMode,
+        timestamp: new Date()
+      });
+      setSuggestedName(defaultName);
+      if (!activityName) {
+        setActivityName(defaultName);
+      }
+    } finally {
+      setIsDetecting(false);
+    }
   };
 
   const removeFile = (fileToRemove: File) => {
     setSelectedFiles(prev => prev.filter(file => file !== fileToRemove));
+    
+    // Clear detection results if removing the file we detected
+    if (selectedFiles.length === 1) {
+      setDetectedSport('');
+      setSuggestedName('');
+    }
   };
 
   const handleUpload = async () => {
@@ -163,6 +269,8 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
     setSelectedFiles([]);
     setActivityName('');
     setNotes('');
+    setDetectedSport('');
+    setSuggestedName('');
     setIsCPTest(false);
     setCPProtocol('');
     setCPTargetDuration('');
@@ -174,10 +282,32 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Sport Mode Selection */}
+      {/* Auto-Detection Status */}
+      {(detectedSport || suggestedName || isDetecting) && (
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <CheckCircle className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">
+              {isDetecting ? 'Analyzing file...' : 'Auto-detected'}
+            </span>
+          </div>
+          {detectedSport && (
+            <p className="text-sm text-muted-foreground">
+              Sport: <span className="font-medium capitalize">{detectedSport}</span>
+            </p>
+          )}
+          {suggestedName && (
+            <p className="text-sm text-muted-foreground">
+              Suggested name: <span className="font-medium">{suggestedName}</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Activity Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="sport">Sport</Label>
+          <Label htmlFor="sport">Sport {detectedSport && <span className="text-xs text-muted-foreground">(auto-detected)</span>}</Label>
           <Select value={sportMode} onValueChange={setSportMode}>
             <SelectTrigger>
               <SelectValue placeholder="Select sport" />
@@ -190,12 +320,12 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="activityName">Activity Name (Optional)</Label>
+          <Label htmlFor="activityName">Activity Name {suggestedName && <span className="text-xs text-muted-foreground">(auto-generated)</span>}</Label>
           <Input
             id="activityName"
             value={activityName}
             onChange={(e) => setActivityName(e.target.value)}
-            placeholder="e.g., Morning Ride"
+            placeholder={suggestedName || "e.g., Morning Ride"}
           />
         </div>
       </div>
