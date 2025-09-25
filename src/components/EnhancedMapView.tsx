@@ -122,16 +122,16 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
               }
             });
 
-            // Add start marker - Default style
+            // Add start marker - Green
             const startCoord = coordinates[0];
-            const startMarker = new mapboxgl.Marker()
+            const startMarker = new mapboxgl.Marker({ color: '#22c55e' })
               .setLngLat(startCoord as [number, number])
               .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
               .addTo(map.current);
 
-            // Add finish marker - Default style
+            // Add finish marker - Red
             const endCoord = coordinates[coordinates.length - 1];
-            const finishMarker = new mapboxgl.Marker()
+            const finishMarker = new mapboxgl.Marker({ color: '#ef4444' })
               .setLngLat(endCoord as [number, number])
               .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
               .addTo(map.current);
