@@ -237,16 +237,42 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const handleElevationHover = (index: number | null) => {
     setHoverIndex(index);
     
-    if (!map.current || !gpsData?.coordinates) return;
+    // Add comprehensive null checks to prevent errors
+    if (!map.current || !gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) {
+      return;
+    }
+    
+    // Ensure markers are initialized and hover marker exists
+    if (!routeMarkers.current || routeMarkers.current.length < 3) {
+      console.warn('Hover marker not yet initialized');
+      return;
+    }
     
     const hoverMarker = routeMarkers.current[2]; // Third marker is the hover indicator
     
-    if (index !== null && gpsData.coordinates[index]) {
-      const coord = gpsData.coordinates[index];
-      hoverMarker.setLngLat(coord as [number, number]);
-      hoverMarker.getElement().style.display = 'block';
-    } else {
-      hoverMarker.getElement().style.display = 'none';
+    // Additional safety check for the marker
+    if (!hoverMarker || !hoverMarker.getElement()) {
+      console.warn('Hover marker not available');
+      return;
+    }
+    
+    try {
+      if (index !== null && index >= 0 && index < gpsData.coordinates.length && gpsData.coordinates[index]) {
+        const coord = gpsData.coordinates[index];
+        // Ensure coordinate is valid
+        if (Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number') {
+          hoverMarker.setLngLat(coord as [number, number]);
+          hoverMarker.getElement().style.display = 'block';
+        }
+      } else {
+        hoverMarker.getElement().style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error in handleElevationHover:', error);
+      // Hide marker on error to prevent visual artifacts
+      if (hoverMarker?.getElement()) {
+        hoverMarker.getElement().style.display = 'none';
+      }
     }
   };
 
