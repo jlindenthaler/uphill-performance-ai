@@ -21,13 +21,49 @@ export function ActivityAnalysisChart({
   } = useSportMode();
   const isRunning = sportMode === 'running';
 
+  // Debug activity data structure
+  console.log('ActivityAnalysisChart - Full activity object:', activity);
+  console.log('ActivityAnalysisChart - GPS data structure:', activity?.gps_data);
+  console.log('ActivityAnalysisChart - TrackPoints array:', activity?.gps_data?.trackPoints);
+  console.log('ActivityAnalysisChart - TrackPoints length:', activity?.gps_data?.trackPoints?.length);
+  
+  if (activity?.gps_data?.trackPoints?.length > 0) {
+    console.log('ActivityAnalysisChart - First trackPoint:', activity.gps_data.trackPoints[0]);
+    console.log('ActivityAnalysisChart - Last trackPoint:', activity.gps_data.trackPoints[activity.gps_data.trackPoints.length - 1]);
+  }
+
+  if (!activity) {
+    console.log('ActivityAnalysisChart - No activity provided');
+    return <Card>
+        <CardContent className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">No activity selected for analysis</p>
+        </CardContent>
+      </Card>;
+  }
+
   // Calculate activity duration for intelligent X-axis intervals
   const activityDuration = useMemo(() => {
-    if (!activity?.gps_data?.trackPoints?.length) return 0;
+    console.log('ActivityAnalysisChart - Calculating duration...');
+    if (!activity?.gps_data?.trackPoints?.length) {
+      console.log('ActivityAnalysisChart - No trackPoints found, returning 0 duration');
+      return 0;
+    }
     const trackPoints = activity.gps_data.trackPoints;
-    const startTime = new Date(trackPoints[0]?.timestamp).getTime();
-    const endTime = new Date(trackPoints[trackPoints.length - 1]?.timestamp).getTime();
-    return (endTime - startTime) / 1000; // duration in seconds
+    console.log('ActivityAnalysisChart - TrackPoints count:', trackPoints.length);
+    
+    const firstTimestamp = trackPoints[0]?.timestamp;
+    const lastTimestamp = trackPoints[trackPoints.length - 1]?.timestamp;
+    console.log('ActivityAnalysisChart - First timestamp:', firstTimestamp);
+    console.log('ActivityAnalysisChart - Last timestamp:', lastTimestamp);
+    
+    const startTime = new Date(firstTimestamp).getTime();
+    const endTime = new Date(lastTimestamp).getTime();
+    console.log('ActivityAnalysisChart - Start time (ms):', startTime);
+    console.log('ActivityAnalysisChart - End time (ms):', endTime);
+    
+    const duration = (endTime - startTime) / 1000;
+    console.log('ActivityAnalysisChart - Calculated duration (seconds):', duration);
+    return duration;
   }, [activity]);
 
   // Determine optimal X-axis interval based on activity duration
@@ -41,9 +77,19 @@ export function ActivityAnalysisChart({
 
   // Use real activity trackPoints data for timeline with intelligent sampling
   const timelineData = useMemo(() => {
-    if (!activity?.gps_data?.trackPoints) return [];
+    console.log('ActivityAnalysisChart - Processing timelineData...');
+    if (!activity?.gps_data?.trackPoints) {
+      console.log('ActivityAnalysisChart - No trackPoints in activity data');
+      return [];
+    }
     const trackPoints = activity.gps_data.trackPoints;
-    if (!trackPoints.length) return [];
+    if (!trackPoints.length) {
+      console.log('ActivityAnalysisChart - TrackPoints array is empty');
+      return [];
+    }
+    
+    console.log('ActivityAnalysisChart - Processing trackPoints, count:', trackPoints.length);
+    console.log('ActivityAnalysisChart - Sample trackPoint structure:', trackPoints[0]);
     
     const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
@@ -90,7 +136,7 @@ export function ActivityAnalysisChart({
       const totalPower = point.power || 0;
       const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
 
-      return {
+      const processedPoint = {
         time: timeFormatted,
         distance: distanceFormatted,
         xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
@@ -107,7 +153,15 @@ export function ActivityAnalysisChart({
         balance: leftRightBalance,
         rPower: rPower
       };
+
+      if (index < 5) {
+        console.log(`ActivityAnalysisChart - Processed point ${index}:`, processedPoint);
+      }
+
+      return processedPoint;
     });
+
+    console.log('ActivityAnalysisChart - Processed data points:', allDataPoints.length);
 
     // Smart sampling for performance - keep every Nth point based on data density
     if (allDataPoints.length > 1000) {
@@ -127,9 +181,11 @@ export function ActivityAnalysisChart({
         sampledPoints.push(allDataPoints[allDataPoints.length - 1]);
       }
       
+      console.log('ActivityAnalysisChart - Applied sampling, final points:', sampledPoints.length);
       return sampledPoints;
     }
 
+    console.log('ActivityAnalysisChart - No sampling needed, final points:', allDataPoints.length);
     return allDataPoints;
   }, [activity, xAxisMode]);
 
@@ -317,13 +373,7 @@ export function ActivityAnalysisChart({
     }
     return null;
   };
-  if (!activity) {
-    return <Card>
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No activity selected for analysis</p>
-        </CardContent>
-      </Card>;
-  }
+  
   return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
