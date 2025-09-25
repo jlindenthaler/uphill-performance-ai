@@ -69,6 +69,32 @@ export function ActivityAnalysisChart({
       // Convert speed from m/s to km/h if needed
       const speedKmh = point.speed ? point.speed * 3.6 : 0;
 
+      // Handle power balance (convert to percentage if available)
+      const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
+      const totalPower = point.power || 0;
+      const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
+      return {
+        time: timeFormatted,
+        distance: distanceFormatted,
+        xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
+        timeSeconds: timeElapsed,
+        distanceMeters: cumulativeDistance,
+        cadence: point.cadence || 0,
+        heartRate: point.heartRate || 0,
+        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
+        // Left power
+        wr: rPower,
+        // Right power
+        speed: Math.round(speedKmh * 10) / 10,
+        temp: point.temperature || 20,
+        elevation: Math.round((point.altitude || 0) * 10) / 10,
+        power: totalPower,
+        balance: leftRightBalance,
+        rPower: rPower
+      };
+    });
+  }, [activity, xAxisMode]);
+
   // Check if there's any R power data in the activity
   const hasRPowerData = useMemo(() => {
     return timelineData.some(point => point.rPower > 0);
