@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
 import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
 interface EnhancedPowerProfileChartProps {
   activity?: any;
@@ -47,10 +48,8 @@ export function EnhancedPowerProfileChart({
       let value = 0;
       
       if (isRunning) {
-        const { calculateMeanMaximalPace } = require('@/utils/powerAnalysis');
         value = calculateMeanMaximalPace(activity.gps_data.trackPoints, duration) || 0;
       } else {
-        const { calculateMeanMaximalPower } = require('@/utils/powerAnalysis');
         value = calculateMeanMaximalPower(activity.gps_data.trackPoints, duration) || 0;
       }
       
@@ -73,10 +72,8 @@ export function EnhancedPowerProfileChart({
       let value = 0;
       
       if (isRunning) {
-        const { calculateMeanMaximalPace } = require('@/utils/powerAnalysis');
         value = calculateMeanMaximalPace(activity.gps_data.trackPoints, duration) || 0;
       } else {
-        const { calculateMeanMaximalPower } = require('@/utils/powerAnalysis');
         value = calculateMeanMaximalPower(activity.gps_data.trackPoints, duration) || 0;
       }
       
