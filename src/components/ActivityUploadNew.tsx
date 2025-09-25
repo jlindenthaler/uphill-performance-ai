@@ -11,9 +11,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import { Upload, X, CheckCircle, AlertCircle, FileText, MapPin, Clock, Shield } from 'lucide-react';
-import { useUploadActivity } from '@/hooks/useUploadActivity';
+import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { detectActivityInfo, type DetectedActivityInfo } from '@/utils/activityDetection';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { activityUploadSchema, fileUploadSchema, type ActivityUploadFormData } from '@/lib/validation';
 
@@ -38,7 +37,7 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const { sportMode } = useSportMode();
-  const { uploadActivity } = useUploadActivity();
+  const { uploadActivity } = useActivities();
   const { checkUploadRateLimit, logSecurityEvent, clearRateLimit, isBlocked } = useSecurityMonitoring();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,29 +133,35 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
     }
   }, [checkUploadRateLimit, logSecurityEvent]);
 
-import { useState, useCallback } from 'react';
-// ... keep existing imports
-import { useActivities } from '@/hooks/useActivities';
-import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
-import { activityUploadSchema, fileUploadSchema, type ActivityUploadFormData } from '@/lib/validation';
-
-// ... keep existing code
-
   const detectActivityInfo = async (file: File) => {
     try {
-      // Simplified detection - just extract basic info from filename
+      // Simplified detection - extract basic info from filename and file type
       const name = file.name.replace(/\.(gpx|tcx|fit)$/i, '');
-      const info = {
-        sport_mode: 'cycling', // default
-        name: name
-      };
+      const extension = file.name.split('.').pop()?.toLowerCase();
       
-      setDetectedSport(info.sport_mode || null);
-      setSuggestedName(info.name || null);
+      // Basic sport mode detection based on file patterns
+      let detectedSportMode = 'cycling'; // default
+      
+      if (name.toLowerCase().includes('run') || name.toLowerCase().includes('jog')) {
+        detectedSportMode = 'running';
+      } else if (name.toLowerCase().includes('swim') || name.toLowerCase().includes('pool')) {
+        detectedSportMode = 'swimming';
+      } else if (name.toLowerCase().includes('bike') || name.toLowerCase().includes('cycle')) {
+        detectedSportMode = 'cycling';
+      }
+      
+      // Generate suggested name from filename
+      const suggestedActivityName = name
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase())
+        .trim();
+      
+      setDetectedSport(detectedSportMode);
+      setSuggestedName(suggestedActivityName);
       
       // Auto-populate form if values are detected
-      if (info.name && !formData.activityName) {
-        setFormData(prev => ({ ...prev, activityName: info.name }));
+      if (suggestedActivityName && !formData.activityName) {
+        setFormData(prev => ({ ...prev, activityName: suggestedActivityName }));
       }
     } catch (error) {
       console.warn('Failed to detect activity info:', error);
