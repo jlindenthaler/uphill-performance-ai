@@ -111,16 +111,17 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
     const maxDistance = chartData[chartData.length - 1]?.distanceKm || 0;
     
     for (let distance = 0; distance <= maxDistance; distance += distanceInterval) {
-      ticks.push(distance);
+      // Find closest data point to this distance
+      const closestPoint = chartData.reduce((prev, curr) => 
+        Math.abs(curr.distanceKm - distance) < Math.abs(prev.distanceKm - distance) ? curr : prev
+      );
+      if (closestPoint && closestPoint.formattedDistance) {
+        ticks.push(closestPoint.formattedDistance);
+      }
     }
     
     return ticks;
   }, [chartData, distanceInterval]);
-
-  // Format distance tick labels
-  const formatDistanceTick = (value: number) => {
-    return `${value.toFixed(1)} km`;
-  };
 
   const handleMouseMove = (data: any) => {
     if (data && data.activePayload?.[0]) {
@@ -183,13 +184,9 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
             >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey="distanceKm"
-                type="number"
-                scale="linear"
-                domain={['dataMin', 'dataMax']}
+                dataKey="formattedDistance"
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                tickFormatter={formatDistanceTick}
                 ticks={getCustomDistanceTicks}
                 interval={0}
               />
@@ -207,13 +204,13 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
                   color: 'hsl(var(--popover-foreground))',
                 }}
                 formatter={(value: number) => [`${value}m`, 'Elevation']}
-                labelFormatter={(label) => `Distance: ${formatDistanceTick(Number(label))}`}
+                labelFormatter={(label) => `Distance: ${label}`}
               />
               
                {/* Floating indicator line */}
                {(hoverIndex !== null || activeIndex !== null) && (
                  <ReferenceLine 
-                   x={chartData[hoverIndex ?? activeIndex ?? 0]?.distanceKm} 
+                   x={chartData[hoverIndex ?? activeIndex ?? 0]?.formattedDistance} 
                    stroke="hsl(var(--primary))"
                    strokeWidth={2}
                    strokeDasharray="5 5"
