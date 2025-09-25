@@ -30,6 +30,7 @@ export function Activities() {
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [loadingActivityDetails, setLoadingActivityDetails] = useState<string | null>(null);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -88,18 +89,21 @@ export function Activities() {
 
   const handleActivityToggle = async (activityId: string) => {
     try {
-      console.log('Toggling activity:', activityId, 'current expanded:', expandedActivity);
       if (expandedActivity === activityId) {
         setExpandedActivity(null);
+        setLoadingActivityDetails(null);
       } else {
-        // Load full activity details when expanding
+        // Set loading state and load full activity details when expanding
+        setLoadingActivityDetails(activityId);
         await loadActivityDetails(activityId);
         setExpandedActivity(activityId);
+        setLoadingActivityDetails(null);
       }
     } catch (error) {
       console.error('Error toggling activity:', error);
       // Reset to safe state on error
       setExpandedActivity(null);
+      setLoadingActivityDetails(null);
     }
   };
 
@@ -111,7 +115,6 @@ export function Activities() {
   };
 
   const handleUploadSuccess = (activityId?: string) => {
-    console.log('handleUploadSuccess called with activityId:', activityId);
     // Close the modal immediately
     setUploadModalOpen(false);
     
@@ -121,7 +124,6 @@ export function Activities() {
     if (activityId) {
       // Expand the newly uploaded activity after a brief delay to ensure data is loaded
       setTimeout(async () => {
-        console.log('Expanding activity:', activityId);
         await loadActivityDetails(activityId);
         setExpandedActivity(activityId);
       }, 1000);
@@ -172,7 +174,30 @@ export function Activities() {
 
       {/* Activity Analysis Chart - Timeline */}
       <div className="mt-6">
-        <ActivityAnalysisChart activity={activity} />
+        {loadingActivityDetails === activity.id ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="text-muted-foreground">Loading activity data...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : activity.gps_data?.trackPoints?.length ? (
+          <ActivityAnalysisChart activity={activity} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center h-64">
+              <p className="text-muted-foreground">No GPS data available for this activity</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Enhanced Power Profile - With Activity Comparison */}

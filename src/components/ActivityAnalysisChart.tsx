@@ -21,15 +21,23 @@ export function ActivityAnalysisChart({
   } = useSportMode();
   const isRunning = sportMode === 'running';
 
-  // Debug activity data structure
-  console.log('ActivityAnalysisChart - Full activity object:', activity);
-  console.log('ActivityAnalysisChart - GPS data structure:', activity?.gps_data);
-  console.log('ActivityAnalysisChart - TrackPoints array:', activity?.gps_data?.trackPoints);
-  console.log('ActivityAnalysisChart - TrackPoints length:', activity?.gps_data?.trackPoints?.length);
-  
-  if (activity?.gps_data?.trackPoints?.length > 0) {
-    console.log('ActivityAnalysisChart - First trackPoint:', activity.gps_data.trackPoints[0]);
-    console.log('ActivityAnalysisChart - Last trackPoint:', activity.gps_data.trackPoints[activity.gps_data.trackPoints.length - 1]);
+  // Validate required data
+  if (!activity?.gps_data?.trackPoints?.length) {
+    console.log('ActivityAnalysisChart - No trackPoints available:', {
+      hasActivity: !!activity,
+      hasGpsData: !!activity?.gps_data,
+      trackPointsLength: activity?.gps_data?.trackPoints?.length
+    });
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Timeline</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">No GPS data available for this activity</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!activity) {
@@ -43,26 +51,22 @@ export function ActivityAnalysisChart({
 
   // Calculate activity duration for intelligent X-axis intervals
   const activityDuration = useMemo(() => {
-    console.log('ActivityAnalysisChart - Calculating duration...');
     if (!activity?.gps_data?.trackPoints?.length) {
-      console.log('ActivityAnalysisChart - No trackPoints found, returning 0 duration');
       return 0;
     }
     const trackPoints = activity.gps_data.trackPoints;
-    console.log('ActivityAnalysisChart - TrackPoints count:', trackPoints.length);
     
     const firstTimestamp = trackPoints[0]?.timestamp;
     const lastTimestamp = trackPoints[trackPoints.length - 1]?.timestamp;
-    console.log('ActivityAnalysisChart - First timestamp:', firstTimestamp);
-    console.log('ActivityAnalysisChart - Last timestamp:', lastTimestamp);
+    
+    if (!firstTimestamp || !lastTimestamp) {
+      return 0;
+    }
     
     const startTime = new Date(firstTimestamp).getTime();
     const endTime = new Date(lastTimestamp).getTime();
-    console.log('ActivityAnalysisChart - Start time (ms):', startTime);
-    console.log('ActivityAnalysisChart - End time (ms):', endTime);
     
     const duration = (endTime - startTime) / 1000;
-    console.log('ActivityAnalysisChart - Calculated duration (seconds):', duration);
     return duration;
   }, [activity]);
 
@@ -77,19 +81,13 @@ export function ActivityAnalysisChart({
 
   // Use real activity trackPoints data for timeline with intelligent sampling
   const timelineData = useMemo(() => {
-    console.log('ActivityAnalysisChart - Processing timelineData...');
     if (!activity?.gps_data?.trackPoints) {
-      console.log('ActivityAnalysisChart - No trackPoints in activity data');
       return [];
     }
     const trackPoints = activity.gps_data.trackPoints;
     if (!trackPoints.length) {
-      console.log('ActivityAnalysisChart - TrackPoints array is empty');
       return [];
     }
-    
-    console.log('ActivityAnalysisChart - Processing trackPoints, count:', trackPoints.length);
-    console.log('ActivityAnalysisChart - Sample trackPoint structure:', trackPoints[0]);
     
     const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
