@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2, Copy, Clipboard } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDay, addDays } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDay, addDays, startOfMonth, addMonths, subMonths } from "date-fns";
 import { useGoals } from '@/hooks/useGoals';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useActivities } from '@/hooks/useActivities';
@@ -63,6 +64,75 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     setWeeks(initialWeeks);
     setCurrentWeek(weekStart);
   }, []);
+
+  // Generate month options for dropdown (2 years back, 2 years forward)
+  const generateMonthOptions = () => {
+    const options = [];
+    const now = new Date();
+    
+    for (let i = -24; i <= 24; i++) {
+      const date = addMonths(now, i);
+      options.push({
+        value: format(date, 'yyyy-MM'),
+        label: format(date, 'MMMM yyyy'),
+        date: date
+      });
+    }
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
+  const currentMonthValue = format(currentWeek, 'yyyy-MM');
+
+  const scrollToWeek = (targetWeek: Date) => {
+    if (!scrollContainerRef.current) return;
+    
+    // Find the week index in the current weeks array
+    const weekIndex = weeks.findIndex(week => 
+      isSameDay(week, startOfWeek(targetWeek, { weekStartsOn: 1 }))
+    );
+    
+    if (weekIndex >= 0) {
+      // Calculate scroll position (approximately 180px per week)
+      const scrollPosition = weekIndex * 180;
+      scrollContainerRef.current.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
+    } else {
+      // Week not in current range, need to rebuild weeks array around target
+      const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 });
+      const newWeeks = [];
+      for (let i = -4; i <= 4; i++) {
+        newWeeks.push(addWeeks(weekStart, i));
+      }
+      setWeeks(newWeeks);
+      setCurrentWeek(weekStart);
+      
+      // Scroll to middle after state update
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: 4 * 180, // Middle of the range
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  };
+
+  const handleMonthSelect = (monthValue: string) => {
+    const selectedMonth = monthOptions.find(option => option.value === monthValue);
+    if (selectedMonth) {
+      const firstWeekOfMonth = startOfWeek(startOfMonth(selectedMonth.date), { weekStartsOn: 1 });
+      scrollToWeek(firstWeekOfMonth);
+    }
+  };
+
+  const handleTodayClick = () => {
+    const today = new Date();
+    scrollToWeek(today);
+  };
 
   // Infinite scroll handlers
   const loadMoreWeeks = useCallback((direction: 'before' | 'after') => {
@@ -367,12 +437,19 @@ export const InfiniteTrainingCalendar: React.FC = () => {
           <p className="text-muted-foreground">Plan and track your training activities</p>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => {
-            const today = new Date();
-            const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-            setCurrentWeek(weekStart);
-            // Scroll to current week logic could be added here
-          }}>
+          <Select value={currentMonthValue} onValueChange={handleMonthSelect}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border max-h-[300px]">
+              {monthOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={handleTodayClick}>
             Today
           </Button>
         </div>
@@ -394,15 +471,12 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
               return (
                 <div key={weekStart.toISOString()} className={`border-b ${isCurrentWeek ? 'bg-primary/5' : ''}`}>
-                  {/* Week Header */}
-                  <div className="p-4 border-b bg-muted/20">
-                    <h3 className="font-semibold">
-                      Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-                    </h3>
-                    {isCurrentWeek && (
-                      <Badge variant="secondary" className="mt-2">Current Week</Badge>
-                    )}
-                  </div>
+                  {/* Week Header - Simplified */}
+                  {isCurrentWeek && (
+                    <div className="p-2 border-b bg-muted/20">
+                      <Badge variant="secondary">Current Week</Badge>
+                    </div>
+                  )}
                   
                   {/* Days Grid */}
                   <div className="grid grid-cols-8 min-h-[120px]">
