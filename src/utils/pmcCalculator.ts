@@ -177,11 +177,13 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
 
     // Convert activities to training data format
     const trainingData: TrainingData[] = activities.map(activity => ({
-      date: activity.date,
+      date: typeof activity.date === 'string' ? activity.date.split('T')[0] : activity.date,
       tss: activity.tss || 0,
       duration_minutes: Math.round(activity.duration_seconds / 60),
       sport: activity.sport_mode
     }));
+
+    console.log('Training data sample:', trainingData.slice(0, 3));
 
     // Calculate PMC metrics with extended timeline to today for proper decay
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
@@ -213,6 +215,7 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
     if (insertError) throw insertError;
 
     console.log(`Successfully populated ${pmcData.length} training history records`);
+    console.log('PMC data sample:', pmcData.slice(-3));
   } catch (error) {
     console.error('Error populating training history:', error);
     throw error;
@@ -238,7 +241,7 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
 
     // Convert to training data format
     const trainingData: TrainingData[] = activities.map(activity => ({
-      date: activity.date,
+      date: typeof activity.date === 'string' ? activity.date.split('T')[0] : activity.date,
       tss: activity.tss || 0,
       duration_minutes: Math.round(activity.duration_seconds / 60),
       sport: activity.sport_mode
