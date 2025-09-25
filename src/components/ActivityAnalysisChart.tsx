@@ -12,6 +12,29 @@ import { format, subDays } from 'date-fns';
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
+
+function computeFullMMP(powerData: number[], maxDuration: number): number[] {
+  const result = [];
+
+  for (let d = 1; d <= maxDuration; d++) {
+    let maxAvg = 0;
+    let rollingSum = 0;
+
+    for (let i = 0; i < d; i++) rollingSum += powerData[i];
+    maxAvg = rollingSum / d;
+
+    for (let i = d; i < powerData.length; i++) {
+      rollingSum = rollingSum - powerData[i - d] + powerData[i];
+      const avg = rollingSum / d;
+      if (avg > maxAvg) maxAvg = avg;
+    }
+
+    result.push(Math.round(maxAvg));
+  }
+
+  return result;
+}
+
 export function ActivityAnalysisChart({
   activity
 }: ActivityAnalysisChartProps) {
@@ -31,7 +54,7 @@ export function ActivityAnalysisChart({
     const now = new Date();
     const start = subDays(now, parseInt(dateRange));
     const activityDateObj = activity?.date ? new Date(activity.date) : now;
-    
+
     return {
       startDate: format(start, 'dd/MM/yyyy'),
       endDate: format(now, 'dd/MM/yyyy'), 
@@ -110,6 +133,27 @@ export function ActivityAnalysisChart({
       };
     });
   }, [activity, xAxisMode]);
+const powerData = timelineData.map(pt => pt.power || 0);
+const maxDuration = powerData.length;
+
+const fullCurrentMMP = useMemo(() => {
+  if (!powerData.length) return [];
+  return computeFullMMP(powerData, maxDuration);
+}, [powerData]);
+
+const historicalPowerData = historicalData.flatMap(h => h.powerData || []);
+const fullHistoricalMMP = useMemo(() => {
+  if (!historicalPowerData.length) return [];
+  return computeFullMMP(historicalPowerData, maxDuration);
+}, [historicalPowerData, maxDuration]);
+
+const fullMMPChartData = useMemo(() => {
+  return fullCurrentMMP.map((current, index) => ({
+    duration: index + 1,
+    currentPower: current,
+    historicalPower: fullHistoricalMMP[index] || 0
+  }));
+}, [fullCurrentMMP, fullHistoricalMMP]);
 
   // Check if there's any R power data in the activity
   const hasRPowerData = useMemo(() => {
@@ -183,6 +227,40 @@ export function ActivityAnalysisChart({
       };
     });
   }, [activity, historicalData, isRunning]);
+  
+// Generate mean max power curve (real activity vs historical)
+const meanMaxPowerData = useMemo(() => {
+  const maxDuration = timelineData.length > 0 ? Math.floor(timelineData[timelineData.length - 1].timeSeconds) : 0;
+  if (maxDuration < 1) return [];
+
+  const powerArray = timelineData.map((pt) => pt.power || 0);
+  const mmpCurrent: number[] = [];
+
+  for (let windowSize = 1; windowSize <= maxDuration; windowSize++) {
+    let maxAvg = 0;
+    for (let start = 0; start <= powerArray.length - windowSize; start++) {
+      const slice = powerArray.slice(start, start + windowSize);
+      const sum = slice.reduce((a, b) => a + b, 0);
+      const avg = sum / slice.length;
+      if (avg > maxAvg) maxAvg = avg;
+    }
+    mmpCurrent.push(Math.round(maxAvg));
+  }
+
+  const mmpHistorical: Record<number, number> = {};
+  for (const h of historicalData) {
+    const durationSeconds = parseInt(h.duration.replace(/[^\d]/g, ''));
+    if (!isNaN(durationSeconds) && h.best > 0) {
+      mmpHistorical[durationSeconds] = Math.round(h.best);
+    }
+  }
+
+  return mmpCurrent.map((value, i) => ({
+    duration: (i + 1).toString(),
+    current: value,
+    historical: mmpHistorical[i + 1] || null,
+  }));
+}, [timelineData, historicalData]);
 
   // Generate peak heart rate curve data with historical comparison  
   const peakHeartRateData = useMemo(() => {
@@ -568,6 +646,86 @@ export function ActivityAnalysisChart({
         </Card>
       </div>
 
+          {/* Mean Max Power Chart */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            Mean Max Power Curve
+          </CardTitle>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-zone-3 rounded"></div>
+              <span>Current Activity</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
+              <span>Historical Best ({startDate} - {endDate})</span>
+              {historicalLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={meanMaxPowerData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis
+                  dataKey="duration"
+                  tick={{
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: 12
+                  }}
+                  label={{
+                    value: 'Duration (s)',
+                    position: 'insideBottom',
+                    offset: -5,
+                    style: { fill: 'hsl(var(--muted-foreground))' }
+                  }}
+                />
+                <YAxis
+                  tick={{
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: 12
+                  }}
+                  label={{
+                    value: 'Watts',
+                    angle: -90,
+                    position: 'insideLeft',
+                    style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)'
+                  }}
+                  formatter={(value: number) => [`${value}W`, '']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="current"
+                  stroke="hsl(var(--zone-3))"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Current"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="historical"
+                  stroke="hsl(var(--zone-4))"
+                  strokeWidth={2}
+                  strokeDasharray="4 2"
+                  dot={false}
+                  name="Historical"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    
       {/* Data Grid Placeholder */}
       <Card className="card-gradient">
         
