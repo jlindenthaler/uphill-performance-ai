@@ -50,10 +50,24 @@ export function EnhancedPowerProfileChart({
   const calculateActivityMeanMax = () => {
     if (!activity || !activity.gps_data?.trackPoints) return [];
     
-    const durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    // Dynamic durations based on activity duration
     const records = activity.gps_data.trackPoints;
+    const activityDurationSeconds = records.length; // Assuming 1 record per second
     
-    return durations.map(duration => {
+    // Standard durations, but extend to activity duration if longer
+    let durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    
+    // Add activity duration if it's longer than our max duration and significant
+    if (activityDurationSeconds > 3600 && activityDurationSeconds < 7200) {
+      durations.push(activityDurationSeconds);
+    }
+    
+    const results = [];
+    
+    for (const duration of durations) {
+      // Skip if duration is longer than the activity
+      if (duration > activityDurationSeconds) continue;
+      
       let value = 0;
       
       if (isRunning) {
@@ -64,12 +78,16 @@ export function EnhancedPowerProfileChart({
         value = meanMaxPower || 0;
       }
       
-      return {
-        duration: formatDuration(duration),
-        durationSeconds: duration,
-        activityMeanMax: value
-      };
-    });
+      if (value > 0) {
+        results.push({
+          duration: formatDuration(duration),
+          durationSeconds: duration,
+          activityMeanMax: value
+        });
+      }
+    }
+    
+    return results;
   };
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
 
@@ -93,8 +111,14 @@ export function EnhancedPowerProfileChart({
   // Use the already filtered power profile from the hook
   const filteredPowerProfile = powerProfile;
   const chartData = useMemo(() => {
-    const durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-    return durations.map((durationSeconds) => {
+    // Get all unique durations from both activity and profile data
+    const activityDurations = activityMeanMax.map(item => item.durationSeconds);
+    const profileDurations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    
+    // Combine and sort durations
+    const allDurations = [...new Set([...profileDurations, ...activityDurations])].sort((a, b) => a - b);
+    
+    return allDurations.map((durationSeconds) => {
       const durationLabel = formatDuration(durationSeconds);
       const profileItem = filteredPowerProfile.find(item => item.duration === durationLabel);
       const activityItem = activityMeanMax.find(item => item.durationSeconds === durationSeconds);
@@ -107,7 +131,7 @@ export function EnhancedPowerProfileChart({
         rangeFiltered: profileItem?.best || 0,
         activityMeanMax: activityItem?.activityMeanMax || 0
       };
-    });
+    }).filter(item => item.allTimeBest > 0 || item.rangeFiltered > 0 || item.activityMeanMax > 0);
   }, [filteredPowerProfile, activityMeanMax]);
 
   if (loading) {
@@ -135,24 +159,10 @@ export function EnhancedPowerProfileChart({
       </Card>;
   }
 
-  // Get best power for duration - Compare activity power vs range best
+  // Get best power for duration - Show range best, not comparison
   const getBestPowerForDuration = (duration: string) => {
     const powerProfileItem = filteredPowerProfile.find(item => item.duration === duration);
-    const activityPowerItem = activityBestPowers.find(item => item.duration === duration);
-    
-    const rangeBest = powerProfileItem?.best || 0;
-    const activityPower = activityPowerItem?.value || 0;
-    
-    // For running, lower pace is better; for cycling, higher power is better
-    if (isRunning) {
-      // If no range best, use activity pace; otherwise use the faster (lower) pace
-      if (rangeBest === 0) return activityPower;
-      if (activityPower === 0) return rangeBest;
-      return Math.min(rangeBest, activityPower);
-    } else {
-      // For power, use the higher value
-      return Math.max(rangeBest, activityPower);
-    }
+    return powerProfileItem?.best || 0;
   };
 
   // Get date range label
