@@ -64,10 +64,17 @@ export function extractPowerProfileFromActivity(gpsData: any, sportMode: string)
 
   const records = gpsData.trackPoints;
   const durations = [
+    { seconds: 1, label: '1s' },
     { seconds: 5, label: '5s' },
+    { seconds: 10, label: '10s' },
+    { seconds: 15, label: '15s' },
+    { seconds: 30, label: '30s' },
     { seconds: 60, label: '1min' },
+    { seconds: 120, label: '2min' },
     { seconds: 300, label: '5min' },
+    { seconds: 600, label: '10min' },
     { seconds: 1200, label: '20min' },
+    { seconds: 1800, label: '30min' },
     { seconds: 3600, label: '60min' }
   ];
 

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
 import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
 
 interface EnhancedPowerProfileChartProps {
@@ -25,11 +26,15 @@ export function EnhancedPowerProfileChart({
   const isRunning = sportMode === 'running';
 
   const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${(seconds / 60).toFixed(2)}m`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
+    }
     const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor(seconds % 3600 / 60);
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
   };
 
   const formatValue = (value: number) => {
@@ -41,77 +46,45 @@ export function EnhancedPowerProfileChart({
     return `${Math.round(value)}W`;
   };
 
-  // Calculate activity mean max power (mock implementation for now)
+  // Calculate real activity mean max power from GPS data
   const calculateActivityMeanMax = () => {
-    if (!activity) return [];
-    const durations = [1, 5, 10, 20, 60, 300, 600, 1200, 3600];
+    if (!activity || !activity.gps_data?.trackPoints) return [];
+    
+    const durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    const records = activity.gps_data.trackPoints;
+    
     return durations.map(duration => {
-      const durationLabel = formatDuration(duration);
-
-      // Calculate mean max power/pace based on activity data
       let value = 0;
-      if (isRunning && activity.avg_pace_per_km) {
-        // For running, estimate pace at different durations
-        const basePace = activity.avg_pace_per_km;
-        // Shorter durations = faster pace (lower time per km)
-        const factor = duration <= 20 ? 0.85 : duration <= 300 ? 0.9 : duration <= 1200 ? 1.0 : 1.1;
-        value = basePace * factor;
-      } else if (!isRunning && activity.avg_power) {
-        // For cycling, estimate power at different durations using power curve
-        const basePower = activity.avg_power;
-        let factor = 1.0;
-
-        // Power curve approximation - shorter durations have higher power
-        if (duration <= 10) factor = 1.8; // Neuromuscular power
-        else if (duration <= 60) factor = 1.5; // VO2max power
-        else if (duration <= 300) factor = 1.2; // 5min power
-        else if (duration <= 1200) factor = 1.0; // Threshold power
-        else factor = 0.85; // Endurance power
-
-        // Use max power if available for very short durations
-        if (duration <= 20 && activity.max_power) {
-          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
-        } else {
-          value = basePower * factor;
-        }
+      
+      if (isRunning) {
+        const meanMaxPace = calculateMeanMaximalPace(records, duration);
+        value = meanMaxPace || 0;
+      } else {
+        const meanMaxPower = calculateMeanMaximalPower(records, duration);
+        value = meanMaxPower || 0;
       }
+      
       return {
-        duration: durationLabel,
+        duration: formatDuration(duration),
+        durationSeconds: duration,
         activityMeanMax: value
       };
     });
   };
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
 
-  // Calculate activity best power for specific durations
+  // Get activity best power for key durations from real mean max data
   const calculateActivityBestPowers = () => {
-    if (!activity) return [];
-    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
-    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
-    return targetDurations.map((duration, index) => {
-      let value = 0;
-      if (!isRunning && activity.avg_power) {
-        const basePower = activity.avg_power;
-        let factor = 1.0;
-
-        // Power curve approximation - shorter durations have higher power
-        if (duration <= 10) factor = 1.8; // Neuromuscular power
-        else if (duration <= 60) factor = 1.5; // VO2max power
-        else if (duration <= 300) factor = 1.2; // 5min power
-        else if (duration <= 1200) factor = 1.0; // Threshold power
-        else factor = 0.85; // Endurance power
-
-        // Use max power if available for very short durations
-        if (duration <= 20 && activity.max_power) {
-          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
-        } else {
-          value = basePower * factor;
-        }
-      }
+    if (!activityMeanMax.length) return [];
+    const keyDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
+    const keyLabels = ['5s', '1min', '5min', '20min', '60min'];
+    
+    return keyDurations.map((duration, index) => {
+      const meanMaxItem = activityMeanMax.find(item => item.durationSeconds === duration);
       return {
-        duration: targetLabels[index],
+        duration: keyLabels[index],
         durationSeconds: duration,
-        value: Math.round(value)
+        value: meanMaxItem?.activityMeanMax || 0
       };
     });
   };
@@ -120,15 +93,18 @@ export function EnhancedPowerProfileChart({
   // Use the already filtered power profile from the hook
   const filteredPowerProfile = powerProfile;
   const chartData = useMemo(() => {
-    const durations = ['1s', '5s', '10s', '20s', '1min', '5min', '10min', '20min', '60min'];
-    return durations.map((duration, index) => {
-      const profileItem = filteredPowerProfile.find(item => item.duration === duration);
-      const activityItem = activityMeanMax.find(item => item.duration === duration);
+    const durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    return durations.map((durationSeconds) => {
+      const durationLabel = formatDuration(durationSeconds);
+      const profileItem = filteredPowerProfile.find(item => item.duration === durationLabel);
+      const activityItem = activityMeanMax.find(item => item.durationSeconds === durationSeconds);
+      
       return {
-        duration,
-        durationLabel: formatDuration([1, 5, 10, 20, 60, 300, 600, 1200, 3600][index]),
+        duration: durationLabel,
+        durationSeconds,
+        logDuration: Math.log10(durationSeconds), // For logarithmic scaling
         allTimeBest: profileItem?.allTimeBest || 0,
-        rangeFiltered: profileItem?.best || 0, // Use range-filtered best
+        rangeFiltered: profileItem?.best || 0,
         activityMeanMax: activityItem?.activityMeanMax || 0
       };
     });
@@ -299,7 +275,16 @@ export function EnhancedPowerProfileChart({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="durationLabel" />
+                <XAxis 
+                  dataKey="logDuration"
+                  type="number"
+                  scale="linear"
+                  domain={['dataMin', 'dataMax']}
+                  tickFormatter={(value) => {
+                    const seconds = Math.pow(10, value);
+                    return formatDuration(Math.round(seconds));
+                  }}
+                />
                 <YAxis tickFormatter={formatValue} />
                 <Tooltip 
                   formatter={(value: number, name: string) => [
