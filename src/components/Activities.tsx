@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
@@ -21,7 +21,15 @@ import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 import { EditActivityModal } from './EditActivityModal';
 
 export function Activities() {
-  const { activities, loading, deleteActivity, reprocessActivityTimestamps } = useActivities();
+  const { 
+    activities, 
+    loading, 
+    detailedActivities, 
+    loadingDetails, 
+    fetchActivityDetails, 
+    deleteActivity, 
+    reprocessActivityTimestamps 
+  } = useActivities();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,8 +95,16 @@ export function Activities() {
     }
   };
 
-  const handleActivityToggle = (activityId: string) => {
-    setExpandedActivity(expandedActivity === activityId ? null : activityId);
+  const handleActivityToggle = async (activityId: string) => {
+    if (expandedActivity === activityId) {
+      setExpandedActivity(null);
+    } else {
+      setExpandedActivity(activityId);
+      // Fetch detailed data if not already cached
+      if (!detailedActivities.has(activityId)) {
+        await fetchActivityDetails(activityId);
+      }
+    }
   };
 
   const handleDeleteActivity = async (activityId: string) => {
@@ -98,9 +114,12 @@ export function Activities() {
     }
   };
 
-  const handleEditActivity = (activity: any) => {
-    setEditActivityData(activity);
-    setEditModalOpen(true);
+  const handleEditActivity = (activityId: string) => {
+    const detailedActivity = detailedActivities.get(activityId);
+    if (detailedActivity) {
+      setEditActivityData(detailedActivity);
+      setEditModalOpen(true);
+    }
   };
 
   const handleUploadSuccess = (activityId?: string) => {
@@ -117,182 +136,206 @@ export function Activities() {
     }
   };
 
-  const renderExpandedActivity = (activity: any) => (
-    <div className="space-y-6 pt-4 border-t">
+  const renderExpandedActivity = (activityId: string) => {
+    const detailedActivity = detailedActivities.get(activityId);
+    const isLoading = loadingDetails.has(activityId);
+    
+    if (isLoading) {
+      return (
+        <div className="space-y-6 pt-4 border-t">
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3 text-muted-foreground">Loading detailed data...</span>
+          </div>
+        </div>
+      );
+    }
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Clock className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-            <div className="text-2xl font-bold">{formatDuration(activity.duration_seconds)}</div>
-            <div className="text-sm text-muted-foreground">Duration</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <MapPin className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-            <div className="text-2xl font-bold">{formatDistance(activity.distance_meters)}</div>
-            <div className="text-sm text-muted-foreground">Distance</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-            <div className="text-2xl font-bold">
-              {formatSpeed(activity.avg_speed_kmh)}
-            </div>
-            <div className="text-sm text-muted-foreground">Avg Speed</div>
-          </CardContent>
-        </Card>
-        
-        {activity.avg_heart_rate && (
+    if (!detailedActivity) {
+      return (
+        <div className="space-y-6 pt-4 border-t">
+          <div className="text-center py-8 text-muted-foreground">
+            Failed to load detailed activity data. Please try again.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 pt-4 border-t">
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
-              <Heart className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <div className="text-2xl font-bold">{activity.avg_heart_rate} bpm</div>
-              <div className="text-sm text-muted-foreground">Avg Heart Rate</div>
+              <Clock className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">{formatDuration(detailedActivity.duration_seconds)}</div>
+              <div className="text-sm text-muted-foreground">Duration</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <MapPin className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">{formatDistance(detailedActivity.distance_meters)}</div>
+              <div className="text-sm text-muted-foreground">Distance</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">
+                {formatSpeed(detailedActivity.avg_speed_kmh)}
+              </div>
+              <div className="text-sm text-muted-foreground">Avg Speed</div>
+            </CardContent>
+          </Card>
+          
+          {detailedActivity.avg_heart_rate && (
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Heart className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                <div className="text-2xl font-bold">{detailedActivity.avg_heart_rate} bpm</div>
+                <div className="text-sm text-muted-foreground">Avg Heart Rate</div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Enhanced Power Profile */}
+        <div className="mt-6">
+          <EnhancedPowerProfileChart activity={detailedActivity} />
+        </div>
+        
+        {/* GPS Route Map */}
+        {detailedActivity.gps_data && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Route Map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EnhancedMapView gpsData={detailedActivity.gps_data} activity={detailedActivity} className="w-full h-80" />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Activity Analysis Chart */}
+        <div className="mt-6">
+          <ActivityAnalysisChart activity={detailedActivity} />
+        </div>
+
+        {/* Detailed Metrics */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Performance Metrics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Metrics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {detailedActivity.sport_mode === 'cycling' && (
+                <>
+                  {detailedActivity.avg_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Average Power</span>
+                      <span className="font-medium">{formatPower(detailedActivity.avg_power)}</span>
+                    </div>
+                  )}
+                  {detailedActivity.max_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Max Power</span>
+                      <span className="font-medium">{formatPower(detailedActivity.max_power)}</span>
+                    </div>
+                  )}
+                  {detailedActivity.normalized_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Normalized Power</span>
+                      <span className="font-medium">{formatPower(detailedActivity.normalized_power)}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {detailedActivity.sport_mode === 'running' && detailedActivity.avg_pace_per_km && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Average Pace</span>
+                  <span className="font-medium">{formatPace(detailedActivity.avg_pace_per_km)}</span>
+                </div>
+              )}
+              
+              {detailedActivity.max_heart_rate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Max Heart Rate</span>
+                  <span className="font-medium">{detailedActivity.max_heart_rate} bpm</span>
+                </div>
+              )}
+              
+              {detailedActivity.elevation_gain_meters && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Elevation Gain</span>
+                  <span className="font-medium">{Math.round(detailedActivity.elevation_gain_meters)} m</span>
+                </div>
+              )}
+              
+              {detailedActivity.avg_cadence && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Average Cadence</span>
+                  <span className="font-medium">{formatCadence(detailedActivity.avg_cadence)}</span>
+                </div>
+              )}
+              
+              {detailedActivity.calories && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Calories</span>
+                  <span className="font-medium">{detailedActivity.calories} kcal</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Training Load */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Training Load</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Training Load Index</span>
+                <span className="font-medium">
+                  {detailedActivity.tss ? Math.round(detailedActivity.tss) : 'N/A'}
+                </span>
+              </div>
+              
+              {detailedActivity.intensity_factor && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Intensity Index</span>
+                  <span className="font-medium">{detailedActivity.intensity_factor.toFixed(2)}</span>
+                </div>
+              )}
+              
+              {detailedActivity.variability_index && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Effort Ratio</span>
+                  <span className="font-medium">{detailedActivity.variability_index.toFixed(2)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Activity Notes */}
+        {detailedActivity.notes && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{detailedActivity.notes}</p>
             </CardContent>
           </Card>
         )}
       </div>
-
-      {/* Enhanced Power Profile */}
-      <div className="mt-6">
-        <EnhancedPowerProfileChart activity={activity} />
-      </div>
-      
-      {/* GPS Route Map */}
-      {activity.gps_data && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Route Map</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-80" />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Activity Analysis Chart */}
-      <div className="mt-6">
-        <ActivityAnalysisChart activity={activity} />
-      </div>
-
-      {/* Detailed Metrics */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Performance Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {activity.sport_mode === 'cycling' && (
-              <>
-                {activity.avg_power && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Average Power</span>
-                    <span className="font-medium">{formatPower(activity.avg_power)}</span>
-                  </div>
-                )}
-                {activity.max_power && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Max Power</span>
-                    <span className="font-medium">{formatPower(activity.max_power)}</span>
-                  </div>
-                )}
-                {activity.normalized_power && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Normalized Power</span>
-                    <span className="font-medium">{formatPower(activity.normalized_power)}</span>
-                  </div>
-                )}
-              </>
-            )}
-            
-            {activity.sport_mode === 'running' && activity.avg_pace_per_km && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Average Pace</span>
-                <span className="font-medium">{formatPace(activity.avg_pace_per_km)}</span>
-              </div>
-            )}
-            
-            {activity.max_heart_rate && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Max Heart Rate</span>
-                <span className="font-medium">{activity.max_heart_rate} bpm</span>
-              </div>
-            )}
-            
-            {activity.elevation_gain_meters && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Elevation Gain</span>
-                <span className="font-medium">{Math.round(activity.elevation_gain_meters)} m</span>
-              </div>
-            )}
-            
-            {activity.avg_cadence && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Average Cadence</span>
-                <span className="font-medium">{formatCadence(activity.avg_cadence)}</span>
-              </div>
-            )}
-            
-            {activity.calories && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Calories</span>
-                <span className="font-medium">{activity.calories} kcal</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Training Load */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Training Load</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Training Load Index</span>
-              <span className="font-medium">
-                {activity.tss ? Math.round(activity.tss) : 'N/A'}
-              </span>
-            </div>
-            
-            {activity.intensity_factor && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Intensity Index</span>
-                <span className="font-medium">{activity.intensity_factor.toFixed(2)}</span>
-              </div>
-            )}
-            
-            {activity.variability_index && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Effort Ratio</span>
-                <span className="font-medium">{activity.variability_index.toFixed(2)}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-
-      {/* Activity Notes */}
-      {activity.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{activity.notes}</p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+    );
+  };
 
   // Debug timezone and dates
   if (activities.length > 0) {
@@ -433,7 +476,7 @@ export function Activities() {
                               <DropdownMenuContent align="end" className="bg-popover border border-border">
                                 <DropdownMenuItem 
                                   className="cursor-pointer"
-                                  onClick={() => handleEditActivity(activity)}
+                                  onClick={() => handleEditActivity(activity.id)}
                                 >
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit Activity
@@ -533,15 +576,7 @@ export function Activities() {
                             </div>
                           )}
                           
-                          {activity.avg_cadence && (
-                            <div className="px-2">
-                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                <RotateCcw className="h-3 w-3" />
-                                <span className="text-xs font-medium">Avg Cadence</span>
-                              </div>
-                              <div className="font-bold text-sm text-purple-400">{activity.avg_cadence} rpm</div>
-                            </div>
-                          )}
+                          {/* Remove avg_cadence from summary view since it's not available in ActivitySummary */}
                         </div>
                         
                         <div className="flex items-center">
@@ -554,17 +589,13 @@ export function Activities() {
                       </div>
                     </div>
                     
-                    {activity.notes && (
-                      <div className="mt-3 p-2 bg-muted/50 rounded-md border-l-2 border-primary/30">
-                        <p className="text-xs text-muted-foreground italic truncate">{activity.notes}</p>
-                      </div>
-                    )}
+                    {/* Remove notes from summary view since they're not available in ActivitySummary */}
                   </CardContent>
                 </CollapsibleTrigger>
                 
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
-                    {renderExpandedActivity(activity)}
+                    {renderExpandedActivity(activity.id)}
                   </div>
                 </CollapsibleContent>
               </Card>

@@ -9,7 +9,8 @@ import { useUserTimezone } from './useUserTimezone';
 import { useToast } from '@/hooks/use-toast';
 import { generateActivityName, shouldUseAutoName } from '@/utils/activityNaming';
 
-interface Activity {
+// Lightweight activity summary for list view
+interface ActivitySummary {
   id: string;
   user_id: string;
   name: string;
@@ -17,17 +18,23 @@ interface Activity {
   date: string;
   duration_seconds: number;
   distance_meters?: number;
-  elevation_gain_meters?: number;
   avg_power?: number;
+  avg_heart_rate?: number;
+  avg_speed_kmh?: number;
+  avg_pace_per_km?: number;
+  tss?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Full activity interface with all detailed data
+interface Activity extends ActivitySummary {
+  elevation_gain_meters?: number;
   max_power?: number;
   normalized_power?: number;
-  avg_heart_rate?: number;
   max_heart_rate?: number;
-  avg_pace_per_km?: number;
-  avg_speed_kmh?: number;
   avg_cadence?: number;
   calories?: number;
-  tss?: number;
   intensity_factor?: number;
   variability_index?: number;
   file_path?: string;
@@ -37,8 +44,10 @@ interface Activity {
   lap_data?: any;
   notes?: string;
   weather_conditions?: any;
-  created_at: string;
-  updated_at: string;
+  power_time_series?: any;
+  heart_rate_time_series?: any;
+  power_curve_cache?: any;
+  elevation_profile?: any;
 }
 
 export function useActivities() {
@@ -46,18 +55,36 @@ export function useActivities() {
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
   const { toast } = useToast();
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [detailedActivities, setDetailedActivities] = useState<Map<string, Activity>>(new Map());
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
+  // Fetch lightweight activity summaries for list view
   const fetchActivities = async (limit?: number) => {
     if (!user) return;
     
-    console.log('Fetching activities for user:', user.id);
+    console.log('Fetching activity summaries for user:', user.id);
     setLoading(true);
     try {
       let query = supabase
         .from('activities')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          name,
+          sport_mode,
+          date,
+          duration_seconds,
+          distance_meters,
+          avg_power,
+          avg_heart_rate,
+          avg_speed_kmh,
+          avg_pace_per_km,
+          tss,
+          created_at,
+          updated_at
+        `)
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
@@ -68,12 +95,58 @@ export function useActivities() {
       const { data, error } = await query;
 
       if (error) throw error;
-      console.log('Fetched activities:', data?.length || 0, 'activities');
+      console.log('Fetched activity summaries:', data?.length || 0, 'activities');
       setActivities(data || []);
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch full activity details for expanded view
+  const fetchActivityDetails = async (activityId: string): Promise<Activity | null> => {
+    if (!user) return null;
+    
+    // Check if already in cache
+    if (detailedActivities.has(activityId)) {
+      return detailedActivities.get(activityId)!;
+    }
+
+    // Check if already loading
+    if (loadingDetails.has(activityId)) {
+      return null;
+    }
+
+    console.log('Fetching detailed data for activity:', activityId);
+    setLoadingDetails(prev => new Set([...prev, activityId]));
+    
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('id', activityId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      
+      console.log('Fetched detailed activity data:', activityId);
+      const activityData = data as Activity;
+      
+      // Cache the detailed data
+      setDetailedActivities(prev => new Map([...prev, [activityId, activityData]]));
+      
+      return activityData;
+    } catch (error) {
+      console.error('Error fetching activity details:', error);
+      return null;
+    } finally {
+      setLoadingDetails(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(activityId);
+        return newSet;
+      });
     }
   };
 
@@ -473,7 +546,10 @@ export function useActivities() {
   return {
     activities,
     loading,
+    detailedActivities,
+    loadingDetails,
     fetchActivities,
+    fetchActivityDetails,
     uploadActivity,
     deleteActivity,
     updateActivity,

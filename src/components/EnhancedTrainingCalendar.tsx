@@ -63,7 +63,7 @@ export const EnhancedTrainingCalendar: React.FC = () => {
     duration: currentWeekActivities.reduce((sum, a) => sum + (a.duration_seconds || 0), 0),
     distance: currentWeekActivities.reduce((sum, a) => sum + (a.distance_meters || 0), 0) / 1000,
     tss: currentWeekActivities.reduce((sum, a) => sum + (a.tss || 0), 0),
-    elevation: currentWeekActivities.reduce((sum, a) => sum + (a.elevation_gain_meters || 0), 0),
+    elevation: 0, // Elevation data not available in activity summaries
     work: currentWeekActivities.reduce((sum, a) => sum + ((a.avg_power || 0) * (a.duration_seconds || 0) / 1000), 0)
   };
 
