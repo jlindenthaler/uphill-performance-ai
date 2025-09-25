@@ -30,6 +30,7 @@ export type Database = {
           distance_meters: number | null
           duration_seconds: number
           elevation_gain_meters: number | null
+          elevation_profile: Json | null
           external_sync_source: string | null
           file_path: string | null
           file_type: string | null
@@ -45,8 +46,10 @@ export type Database = {
           normalized_power: number | null
           notes: string | null
           original_filename: string | null
+          power_curve_cache: Json | null
           power_time_series: Json | null
           sport_mode: string
+          summary_metrics: Json | null
           tss: number | null
           updated_at: string
           user_id: string
@@ -68,6 +71,7 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
+          elevation_profile?: Json | null
           external_sync_source?: string | null
           file_path?: string | null
           file_type?: string | null
@@ -83,8 +87,10 @@ export type Database = {
           normalized_power?: number | null
           notes?: string | null
           original_filename?: string | null
+          power_curve_cache?: Json | null
           power_time_series?: Json | null
           sport_mode?: string
+          summary_metrics?: Json | null
           tss?: number | null
           updated_at?: string
           user_id: string
@@ -106,6 +112,7 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
+          elevation_profile?: Json | null
           external_sync_source?: string | null
           file_path?: string | null
           file_type?: string | null
@@ -121,8 +128,10 @@ export type Database = {
           normalized_power?: number | null
           notes?: string | null
           original_filename?: string | null
+          power_curve_cache?: Json | null
           power_time_series?: Json | null
           sport_mode?: string
+          summary_metrics?: Json | null
           tss?: number | null
           updated_at?: string
           user_id?: string
@@ -934,6 +943,10 @@ export type Database = {
           access_token: string
           token_secret: string
         }[]
+      }
+      get_mapbox_elevation_profile: {
+        Args: { coordinates: Json }
+        Returns: Json
       }
       store_garmin_tokens_secure: {
         Args: {
