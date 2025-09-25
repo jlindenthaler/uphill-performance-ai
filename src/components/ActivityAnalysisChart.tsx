@@ -118,31 +118,39 @@ export function ActivityAnalysisChart({
   // Fetch historical power profile data with date range
   const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(parseInt(dateRange));
 
-  // Generate peak power curve data with real calculations
-  const peakPowerData = useMemo(() => {
-    // Use the specified duration values
-    const durations = [1, 5, 10, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 3600];
+  // Logarithmic interpolation function
+  const interpolateValue = (x1: number, y1: number, x2: number, y2: number, x: number): number => {
+    if (y1 === 0 || y2 === 0) return 0;
+    // Logarithmic interpolation: log(y) = log(y1) + (log(y2) - log(y1)) * (log(x) - log(x1)) / (log(x2) - log(x1))
+    const logY1 = Math.log(y1);
+    const logY2 = Math.log(y2);
+    const logX1 = Math.log(x1);
+    const logX2 = Math.log(x2);
+    const logX = Math.log(x);
     
-    if (!activity?.gps_data?.trackPoints) {
-      return durations.map(seconds => ({
-        duration: formatDurationLabel(seconds),
-        currentRange: 0,
-        comparisonRange: 0,
-        durationSeconds: seconds
-      }));
-    }
+    const logY = logY1 + (logY2 - logY1) * (logX - logX1) / (logX2 - logX1);
+    return Math.exp(logY);
+  };
 
-    return durations.map(seconds => {
+  // Generate peak power curve data with interpolation
+  const peakPowerData = useMemo(() => {
+    // Base duration values for calculation
+    const baseDurations = [1, 5, 10, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 3600];
+    
+    // Calculate base data points
+    const baseData = baseDurations.map(seconds => {
       let currentValue = 0;
       let historicalValue = 0;
 
-      // Calculate current activity mean max
-      if (isRunning) {
-        const pace = calculateMeanMaximalPace(activity.gps_data.trackPoints, seconds);
-        currentValue = pace || 0;
-      } else {
-        const power = calculateMeanMaximalPower(activity.gps_data.trackPoints, seconds);
-        currentValue = power || 0;
+      if (activity?.gps_data?.trackPoints) {
+        // Calculate current activity mean max
+        if (isRunning) {
+          const pace = calculateMeanMaximalPace(activity.gps_data.trackPoints, seconds);
+          currentValue = pace || 0;
+        } else {
+          const power = calculateMeanMaximalPower(activity.gps_data.trackPoints, seconds);
+          currentValue = power || 0;
+        }
       }
 
       // Find historical best for this duration
@@ -158,12 +166,74 @@ export function ActivityAnalysisChart({
       }
 
       return {
-        duration: formatDurationLabel(seconds),
-        currentRange: Math.round(currentValue * 100) / 100,
-        comparisonRange: Math.round(historicalValue * 100) / 100,
-        durationSeconds: seconds
+        durationSeconds: seconds,
+        currentValue,
+        historicalValue
       };
+    }).filter(data => data.currentValue > 0 || data.historicalValue > 0);
+
+    if (baseData.length < 2) {
+      // Not enough data for interpolation, return base points only
+      return baseDurations.map(seconds => ({
+        duration: formatDurationLabel(seconds),
+        currentRange: 0,
+        comparisonRange: 0,
+        durationSeconds: seconds
+      }));
+    }
+
+    // Generate interpolated data points for smoother curve
+    const interpolatedData: any[] = [];
+    
+    // Add interpolated points between base durations
+    for (let i = 0; i < baseData.length - 1; i++) {
+      const current = baseData[i];
+      const next = baseData[i + 1];
+      
+      // Add current base point
+      interpolatedData.push({
+        duration: formatDurationLabel(current.durationSeconds),
+        currentRange: Math.round(current.currentValue * 100) / 100,
+        comparisonRange: Math.round(current.historicalValue * 100) / 100,
+        durationSeconds: current.durationSeconds
+      });
+      
+      // Add interpolated points between current and next
+      const logStart = Math.log(current.durationSeconds);
+      const logEnd = Math.log(next.durationSeconds);
+      const steps = Math.max(2, Math.floor((logEnd - logStart) * 3)); // More steps for bigger gaps
+      
+      for (let step = 1; step < steps; step++) {
+        const logDuration = logStart + (logEnd - logStart) * (step / steps);
+        const duration = Math.exp(logDuration);
+        
+        const currentInterp = current.currentValue > 0 && next.currentValue > 0 
+          ? interpolateValue(current.durationSeconds, current.currentValue, next.durationSeconds, next.currentValue, duration)
+          : 0;
+          
+        const historicalInterp = current.historicalValue > 0 && next.historicalValue > 0
+          ? interpolateValue(current.durationSeconds, current.historicalValue, next.durationSeconds, next.historicalValue, duration)
+          : 0;
+        
+        interpolatedData.push({
+          duration: formatDurationLabel(Math.round(duration)),
+          currentRange: Math.round(currentInterp * 100) / 100,
+          comparisonRange: Math.round(historicalInterp * 100) / 100,
+          durationSeconds: Math.round(duration)
+        });
+      }
+    }
+    
+    // Add the last base point
+    const lastPoint = baseData[baseData.length - 1];
+    interpolatedData.push({
+      duration: formatDurationLabel(lastPoint.durationSeconds),
+      currentRange: Math.round(lastPoint.currentValue * 100) / 100,
+      comparisonRange: Math.round(lastPoint.historicalValue * 100) / 100,
+      durationSeconds: lastPoint.durationSeconds
     });
+
+    return interpolatedData.sort((a, b) => a.durationSeconds - b.durationSeconds);
   }, [activity, historicalData, isRunning]);
 
   // Generate peak heart rate curve data
@@ -441,12 +511,15 @@ export function ActivityAnalysisChart({
                 <AreaChart data={peakPowerData} margin={{
                 top: 10,
                 right: 30,
-                left: 0,
-                bottom: 0
+                left: 20,
+                bottom: 50
               }}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis 
-                    dataKey="duration" 
+                    dataKey="durationSeconds"
+                    type="number"
+                    scale="log"
+                    domain={['dataMin', 'dataMax']}
                     tick={{
                       fill: 'hsl(var(--muted-foreground))',
                       fontSize: 10
@@ -454,10 +527,11 @@ export function ActivityAnalysisChart({
                     angle={-45}
                     textAnchor="end"
                     height={60}
+                    tickFormatter={(value) => formatDurationLabel(value)}
+                    ticks={[1, 5, 15, 60, 300, 1200, 3600]}
                   />
                   <YAxis 
-                    scale="log"
-                    domain={['dataMin', 'dataMax']}
+                    domain={['dataMin * 0.9', 'dataMax * 1.1']}
                     tick={{
                       fill: 'hsl(var(--muted-foreground))',
                       fontSize: 12
@@ -479,33 +553,36 @@ export function ActivityAnalysisChart({
                       border: '1px solid hsl(var(--border))',
                       borderRadius: 'var(--radius)'
                     }} 
-                    formatter={(value: number) => [
-                      isRunning ? `${value.toFixed(2)} min/km` : `${value}W`, 
-                      ''
-                    ]} 
+                    formatter={(value: number, name: string) => [
+                      isRunning ? `${value.toFixed(2)} min/km` : `${Math.round(value)}W`, 
+                      name === 'currentRange' ? 'Current Activity' : 'Historical Best'
+                    ]}
+                    labelFormatter={(value) => `Duration: ${formatDurationLabel(value)}`}
                   />
                   
-                  {/* Historical best range area */}
+                  {/* Historical best filled area */}
                   <Area 
                     type="monotone" 
                     dataKey="comparisonRange" 
                     stroke="hsl(var(--zone-4))" 
                     fill="hsl(var(--zone-4))" 
-                    fillOpacity={0.3} 
-                    strokeWidth={2} 
-                    name="Historical Best" 
+                    fillOpacity={0.2} 
+                    strokeWidth={1.5} 
+                    name="Historical Best"
+                    dot={false}
                     connectNulls={false}
                   />
                   
-                  {/* Current activity range area */}
+                  {/* Current activity filled area */}
                   <Area 
                     type="monotone" 
                     dataKey="currentRange" 
                     stroke="hsl(var(--zone-3))" 
                     fill="hsl(var(--zone-3))" 
-                    fillOpacity={0.6} 
-                    strokeWidth={2} 
-                    name="Current Activity" 
+                    fillOpacity={0.4} 
+                    strokeWidth={2.5} 
+                    name="Current Activity"
+                    dot={false}
                     connectNulls={false}
                   />
                 </AreaChart>
