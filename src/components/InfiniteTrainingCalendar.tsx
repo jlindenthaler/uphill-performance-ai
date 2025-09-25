@@ -46,6 +46,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const currentWeekRef = useRef<HTMLDivElement>(null);
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts();
   const { activities, deleteActivity } = useActivities();
@@ -68,19 +69,12 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
   // Center the current week in viewport on initial load
   useEffect(() => {
-    if (weeks.length > 0 && scrollContainerRef.current && isInitialLoad) {
+    if (weeks.length > 0 && currentWeekRef.current && isInitialLoad) {
       setTimeout(() => {
-        if (scrollContainerRef.current && isInitialLoad) {
-          const weekHeight = 180; // Height per week row
-          const { clientHeight } = scrollContainerRef.current;
-          const currentWeekIndex = 4; // Current week is at index 4 in the weeks array
-          
-          // Calculate position to center the current week in viewport
-          const targetScrollTop = (currentWeekIndex * weekHeight) - (clientHeight / 2) + (weekHeight / 2);
-          
-          scrollContainerRef.current.scrollTo({
-            top: Math.max(0, targetScrollTop),
-            behavior: 'smooth'
+        if (currentWeekRef.current && isInitialLoad) {
+          currentWeekRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
           });
           
           // Mark initial load as complete
@@ -529,7 +523,11 @@ export const InfiniteTrainingCalendar: React.FC = () => {
               const isCurrentWeek = isSameDay(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
 
               return (
-                <div key={weekStart.toISOString()} className={`border-b ${isCurrentWeek ? 'bg-primary/5' : ''}`}>
+                <div 
+                  key={weekStart.toISOString()} 
+                  ref={isCurrentWeek ? currentWeekRef : null}
+                  className={`border-b ${isCurrentWeek ? 'bg-primary/5' : ''}`}
+                >
                   {/* Week Header - Simplified */}
                   {isCurrentWeek && (
                     <div className="p-2 border-b bg-muted/20">
