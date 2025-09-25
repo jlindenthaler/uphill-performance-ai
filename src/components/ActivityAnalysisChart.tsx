@@ -6,35 +6,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { usePowerProfile } from '@/hooks/usePowerProfile';
-import { Activity, Clock, Heart, Zap, BarChart3, MapPin, Loader2 } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
-
-function computeFullMMP(powerData: number[], maxDuration: number): number[] {
-  const result = [];
-
-  for (let d = 1; d <= maxDuration; d++) {
-    let maxAvg = 0;
-    let rollingSum = 0;
-
-    for (let i = 0; i < d; i++) rollingSum += powerData[i];
-    maxAvg = rollingSum / d;
-
-    for (let i = d; i < powerData.length; i++) {
-      rollingSum = rollingSum - powerData[i - d] + powerData[i];
-      const avg = rollingSum / d;
-      if (avg > maxAvg) maxAvg = avg;
-    }
-
-    result.push(Math.round(maxAvg));
-  }
-
-  return result;
-}
-
 export function ActivityAnalysisChart({
   activity
 }: ActivityAnalysisChartProps) {
@@ -45,22 +20,6 @@ export function ActivityAnalysisChart({
     sportMode
   } = useSportMode();
   const isRunning = sportMode === 'running';
-  
-  // Fetch historical power profile data for the selected date range
-  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(parseInt(dateRange));
-  
-  // Calculate date range labels
-  const { startDate, endDate, activityDate } = useMemo(() => {
-    const now = new Date();
-    const start = subDays(now, parseInt(dateRange));
-    const activityDateObj = activity?.date ? new Date(activity.date) : now;
-
-    return {
-      startDate: format(start, 'dd/MM/yyyy'),
-      endDate: format(now, 'dd/MM/yyyy'), 
-      activityDate: format(activityDateObj, 'dd/MM/yyyy')
-    };
-  }, [dateRange, activity?.date]);
 
   // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
@@ -133,34 +92,13 @@ export function ActivityAnalysisChart({
       };
     });
   }, [activity, xAxisMode]);
-const powerData = timelineData.map(pt => pt.power || 0);
-const maxDuration = powerData.length;
-
-const fullCurrentMMP = useMemo(() => {
-  if (!powerData.length) return [];
-  return computeFullMMP(powerData, maxDuration);
-}, [powerData]);
-
-const historicalPowerData = historicalData.flatMap(h => h.powerData || []);
-const fullHistoricalMMP = useMemo(() => {
-  if (!historicalPowerData.length) return [];
-  return computeFullMMP(historicalPowerData, maxDuration);
-}, [historicalPowerData, maxDuration]);
-
-const fullMMPChartData = useMemo(() => {
-  return fullCurrentMMP.map((current, index) => ({
-    duration: index + 1,
-    currentPower: current,
-    historicalPower: fullHistoricalMMP[index] || 0
-  }));
-}, [fullCurrentMMP, fullHistoricalMMP]);
 
   // Check if there's any R power data in the activity
   const hasRPowerData = useMemo(() => {
     return timelineData.some(point => point.rPower > 0);
   }, [timelineData]);
 
-  // Generate peak power curve data with historical comparison
+  // Generate peak power curve data
   const peakPowerData = useMemo(() => {
     const durations = [{
       label: '5sec',
@@ -184,85 +122,28 @@ const fullMMPChartData = useMemo(() => {
       label: '24hrs',
       seconds: 86400
     }];
-    
     return durations.map(duration => {
       const avgPower = activity?.avg_power || 0;
       const maxPower = activity?.max_power || avgPower * 1.5;
       const normalizedPower = activity?.normalized_power || avgPower;
       let currentPower = avgPower;
       let comparisonPower = avgPower * 0.9;
-      
       if (avgPower > 0) {
         // Realistic power curve based on actual data
-        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);
-        else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);
-        else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;
-        else if (duration.seconds <= 1200) currentPower = normalizedPower;
-        else currentPower = normalizedPower * 0.9;
+        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;else if (duration.seconds <= 1200) currentPower = normalizedPower;else currentPower = normalizedPower * 0.9;
 
-        // Use historical data for comparison if available
-        const historicalEntry = historicalData.find(h => {
-          if (duration.seconds === 5 && h.duration === '5s') return true;
-          if (duration.seconds === 20 && h.duration === '1min') return true; // closest match
-          if (duration.seconds === 120 && h.duration === '5min') return true; // closest match
-          if (duration.seconds === 600 && h.duration === '5min') return true;
-          if (duration.seconds === 1800 && h.duration === '20min') return true;
-          if (duration.seconds === 7200 && h.duration === '60min') return true;
-          if (duration.seconds === 86400 && h.duration === '60min') return true; // closest match
-          return false;
-        });
-        
-        if (historicalEntry && historicalEntry.best > 0) {
-          comparisonPower = isRunning ? historicalEntry.best : historicalEntry.best;
-        } else {
-          // Fallback to estimated historical performance
-          comparisonPower = currentPower * 0.9;
-        }
+        // Comparison range (simulate historical data)
+        comparisonPower = currentPower * (0.85 + Math.random() * 0.2);
       }
-      
       return {
         duration: duration.label,
         currentRange: Math.round(currentPower),
         comparisonRange: Math.round(comparisonPower)
       };
     });
-  }, [activity, historicalData, isRunning]);
-  
-// Generate mean max power curve (real activity vs historical)
-const meanMaxPowerData = useMemo(() => {
-  const maxDuration = timelineData.length > 0 ? Math.floor(timelineData[timelineData.length - 1].timeSeconds) : 0;
-  if (maxDuration < 1) return [];
+  }, [activity]);
 
-  const powerArray = timelineData.map((pt) => pt.power || 0);
-  const mmpCurrent: number[] = [];
-
-  for (let windowSize = 1; windowSize <= maxDuration; windowSize++) {
-    let maxAvg = 0;
-    for (let start = 0; start <= powerArray.length - windowSize; start++) {
-      const slice = powerArray.slice(start, start + windowSize);
-      const sum = slice.reduce((a, b) => a + b, 0);
-      const avg = sum / slice.length;
-      if (avg > maxAvg) maxAvg = avg;
-    }
-    mmpCurrent.push(Math.round(maxAvg));
-  }
-
-  const mmpHistorical: Record<number, number> = {};
-  for (const h of historicalData) {
-    const durationSeconds = parseInt(h.duration.replace(/[^\d]/g, ''));
-    if (!isNaN(durationSeconds) && h.best > 0) {
-      mmpHistorical[durationSeconds] = Math.round(h.best);
-    }
-  }
-
-  return mmpCurrent.map((value, i) => ({
-    duration: (i + 1).toString(),
-    current: value,
-    historical: mmpHistorical[i + 1] || null,
-  }));
-}, [timelineData, historicalData]);
-
-  // Generate peak heart rate curve data with historical comparison  
+  // Generate peak heart rate curve data
   const peakHeartRateData = useMemo(() => {
     const durations = [{
       label: '5sec',
@@ -286,25 +167,16 @@ const meanMaxPowerData = useMemo(() => {
       label: '24hrs',
       seconds: 86400
     }];
-    
     return durations.map(duration => {
       const avgHr = activity?.avg_heart_rate || 0;
       const maxHr = activity?.max_heart_rate || avgHr * 1.3;
       let currentHr = avgHr;
       let comparisonHr = avgHr * 0.95;
-      
       if (avgHr > 0) {
         // Realistic HR curve based on actual data
-        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);
-        else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);
-        else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);
-        else if (duration.seconds <= 1200) currentHr = avgHr;
-        else currentHr = avgHr * 0.92;
-        
-        // Use estimated historical heart rate (no specific historical HR data available)
-        comparisonHr = currentHr * 0.92; // Slightly lower than current for realistic comparison
+        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);else if (duration.seconds <= 1200) currentHr = avgHr;else currentHr = avgHr * 0.92;
+        comparisonHr = currentHr * (0.9 + Math.random() * 0.15);
       }
-      
       return {
         duration: duration.label,
         currentRange: Math.round(currentHr),
@@ -532,12 +404,11 @@ const meanMaxPowerData = useMemo(() => {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-3 rounded"></div>
-                <span>Current Activity - {activityDate}</span>
+                <span>25/6/2025 - 22/9/2025</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
-                <span>Historical Best ({startDate} - {endDate})</span>
-                {historicalLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>22/9/2025</span>
               </div>
             </div>
           </CardHeader>
@@ -594,11 +465,11 @@ const meanMaxPowerData = useMemo(() => {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-destructive rounded"></div>
-                <span>Current Activity - {activityDate}</span>
+                <span>25/6/2025 - 22/9/2025</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-destructive/60 rounded"></div>
-                <span>Estimated Historical ({startDate} - {endDate})</span>
+                <span>22/9/2025</span>
               </div>
             </div>
           </CardHeader>
@@ -646,86 +517,6 @@ const meanMaxPowerData = useMemo(() => {
         </Card>
       </div>
 
-          {/* Mean Max Power Chart */}
-      <Card className="card-gradient">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5" />
-            Mean Max Power Curve
-          </CardTitle>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-zone-3 rounded"></div>
-              <span>Current Activity</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
-              <span>Historical Best ({startDate} - {endDate})</span>
-              {historicalLoading && <Loader2 className="w-3 h-3 animate-spin" />}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={meanMaxPowerData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis
-                  dataKey="duration"
-                  tick={{
-                    fill: 'hsl(var(--muted-foreground))',
-                    fontSize: 12
-                  }}
-                  label={{
-                    value: 'Duration (s)',
-                    position: 'insideBottom',
-                    offset: -5,
-                    style: { fill: 'hsl(var(--muted-foreground))' }
-                  }}
-                />
-                <YAxis
-                  tick={{
-                    fill: 'hsl(var(--muted-foreground))',
-                    fontSize: 12
-                  }}
-                  label={{
-                    value: 'Watts',
-                    angle: -90,
-                    position: 'insideLeft',
-                    style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)'
-                  }}
-                  formatter={(value: number) => [`${value}W`, '']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="current"
-                  stroke="hsl(var(--zone-3))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Current"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="historical"
-                  stroke="hsl(var(--zone-4))"
-                  strokeWidth={2}
-                  strokeDasharray="4 2"
-                  dot={false}
-                  name="Historical"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    
       {/* Data Grid Placeholder */}
       <Card className="card-gradient">
         
