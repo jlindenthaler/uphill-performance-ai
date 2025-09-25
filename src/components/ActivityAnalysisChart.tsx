@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
+import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
+import { usePowerProfile } from '@/hooks/usePowerProfile';
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
@@ -98,50 +100,71 @@ export function ActivityAnalysisChart({
     return timelineData.some(point => point.rPower > 0);
   }, [timelineData]);
 
-  // Generate peak power curve data
-  const peakPowerData = useMemo(() => {
-    const durations = [{
-      label: '5sec',
-      seconds: 5
-    }, {
-      label: '20sec',
-      seconds: 20
-    }, {
-      label: '2min',
-      seconds: 120
-    }, {
-      label: '10min',
-      seconds: 600
-    }, {
-      label: '30min',
-      seconds: 1800
-    }, {
-      label: '2hrs',
-      seconds: 7200
-    }, {
-      label: '24hrs',
-      seconds: 86400
-    }];
-    return durations.map(duration => {
-      const avgPower = activity?.avg_power || 0;
-      const maxPower = activity?.max_power || avgPower * 1.5;
-      const normalizedPower = activity?.normalized_power || avgPower;
-      let currentPower = avgPower;
-      let comparisonPower = avgPower * 0.9;
-      if (avgPower > 0) {
-        // Realistic power curve based on actual data
-        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;else if (duration.seconds <= 1200) currentPower = normalizedPower;else currentPower = normalizedPower * 0.9;
-
-        // Comparison range (simulate historical data)
-        comparisonPower = currentPower * (0.85 + Math.random() * 0.2);
+  // Helper function to format duration labels
+  const formatDurationLabel = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else {
+      const minutes = seconds / 60;
+      if (minutes < 60) {
+        return minutes % 1 === 0 ? `${minutes}min` : `${minutes}min`;
+      } else {
+        const hours = minutes / 60;
+        return `${hours}h`;
       }
+    }
+  };
+
+  // Fetch historical power profile data with date range
+  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(parseInt(dateRange));
+
+  // Generate peak power curve data with real calculations
+  const peakPowerData = useMemo(() => {
+    // Use the specified duration values
+    const durations = [1, 5, 10, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 3600];
+    
+    if (!activity?.gps_data?.trackPoints) {
+      return durations.map(seconds => ({
+        duration: formatDurationLabel(seconds),
+        currentRange: 0,
+        comparisonRange: 0,
+        durationSeconds: seconds
+      }));
+    }
+
+    return durations.map(seconds => {
+      let currentValue = 0;
+      let historicalValue = 0;
+
+      // Calculate current activity mean max
+      if (isRunning) {
+        const pace = calculateMeanMaximalPace(activity.gps_data.trackPoints, seconds);
+        currentValue = pace || 0;
+      } else {
+        const power = calculateMeanMaximalPower(activity.gps_data.trackPoints, seconds);
+        currentValue = power || 0;
+      }
+
+      // Find historical best for this duration
+      const historicalEntry = historicalData.find(h => {
+        const entrySeconds = h.duration.includes('min') 
+          ? parseInt(h.duration) * 60 
+          : parseInt(h.duration);
+        return entrySeconds === seconds;
+      });
+
+      if (historicalEntry) {
+        historicalValue = historicalEntry.best;
+      }
+
       return {
-        duration: duration.label,
-        currentRange: Math.round(currentPower),
-        comparisonRange: Math.round(comparisonPower)
+        duration: formatDurationLabel(seconds),
+        currentRange: Math.round(currentValue * 100) / 100,
+        comparisonRange: Math.round(historicalValue * 100) / 100,
+        durationSeconds: seconds
       };
     });
-  }, [activity]);
+  }, [activity, historicalData, isRunning]);
 
   // Generate peak heart rate curve data
   const peakHeartRateData = useMemo(() => {
@@ -394,21 +417,21 @@ export function ActivityAnalysisChart({
 
       {/* Peak Power and Heart Rate Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Peak Power Chart */}
+        {/* Peak Power/Pace Chart */}
         <Card className="card-gradient">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Peak Power
+              {isRunning ? <Heart className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+              {isRunning ? 'Peak Pace' : 'Peak Power'}
             </CardTitle>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-3 rounded"></div>
-                <span>25/6/2025 - 22/9/2025</span>
+                <span>Current Activity</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
-                <span>22/9/2025</span>
+                <span>Historical Best (Last {dateRange} days)</span>
               </div>
             </div>
           </CardHeader>
@@ -422,33 +445,69 @@ export function ActivityAnalysisChart({
                 bottom: 0
               }}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="duration" tick={{
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontSize: 12
-                }} />
-                  <YAxis tick={{
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontSize: 12
-                }} label={{
-                  value: 'WATTS',
-                  angle: -90,
-                  position: 'insideLeft',
-                  style: {
-                    textAnchor: 'middle',
-                    fill: 'hsl(var(--muted-foreground))'
-                  }
-                }} />
-                  <Tooltip contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)'
-                }} formatter={(value: number) => [`${value}W`, '']} />
+                  <XAxis 
+                    dataKey="duration" 
+                    tick={{
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: 10
+                    }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    scale="log"
+                    domain={['dataMin', 'dataMax']}
+                    tick={{
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: 12
+                    }} 
+                    label={{
+                      value: isRunning ? 'MIN/KM' : 'WATTS',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: {
+                        textAnchor: 'middle',
+                        fill: 'hsl(var(--muted-foreground))',
+                        fontSize: '12px'
+                      }
+                    }} 
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: 'var(--radius)'
+                    }} 
+                    formatter={(value: number) => [
+                      isRunning ? `${value.toFixed(2)} min/km` : `${value}W`, 
+                      ''
+                    ]} 
+                  />
                   
-                  {/* Comparison range area */}
-                  <Area type="monotone" dataKey="comparisonRange" stroke="hsl(var(--zone-4))" fill="hsl(var(--zone-4))" fillOpacity={0.4} strokeWidth={2} name="Comparison Range" />
+                  {/* Historical best range area */}
+                  <Area 
+                    type="monotone" 
+                    dataKey="comparisonRange" 
+                    stroke="hsl(var(--zone-4))" 
+                    fill="hsl(var(--zone-4))" 
+                    fillOpacity={0.3} 
+                    strokeWidth={2} 
+                    name="Historical Best" 
+                    connectNulls={false}
+                  />
                   
-                  {/* Current range area */}
-                  <Area type="monotone" dataKey="currentRange" stroke="hsl(var(--zone-3))" fill="hsl(var(--zone-3))" fillOpacity={0.6} strokeWidth={2} name="Current Range" />
+                  {/* Current activity range area */}
+                  <Area 
+                    type="monotone" 
+                    dataKey="currentRange" 
+                    stroke="hsl(var(--zone-3))" 
+                    fill="hsl(var(--zone-3))" 
+                    fillOpacity={0.6} 
+                    strokeWidth={2} 
+                    name="Current Activity" 
+                    connectNulls={false}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

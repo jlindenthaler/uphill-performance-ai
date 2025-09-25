@@ -14,24 +14,62 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const elevationData = useMemo(() => {
-    if (!gpsData?.coordinates) return [];
-
-    return gpsData.coordinates.map((coord: [number, number, number?], index: number) => {
-      const elevation = coord[2] || 0; // Third coordinate is elevation if available
-      const distance = index * 0.1; // Approximate distance in km (adjust based on actual data)
+    // Check for trackPoints format first (actual GPS data from activities)
+    if (gpsData?.trackPoints && Array.isArray(gpsData.trackPoints)) {
+      let cumulativeDistance = 0;
       
-      return {
-        index,
-        distance: distance.toFixed(2),
-        elevation: Math.round(elevation),
-        formattedDistance: `${distance.toFixed(1)} km`
-      };
-    });
+      return gpsData.trackPoints.map((point: any, index: number) => {
+        // Calculate cumulative distance
+        if (index > 0) {
+          const prevPoint = gpsData.trackPoints[index - 1];
+          if (point.latitude && point.longitude && prevPoint.latitude && prevPoint.longitude) {
+            // Haversine formula for distance calculation
+            const lat1 = prevPoint.latitude * Math.PI / 180;
+            const lat2 = point.latitude * Math.PI / 180;
+            const deltaLat = (point.latitude - prevPoint.latitude) * Math.PI / 180;
+            const deltaLon = (point.longitude - prevPoint.longitude) * Math.PI / 180;
+            
+            const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                     Math.cos(lat1) * Math.cos(lat2) *
+                     Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = 6371000 * c; // Earth's radius in meters
+            
+            cumulativeDistance += distance;
+          }
+        }
+        
+        const elevation = point.altitude || point.elevation || 0;
+        return {
+          index,
+          distance: (cumulativeDistance / 1000).toFixed(2), // Convert to km
+          elevation: Math.round(elevation),
+          formattedDistance: `${(cumulativeDistance / 1000).toFixed(1)} km`
+        };
+      }).filter(point => point.elevation > 0);
+    }
+    
+    // Fallback to coordinates format for backward compatibility
+    if (gpsData?.coordinates && Array.isArray(gpsData.coordinates)) {
+      return gpsData.coordinates.map((coord: [number, number, number?], index: number) => {
+        const elevation = coord[2] || 0; // Third coordinate is elevation if available
+        const distance = index * 0.1; // Approximate distance in km (adjust based on actual data)
+        
+        return {
+          index,
+          distance: distance.toFixed(2),
+          elevation: Math.round(elevation),
+          formattedDistance: `${distance.toFixed(1)} km`
+        };
+      }).filter(point => point.elevation > 0);
+    }
+    
+    return [];
   }, [gpsData]);
 
   // Mock elevation data if no GPS data is available but activity exists
   const mockElevationData = useMemo(() => {
-    if (!activity || gpsData?.coordinates) return [];
+    if (!activity || (gpsData?.trackPoints && gpsData.trackPoints.length > 0) || (gpsData?.coordinates && gpsData.coordinates.length > 0)) return [];
 
     const points = 100;
     return Array.from({ length: points }, (_, index) => {
