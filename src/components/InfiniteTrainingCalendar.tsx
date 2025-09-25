@@ -147,6 +147,34 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     });
   }, []);
 
+  // Debounced function to update current week based on viewport
+  const updateCurrentWeekFromScroll = useCallback(() => {
+    if (!scrollContainerRef.current || weeks.length === 0) return;
+
+    const { scrollTop, clientHeight } = scrollContainerRef.current;
+    
+    // Calculate which week is at the center of the viewport
+    const weekHeight = 180; // Approximate height per week row
+    const viewportCenter = scrollTop + (clientHeight / 2);
+    const centerWeekIndex = Math.floor(viewportCenter / weekHeight);
+    
+    // Ensure the index is within bounds
+    if (centerWeekIndex >= 0 && centerWeekIndex < weeks.length) {
+      const visibleWeek = weeks[centerWeekIndex];
+      
+      // Only update if we've moved to a different month
+      if (format(visibleWeek, 'yyyy-MM') !== format(currentWeek, 'yyyy-MM')) {
+        setCurrentWeek(visibleWeek);
+      }
+    }
+  }, [weeks, currentWeek]);
+
+  // Debounced version to prevent excessive updates
+  const debouncedUpdateCurrentWeek = useCallback(() => {
+    const timeoutId = setTimeout(updateCurrentWeekFromScroll, 150);
+    return () => clearTimeout(timeoutId);
+  }, [updateCurrentWeekFromScroll]);
+
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
 
@@ -161,7 +189,10 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     if (scrollTop + clientHeight > scrollHeight - 100) {
       loadMoreWeeks('after');
     }
-  }, [loadMoreWeeks]);
+
+    // Update current week based on viewport (debounced)
+    debouncedUpdateCurrentWeek();
+  }, [loadMoreWeeks, debouncedUpdateCurrentWeek]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
