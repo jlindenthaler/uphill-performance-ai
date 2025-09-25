@@ -9,6 +9,8 @@ interface PowerProfileData {
   best: number;
   date: string;
   unit: string;
+  allTimeBest?: number;
+  rangeBest?: number;
 }
 
 export function usePowerProfile(dateRangeDays?: number) {
@@ -53,6 +55,7 @@ export function usePowerProfile(dateRangeDays?: number) {
       // Create separate maps for range-filtered and all-time records
       const allTimeProfileMap = new Map();
       const rangeFilteredProfileMap = new Map();
+      const mostRecentMap = new Map(); // Track most recent for "current"
       
       const cutoffDate = dateRangeDays ? new Date(Date.now() - (dateRangeDays * 24 * 60 * 60 * 1000)) : null;
 
@@ -75,6 +78,18 @@ export function usePowerProfile(dateRangeDays?: number) {
           });
         }
 
+        // Most recent processing (for current values)
+        const recentExisting = mostRecentMap.get(duration.seconds);
+        if (!recentExisting || new Date(record.date_achieved) > new Date(recentExisting.date)) {
+          mostRecentMap.set(duration.seconds, {
+            duration: duration.label,
+            current: value || 0,
+            best: value || 0,
+            date: record.date_achieved,
+            unit: isRunning ? 'min/km' : 'W'
+          });
+        }
+
         // Range-filtered processing if within date range
         if (!cutoffDate || recordDate >= cutoffDate) {
           const rangeExisting = rangeFilteredProfileMap.get(duration.seconds);
@@ -84,24 +99,35 @@ export function usePowerProfile(dateRangeDays?: number) {
               current: value || 0,
               best: value || 0,
               date: record.date_achieved,
-              unit: isRunning ? 'min/km' : 'W'
+              unit: isRunning ? 'min/km' : 'W',
+              rangeBest: value || 0 // Track range-specific best
             });
           }
         }
       });
 
-      // Use range-filtered data if available and different from all-time, otherwise use all-time
+      // Combine data: use range-filtered best when available, otherwise all-time best
       const activeMap = dateRangeDays ? rangeFilteredProfileMap : allTimeProfileMap;
       
-      // Fill in missing durations with placeholder data
+      // Fill in missing durations with proper current/best separation
       const profile = durations.map(duration => {
-        const existing = activeMap.get(duration.seconds);
-        return existing || {
+        const allTimeData = allTimeProfileMap.get(duration.seconds);
+        const rangeData = rangeFilteredProfileMap.get(duration.seconds);
+        const recentData = mostRecentMap.get(duration.seconds);
+        
+        // Current = most recent value, Best = best within range (or all-time if no range)
+        const current = recentData?.current || 0;
+        const best = dateRangeDays ? (rangeData?.rangeBest || 0) : (allTimeData?.best || 0);
+        const allTimeBest = allTimeData?.best || 0;
+        
+        return {
           duration: duration.label,
-          current: 0,
-          best: 0,
-          date: new Date().toISOString(),
-          unit: isRunning ? 'min/km' : 'W'
+          current,
+          best,
+          allTimeBest, // Add all-time best for comparison
+          date: (rangeData || allTimeData || recentData)?.date || new Date().toISOString(),
+          unit: isRunning ? 'min/km' : 'W',
+          rangeBest: rangeData?.rangeBest || 0 // Specific range best
         };
       });
 

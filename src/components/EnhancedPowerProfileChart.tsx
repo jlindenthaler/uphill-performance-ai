@@ -127,8 +127,8 @@ export function EnhancedPowerProfileChart({
       return {
         duration,
         durationLabel: formatDuration([1, 5, 10, 20, 60, 300, 600, 1200, 3600][index]),
-        allTimeBest: profileItem?.best || 0,
-        rangeFiltered: profileItem?.current || 0,
+        allTimeBest: profileItem?.allTimeBest || 0,
+        rangeFiltered: profileItem?.best || 0, // Use range-filtered best
         activityMeanMax: activityItem?.activityMeanMax || 0
       };
     });
@@ -159,10 +159,24 @@ export function EnhancedPowerProfileChart({
       </Card>;
   }
 
-  // Get best power for duration from filtered data - Fixed to properly use date range filtering
+  // Get best power for duration - Compare activity power vs range best
   const getBestPowerForDuration = (duration: string) => {
     const powerProfileItem = filteredPowerProfile.find(item => item.duration === duration);
-    return powerProfileItem?.best || 0;
+    const activityPowerItem = activityBestPowers.find(item => item.duration === duration);
+    
+    const rangeBest = powerProfileItem?.best || 0;
+    const activityPower = activityPowerItem?.value || 0;
+    
+    // For running, lower pace is better; for cycling, higher power is better
+    if (isRunning) {
+      // If no range best, use activity pace; otherwise use the faster (lower) pace
+      if (rangeBest === 0) return activityPower;
+      if (activityPower === 0) return rangeBest;
+      return Math.min(rangeBest, activityPower);
+    } else {
+      // For power, use the higher value
+      return Math.max(rangeBest, activityPower);
+    }
   };
 
   // Get date range label
@@ -255,6 +269,17 @@ export function EnhancedPowerProfileChart({
                   <div className="text-lg font-bold">{formatValue(power.value)}</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Best: {formatValue(getBestPowerForDuration(power.duration))}
+                    {(() => {
+                      const rangeBest = filteredPowerProfile.find(item => item.duration === power.duration)?.best || 0;
+                      const activityPower = power.value;
+                      const isNewBest = isRunning ? 
+                        (rangeBest === 0 || activityPower < rangeBest) : 
+                        (rangeBest === 0 || activityPower > rangeBest);
+                      
+                      return isNewBest && activityPower > 0 ? (
+                        <Badge variant="secondary" className="ml-1 text-xs">NEW BEST</Badge>
+                      ) : null;
+                    })()}
                   </div>
                 </div>)}
             </div>
