@@ -18,6 +18,7 @@ import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
+import { EditActivityModal } from './EditActivityModal';
 
 export function Activities() {
   const { activities, loading, deleteActivity, reprocessActivityTimestamps } = useActivities();
@@ -28,6 +29,8 @@ export function Activities() {
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editActivityData, setEditActivityData] = useState<any>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -93,6 +96,11 @@ export function Activities() {
     if (expandedActivity === activityId) {
       setExpandedActivity(null);
     }
+  };
+
+  const handleEditActivity = (activity: any) => {
+    setEditActivityData(activity);
+    setEditModalOpen(true);
   };
 
   const handleUploadSuccess = (activityId?: string) => {
@@ -423,6 +431,13 @@ export function Activities() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-popover border border-border">
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => handleEditActivity(activity)}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Activity
+                                </DropdownMenuItem>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <DropdownMenuItem 
@@ -573,6 +588,13 @@ export function Activities() {
           <ActivityUploadNew onUploadSuccess={handleUploadSuccess} />
         </DialogContent>
       </Dialog>
+
+      {/* Edit Activity Modal */}
+      <EditActivityModal 
+        activity={editActivityData}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
     </div>
   );
 }
