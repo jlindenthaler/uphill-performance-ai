@@ -8,7 +8,7 @@ export function usePMCPopulation() {
   const [isPopulating, setIsPopulating] = useState(false);
 
   const populatePMCData = async () => {
-    if (!user || isPopulated || isPopulating) return;
+    if (!user || isPopulating) return;
 
     setIsPopulating(true);
     try {
@@ -24,8 +24,8 @@ export function usePMCPopulation() {
   };
 
   useEffect(() => {
-    if (user && !isPopulated && !isPopulating) {
-      // Small delay to ensure activities are loaded first
+    if (user && !isPopulating) {
+      // Always re-populate to ensure we have the latest PMC calculations with proper decay
       setTimeout(() => {
         populatePMCData();
       }, 1000);

@@ -41,38 +41,117 @@ function calculateTSB(ctl: number, atl: number): number {
 }
 
 /**
- * Calculate PMC metrics for a series of training data
+ * Fill gaps in training data with zero TSS entries for proper PMC decay
  */
-export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
+function fillTrainingDataGaps(trainingData: TrainingData[], endDate?: string): TrainingData[] {
   if (trainingData.length === 0) return [];
 
-  // Sort by date to ensure chronological order
   const sortedData = [...trainingData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  const startDate = new Date(sortedData[0].date);
+  const finalDate = endDate ? new Date(endDate) : new Date();
+  
+  // Create a map of existing training days by date and sport
+  const trainingMap = new Map<string, TrainingData>();
+  sortedData.forEach(data => {
+    const key = `${data.date}-${data.sport}`;
+    trainingMap.set(key, data);
+  });
 
-  const pmcData: PMCData[] = [];
-  let previousCTL = 0;
-  let previousATL = 0;
+  // Get all unique sports
+  const sports = [...new Set(sortedData.map(data => data.sport))];
+  
+  const filledData: TrainingData[] = [];
+  
+  // For each sport, fill the complete timeline
+  sports.forEach(sport => {
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= finalDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const key = `${dateStr}-${sport}`;
+      
+      if (trainingMap.has(key)) {
+        // Use existing training data
+        filledData.push(trainingMap.get(key)!);
+      } else {
+        // Add zero TSS entry for this day
+        filledData.push({
+          date: dateStr,
+          tss: 0,
+          duration_minutes: 0,
+          sport: sport
+        });
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  });
 
-  for (const training of sortedData) {
-    const ctl = calculateCTL(previousCTL, training.tss);
-    const atl = calculateATL(previousATL, training.tss);
-    const tsb = calculateTSB(ctl, atl);
+  return filledData.sort((a, b) => {
+    const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateCompare === 0) {
+      return a.sport.localeCompare(b.sport);
+    }
+    return dateCompare;
+  });
+}
 
-    pmcData.push({
-      date: training.date,
-      tss: training.tss,
-      ctl,
-      atl,
-      tsb,
-      duration_minutes: training.duration_minutes,
-      sport: training.sport
-    });
+/**
+ * Calculate PMC metrics for a series of training data with proper daily decay
+ */
+export function calculatePMCMetrics(trainingData: TrainingData[], endDate?: string): PMCData[] {
+  if (trainingData.length === 0) return [];
 
-    previousCTL = ctl;
-    previousATL = atl;
-  }
+  // Fill gaps to ensure we have data for every day
+  const completeData = fillTrainingDataGaps(trainingData, endDate);
+  
+  // Group by sport for separate PMC calculations
+  const sportGroups = new Map<string, TrainingData[]>();
+  completeData.forEach(data => {
+    if (!sportGroups.has(data.sport)) {
+      sportGroups.set(data.sport, []);
+    }
+    sportGroups.get(data.sport)!.push(data);
+  });
 
-  return pmcData;
+  const allPMCData: PMCData[] = [];
+
+  // Calculate PMC for each sport separately
+  sportGroups.forEach((sportData, sport) => {
+    const sortedData = sportData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    let previousCTL = 0;
+    let previousATL = 0;
+
+    for (const training of sortedData) {
+      const tss = training.tss || 0; // Handle null/undefined TSS
+      const ctl = calculateCTL(previousCTL, tss);
+      const atl = calculateATL(previousATL, tss);
+      const tsb = calculateTSB(ctl, atl);
+
+      allPMCData.push({
+        date: training.date,
+        tss: tss,
+        ctl,
+        atl,
+        tsb,
+        duration_minutes: training.duration_minutes || 0,
+        sport: training.sport
+      });
+
+      previousCTL = ctl;
+      previousATL = atl;
+    }
+  });
+
+  return allPMCData.sort((a, b) => {
+    const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateCompare === 0) {
+      return a.sport.localeCompare(b.sport);
+    }
+    return dateCompare;
+  });
 }
 
 /**
@@ -104,8 +183,8 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       sport: activity.sport_mode
     }));
 
-    // Calculate PMC metrics
-    const pmcData = calculatePMCMetrics(trainingData);
+    // Calculate PMC metrics with extended timeline to today for proper decay
+    const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
 
     // Clear existing training history for this user
     const { error: deleteError } = await supabase
@@ -165,8 +244,8 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
       sport: activity.sport_mode
     }));
 
-    // Calculate PMC metrics from the beginning
-    const pmcData = calculatePMCMetrics(trainingData);
+    // Calculate PMC metrics from the beginning with extended timeline
+    const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
 
     // Update or insert training history records from the specified date onwards
     for (const data of pmcData.filter(d => d.date >= date)) {
