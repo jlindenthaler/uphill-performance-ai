@@ -74,6 +74,9 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       // If we have GPS data, process it
       if (gpsData && gpsData.type === 'LineString' && gpsData.coordinates && Array.isArray(gpsData.coordinates)) {
         console.log('Processing GPS data:', gpsData);
+        console.log('GPS data type:', gpsData.type);
+        console.log('Coordinates array length:', gpsData.coordinates.length);
+        console.log('Sample coordinates:', gpsData.coordinates.slice(0, 3));
         const coordinates = gpsData.coordinates; // Already in [lng, lat] format from fitParser
         
         if (coordinates.length > 0) {
@@ -93,6 +96,9 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
 
           map.current.on('load', () => {
             if (!map.current) return;
+            
+            console.log('Map loaded, adding route source and layer');
+            console.log('GeoJSON data:', geojson);
 
             // Add the route source
             map.current.addSource('route', {
@@ -144,11 +150,19 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             coordinates.forEach(coord => {
               bounds.extend(coord as [number, number]);
             });
+            console.log('Fitting map to bounds:', bounds);
             map.current.fitBounds(bounds, { padding: 50 });
           });
         } else {
           console.warn('GPS data has no coordinates');
         }
+      } else if (gpsData) {
+        console.warn('GPS data exists but not in expected format:', {
+          type: gpsData.type,
+          hasCoordinates: !!gpsData.coordinates,
+          isArray: Array.isArray(gpsData.coordinates),
+          coordinatesLength: gpsData.coordinates?.length
+        });
       } else if (activity) {
         // Mock GPS route for demonstration
         const mockRoute = [
