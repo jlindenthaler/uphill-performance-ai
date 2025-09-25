@@ -7,6 +7,7 @@ import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
 import { useUserTimezone } from './useUserTimezone';
 import { useToast } from '@/hooks/use-toast';
+import { generateActivityName, shouldUseAutoName } from '@/utils/activityNaming';
 
 interface Activity {
   id: string;
@@ -102,7 +103,9 @@ export function useActivities() {
       console.log('File uploaded to storage successfully');
 
       let activityData: any = {
-        name: activityName || file.name.replace(/\.[^/.]+$/, ""),
+        name: shouldUseAutoName(activityName) 
+          ? generateActivityName({ date: new Date().toISOString(), sportMode })
+          : activityName || file.name.replace(/\.[^/.]+$/, ""),
         sport_mode: sportMode,
         date: new Date().toISOString(), // Store full timestamp, not just date
         duration_seconds: 0,
@@ -133,8 +136,10 @@ export function useActivities() {
           activityData = {
             ...activityData,
             ...parsedData,
-            // Keep the user-provided name if specified
-            name: activityName || parsedData.name || activityData.name,
+            // Determine activity name using auto-naming if user didn't provide one
+            name: shouldUseAutoName(activityName) 
+              ? generateActivityName({ date: parsedData.date || activityData.date, sportMode: parsedData.sport_mode || sportMode })
+              : activityName || parsedData.name || activityData.name,
             // Keep user-selected sport mode if specified, otherwise use parsed
             sport_mode: sportMode !== 'cycling' ? sportMode : parsedData.sport_mode
           };
