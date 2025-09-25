@@ -169,7 +169,7 @@ export function AnalysisDashboard() {
             <CardHeader>
               <CardTitle>Performance Readiness Chart</CardTitle>
               <CardDescription>
-                LTL (blue), STL (red), and FI (yellow) over time
+                LTL (blue), STL (pink), and FI (yellow) over time
                 {combinedSports && " - Combined across all sports"}
               </CardDescription>
             </CardHeader>
