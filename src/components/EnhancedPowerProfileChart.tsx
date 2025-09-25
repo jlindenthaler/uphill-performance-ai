@@ -7,11 +7,9 @@ import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
 import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
-
 interface EnhancedPowerProfileChartProps {
   activity?: any;
 }
-
 export function EnhancedPowerProfileChart({
   activity
 }: EnhancedPowerProfileChartProps) {
@@ -24,7 +22,6 @@ export function EnhancedPowerProfileChart({
     sportMode
   } = useSportMode();
   const isRunning = sportMode === 'running';
-
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     if (seconds < 3600) {
@@ -33,10 +30,9 @@ export function EnhancedPowerProfileChart({
       return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
     }
     const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const minutes = Math.floor(seconds % 3600 / 60);
     return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
   };
-
   const formatValue = (value: number) => {
     if (isRunning) {
       const minutes = Math.floor(value);
@@ -52,7 +48,6 @@ export function EnhancedPowerProfileChart({
     if (activity?.power_curve_cache) {
       console.log('Using cached power curve data for performance');
       const cache = activity.power_curve_cache;
-      
       return Object.entries(cache).map(([durationStr, data]: [string, any]) => {
         const durationSeconds = parseInt(durationStr);
         return {
@@ -62,32 +57,27 @@ export function EnhancedPowerProfileChart({
         };
       });
     }
-    
+
     // Fallback to real-time calculation if no cache available
     if (!activity || !activity.gps_data?.trackPoints) return [];
-    
     console.log('Calculating power curve in real-time (no cache available)');
-    
+
     // Dynamic durations based on activity duration
     const records = activity.gps_data.trackPoints;
     const activityDurationSeconds = records.length; // Assuming 1 record per second
-    
+
     // Standard durations, but extend to activity duration if longer
     let durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-    
+
     // Add activity duration if it's longer than our max duration and significant
     if (activityDurationSeconds > 3600 && activityDurationSeconds < 7200) {
       durations.push(activityDurationSeconds);
     }
-    
     const results = [];
-    
     for (const duration of durations) {
       // Skip if duration is longer than the activity
       if (duration > activityDurationSeconds) continue;
-      
       let value = 0;
-      
       if (isRunning) {
         const meanMaxPace = calculateMeanMaximalPace(records, duration);
         value = meanMaxPace || 0;
@@ -95,7 +85,6 @@ export function EnhancedPowerProfileChart({
         const meanMaxPower = calculateMeanMaximalPower(records, duration);
         value = meanMaxPower || 0;
       }
-      
       if (value > 0) {
         results.push({
           duration: formatDuration(duration),
@@ -104,7 +93,6 @@ export function EnhancedPowerProfileChart({
         });
       }
     }
-    
     return results;
   };
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
@@ -114,7 +102,6 @@ export function EnhancedPowerProfileChart({
     if (!activityMeanMax.length) return [];
     const keyDurations = [1, 5, 60, 300, 1200, 3600]; // 1s, 5s, 1min, 5min, 20min, 60min
     const keyLabels = ['1s', '5s', '1min', '5min', '20min', '60min'];
-    
     return keyDurations.map((duration, index) => {
       const meanMaxItem = activityMeanMax.find(item => item.durationSeconds === duration);
       return {
@@ -132,26 +119,24 @@ export function EnhancedPowerProfileChart({
     // Get all unique durations from both activity and profile data
     const activityDurations = activityMeanMax.map(item => item.durationSeconds);
     const profileDurations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-    
+
     // Combine and sort durations
     const allDurations = [...new Set([...profileDurations, ...activityDurations])].sort((a, b) => a - b);
-    
-    return allDurations.map((durationSeconds) => {
+    return allDurations.map(durationSeconds => {
       const durationLabel = formatDuration(durationSeconds);
       const profileItem = filteredPowerProfile.find(item => item.duration === durationLabel);
       const activityItem = activityMeanMax.find(item => item.durationSeconds === durationSeconds);
-      
       return {
         duration: durationLabel,
         durationSeconds,
-        logDuration: Math.log10(durationSeconds), // For logarithmic scaling
+        logDuration: Math.log10(durationSeconds),
+        // For logarithmic scaling
         allTimeBest: profileItem?.allTimeBest || 0,
         rangeFiltered: profileItem?.best || 0,
         activityMeanMax: activityItem?.activityMeanMax || 0
       };
     }).filter(item => item.allTimeBest > 0 || item.rangeFiltered > 0 || item.activityMeanMax > 0);
   }, [filteredPowerProfile, activityMeanMax]);
-
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center h-64">
@@ -159,7 +144,6 @@ export function EnhancedPowerProfileChart({
         </CardContent>
       </Card>;
   }
-
   if (powerProfile.length === 0) {
     return <Card>
         <CardHeader>
@@ -202,7 +186,6 @@ export function EnhancedPowerProfileChart({
         return 'Last 90 days';
     }
   };
-
   const bestEfforts = [{
     duration: '1s',
     best: activityBestPowers.find(p => p.duration === '1s')?.value || 0,
@@ -228,18 +211,9 @@ export function EnhancedPowerProfileChart({
     best: activityBestPowers.find(p => p.duration === '60min')?.value || 0,
     unit: 'W'
   }];
-
   return <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-          {isRunning ? 'Pace Profile' : 'Power Profile'}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Mean maximal {isRunning ? 'pace' : 'power'} across different durations
-        </p>
-      </div>
+      
 
       {/* Activity Best Power Block */}
       {activity && !isRunning && <Card>
@@ -278,16 +252,11 @@ export function EnhancedPowerProfileChart({
                   <div className="text-xs text-muted-foreground mt-1">
                     Best: {formatValue(getBestPowerForDuration(power.duration))}
                     {(() => {
-                      const rangeBest = filteredPowerProfile.find(item => item.duration === power.duration)?.best || 0;
-                      const activityPower = power.value;
-                      const isNewBest = isRunning ? 
-                        (rangeBest === 0 || activityPower < rangeBest) : 
-                        (rangeBest === 0 || activityPower > rangeBest);
-                      
-                      return isNewBest && activityPower > 0 ? (
-                        <Badge variant="secondary" className="ml-1 text-xs">NEW BEST</Badge>
-                      ) : null;
-                    })()}
+                const rangeBest = filteredPowerProfile.find(item => item.duration === power.duration)?.best || 0;
+                const activityPower = power.value;
+                const isNewBest = isRunning ? rangeBest === 0 || activityPower < rangeBest : rangeBest === 0 || activityPower > rangeBest;
+                return isNewBest && activityPower > 0 ? <Badge variant="secondary" className="ml-1 text-xs">NEW BEST</Badge> : null;
+              })()}
                   </div>
                 </div>)}
             </div>
@@ -295,66 +264,6 @@ export function EnhancedPowerProfileChart({
         </Card>}
 
       {/* Enhanced Power/Pace Curve Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-            Enhanced {isRunning ? 'Pace' : 'Power'} Profile Chart ({getDateRangeLabel()})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="logDuration"
-                  type="number"
-                  scale="linear"
-                  domain={['dataMin', 'dataMax']}
-                  tickFormatter={(value) => {
-                    const seconds = Math.pow(10, value);
-                    return formatDuration(Math.round(seconds));
-                  }}
-                />
-                <YAxis tickFormatter={formatValue} />
-                <Tooltip 
-                  formatter={(value: number, name: string) => [
-                    formatValue(value), 
-                    name === 'allTimeBest' ? 'All-Time Best' : 
-                    name === 'rangeFiltered' ? 'Range Best' : 
-                    'Activity Mean Max'
-                  ]}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="allTimeBest" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  name="All-Time Best"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="rangeFiltered" 
-                  stroke="hsl(var(--zone-3))" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  name="Range Best"
-                />
-                {activity && (
-                  <Line 
-                    type="monotone" 
-                    dataKey="activityMeanMax" 
-                    stroke="hsl(var(--zone-2))" 
-                    strokeWidth={2}
-                    strokeDasharray="2 2"
-                    name="Activity Mean Max"
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      
     </div>;
 }
