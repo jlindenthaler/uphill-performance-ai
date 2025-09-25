@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2, Copy, Clipboard } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDay, addDays } from "date-fns";
 import { useGoals } from '@/hooks/useGoals';
 import { useWorkouts } from '@/hooks/useWorkouts';
@@ -15,6 +15,9 @@ import { WorkoutDetailModal } from './WorkoutDetailModal';
 import { ActivityDetailModal } from './ActivityDetailModal';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
+import { useWorkoutClipboard } from '@/hooks/useWorkoutClipboard';
+import { useWorkoutDragAndDrop } from '@/hooks/useWorkoutDragAndDrop';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CalendarEvent {
   id: string;
@@ -42,10 +45,13 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { goals } = useGoals();
-  const { workouts, deleteWorkout } = useWorkouts();
+  const { workouts, deleteWorkout, saveWorkout } = useWorkouts();
   const { activities, deleteActivity } = useActivities();
   const { trainingHistory } = useTrainingHistory(90); // Extended range for infinite scroll
   const { timezone } = useUserTimezone();
+  const { clipboardData, copyWorkout, hasClipboardData, clearClipboard } = useWorkoutClipboard();
+  const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
+  const isMobile = useIsMobile();
 
   // Initialize weeks around current week
   useEffect(() => {
@@ -94,6 +100,23 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }
   }, [handleScroll]);
+
+  // Keyboard shortcuts for copy/paste (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'v' && hasClipboardData()) {
+          e.preventDefault();
+          // Note: Paste will be handled via day cell click when clipboard has data
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, hasClipboardData]);
 
   const getEventsForDay = (day: Date): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
@@ -179,6 +202,27 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     };
   };
 
+  const handlePasteWorkout = async (targetDate: Date) => {
+    if (!clipboardData) return;
+
+    try {
+      // Create a new workout based on clipboard data
+      const newWorkout = {
+        name: clipboardData.name,
+        description: clipboardData.description,
+        structure: clipboardData.structure,
+        duration_minutes: clipboardData.duration_minutes,
+        tss: clipboardData.tss,
+        scheduled_date: targetDate.toISOString()
+      };
+
+      await saveWorkout(newWorkout);
+      clearClipboard();
+    } catch (error) {
+      console.error('Failed to paste workout:', error);
+    }
+  };
+
   const renderEvent = (event: CalendarEvent) => {
     let bgColor = '';
     let textColor = '';
@@ -214,8 +258,13 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     return (
       <div
         key={event.id}
-        className={`${bgColor} ${textColor} p-1 mb-1 rounded text-xs flex items-center justify-between group hover:opacity-80`}
+        className={`${bgColor} ${textColor} p-1 mb-1 rounded text-xs flex items-center justify-between group hover:opacity-80 ${
+          dragState.isDragging && dragState.draggedWorkoutId === event.id ? 'opacity-50' : ''
+        }`}
         title={event.title}
+        draggable={!isMobile && event.type === 'workout'}
+        onDragStart={(e) => event.type === 'workout' && handleDragStart(e, event.id, event.title)}
+        onDragEnd={handleDragEnd}
       >
         <div 
           className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
@@ -240,6 +289,18 @@ export const InfiniteTrainingCalendar: React.FC = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover border border-border">
+              {event.type === 'workout' && (
+                <>
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => copyWorkout(event.data)}
+                  >
+                    <Copy className="h-3 w-3 mr-2" />
+                    Copy Workout
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem 
@@ -370,10 +431,22 @@ export const InfiniteTrainingCalendar: React.FC = () => {
                         return (
                           <div
                             key={day.toISOString()}
-                            className={`min-h-[120px] border-r border-b last:border-r-0 p-2 ${
+                            className={`min-h-[120px] border-r border-b last:border-r-0 p-2 cursor-pointer relative ${
                               isToday ? 'ring-2 ring-primary ring-inset bg-primary/5' : ''
-                            } ${isWeekend ? 'bg-muted/10' : ''}`}
+                            } ${isWeekend ? 'bg-muted/10' : ''} ${
+                              dragState.isDragging ? 'hover:bg-primary/10 transition-colors' : ''
+                            } ${hasClipboardData() ? 'hover:bg-secondary/10' : ''}`}
+                            onDragOver={!isMobile ? handleDragOver : undefined}
+                            onDrop={!isMobile ? (e) => handleDrop(e, day) : undefined}
+                            onClick={hasClipboardData() ? () => handlePasteWorkout(day) : undefined}
                           >
+                            {/* Paste indicator */}
+                            {hasClipboardData() && (
+                              <div className="absolute top-1 right-1 text-primary">
+                                <Clipboard className="w-3 h-3" />
+                              </div>
+                            )}
+
                             {/* Day Number */}
                             <div className={`text-sm font-medium mb-2 ${
                               isToday ? 'text-primary font-bold' : 'text-foreground'
