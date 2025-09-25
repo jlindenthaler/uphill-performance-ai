@@ -6,7 +6,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from 'recharts';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { Activity, Clock, Heart, Zap, BarChart3, MapPin } from 'lucide-react';
+import { usePowerProfile } from '@/hooks/usePowerProfile';
+import { Activity, Clock, Heart, Zap, BarChart3, MapPin, Loader2 } from 'lucide-react';
+import { format, subDays } from 'date-fns';
 interface ActivityAnalysisChartProps {
   activity?: any;
 }
@@ -20,6 +22,22 @@ export function ActivityAnalysisChart({
     sportMode
   } = useSportMode();
   const isRunning = sportMode === 'running';
+  
+  // Fetch historical power profile data for the selected date range
+  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(parseInt(dateRange));
+  
+  // Calculate date range labels
+  const { startDate, endDate, activityDate } = useMemo(() => {
+    const now = new Date();
+    const start = subDays(now, parseInt(dateRange));
+    const activityDateObj = activity?.date ? new Date(activity.date) : now;
+    
+    return {
+      startDate: format(start, 'dd/MM/yyyy'),
+      endDate: format(now, 'dd/MM/yyyy'), 
+      activityDate: format(activityDateObj, 'dd/MM/yyyy')
+    };
+  }, [dateRange, activity?.date]);
 
   // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
@@ -98,7 +116,7 @@ export function ActivityAnalysisChart({
     return timelineData.some(point => point.rPower > 0);
   }, [timelineData]);
 
-  // Generate peak power curve data
+  // Generate peak power curve data with historical comparison
   const peakPowerData = useMemo(() => {
     const durations = [{
       label: '5sec',
@@ -122,28 +140,51 @@ export function ActivityAnalysisChart({
       label: '24hrs',
       seconds: 86400
     }];
+    
     return durations.map(duration => {
       const avgPower = activity?.avg_power || 0;
       const maxPower = activity?.max_power || avgPower * 1.5;
       const normalizedPower = activity?.normalized_power || avgPower;
       let currentPower = avgPower;
       let comparisonPower = avgPower * 0.9;
+      
       if (avgPower > 0) {
         // Realistic power curve based on actual data
-        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;else if (duration.seconds <= 1200) currentPower = normalizedPower;else currentPower = normalizedPower * 0.9;
+        if (duration.seconds <= 10) currentPower = Math.min(maxPower, normalizedPower * 1.6);
+        else if (duration.seconds <= 60) currentPower = Math.min(maxPower, normalizedPower * 1.3);
+        else if (duration.seconds <= 300) currentPower = normalizedPower * 1.1;
+        else if (duration.seconds <= 1200) currentPower = normalizedPower;
+        else currentPower = normalizedPower * 0.9;
 
-        // Comparison range (simulate historical data)
-        comparisonPower = currentPower * (0.85 + Math.random() * 0.2);
+        // Use historical data for comparison if available
+        const historicalEntry = historicalData.find(h => {
+          if (duration.seconds === 5 && h.duration === '5s') return true;
+          if (duration.seconds === 20 && h.duration === '1min') return true; // closest match
+          if (duration.seconds === 120 && h.duration === '5min') return true; // closest match
+          if (duration.seconds === 600 && h.duration === '5min') return true;
+          if (duration.seconds === 1800 && h.duration === '20min') return true;
+          if (duration.seconds === 7200 && h.duration === '60min') return true;
+          if (duration.seconds === 86400 && h.duration === '60min') return true; // closest match
+          return false;
+        });
+        
+        if (historicalEntry && historicalEntry.best > 0) {
+          comparisonPower = isRunning ? historicalEntry.best : historicalEntry.best;
+        } else {
+          // Fallback to estimated historical performance
+          comparisonPower = currentPower * 0.9;
+        }
       }
+      
       return {
         duration: duration.label,
         currentRange: Math.round(currentPower),
         comparisonRange: Math.round(comparisonPower)
       };
     });
-  }, [activity]);
+  }, [activity, historicalData, isRunning]);
 
-  // Generate peak heart rate curve data
+  // Generate peak heart rate curve data with historical comparison  
   const peakHeartRateData = useMemo(() => {
     const durations = [{
       label: '5sec',
@@ -167,16 +208,25 @@ export function ActivityAnalysisChart({
       label: '24hrs',
       seconds: 86400
     }];
+    
     return durations.map(duration => {
       const avgHr = activity?.avg_heart_rate || 0;
       const maxHr = activity?.max_heart_rate || avgHr * 1.3;
       let currentHr = avgHr;
       let comparisonHr = avgHr * 0.95;
+      
       if (avgHr > 0) {
         // Realistic HR curve based on actual data
-        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);else if (duration.seconds <= 1200) currentHr = avgHr;else currentHr = avgHr * 0.92;
-        comparisonHr = currentHr * (0.9 + Math.random() * 0.15);
+        if (duration.seconds <= 10) currentHr = Math.min(maxHr, avgHr * 1.15);
+        else if (duration.seconds <= 60) currentHr = Math.min(maxHr, avgHr * 1.1);
+        else if (duration.seconds <= 300) currentHr = Math.min(maxHr, avgHr * 1.05);
+        else if (duration.seconds <= 1200) currentHr = avgHr;
+        else currentHr = avgHr * 0.92;
+        
+        // Use estimated historical heart rate (no specific historical HR data available)
+        comparisonHr = currentHr * 0.92; // Slightly lower than current for realistic comparison
       }
+      
       return {
         duration: duration.label,
         currentRange: Math.round(currentHr),
@@ -404,11 +454,12 @@ export function ActivityAnalysisChart({
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-3 rounded"></div>
-                <span>25/6/2025 - 22/9/2025</span>
+                <span>Current Activity - {activityDate}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
-                <span>22/9/2025</span>
+                <span>Historical Best ({startDate} - {endDate})</span>
+                {historicalLoading && <Loader2 className="w-3 h-3 animate-spin" />}
               </div>
             </div>
           </CardHeader>
@@ -465,11 +516,11 @@ export function ActivityAnalysisChart({
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-destructive rounded"></div>
-                <span>25/6/2025 - 22/9/2025</span>
+                <span>Current Activity - {activityDate}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-destructive/60 rounded"></div>
-                <span>22/9/2025</span>
+                <span>Estimated Historical ({startDate} - {endDate})</span>
               </div>
             </div>
           </CardHeader>
