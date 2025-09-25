@@ -74,14 +74,14 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         if (currentWeekRef.current && isInitialLoad) {
           currentWeekRef.current.scrollIntoView({
             behavior: 'smooth',
-            block: 'center',
+            block: 'start',
             inline: 'center'
           });
           
           // Mark initial load as complete
           setIsInitialLoad(false);
         }
-      }, 600); // Longer delay to ensure month dropdown doesn't interfere
+      }, 500); // Longer delay to ensure month dropdown doesn't interfere
     }
   }, [weeks.length, isInitialLoad]);
 
