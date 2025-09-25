@@ -21,6 +21,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const routeMarkers = useRef<mapboxgl.Marker[]>([]);
   const { toast } = useToast();
 
@@ -141,9 +142,16 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             const hoverMarker = new mapboxgl.Marker({
               color: '#3b82f6',
               scale: 0.8
-            }).addTo(map.current);
+            });
+            
+            // Initialize with start coordinate to prevent undefined errors
+            hoverMarker.setLngLat(startCoord as [number, number]);
+            hoverMarker.addTo(map.current);
             hoverMarker.getElement().style.display = 'none';
             routeMarkers.current.push(hoverMarker);
+
+            // Set map as ready after all markers are initialized
+            setMapReady(true);
 
             // Fit map to route bounds
             const bounds = new mapboxgl.LngLatBounds();
@@ -237,24 +245,17 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const handleElevationHover = (index: number | null) => {
     setHoverIndex(index);
     
-    // Add comprehensive null checks to prevent errors
-    if (!map.current || !gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) {
+    // Only allow hover interactions when map is ready
+    if (!mapReady || !map.current || !gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) {
       return;
     }
     
     // Ensure markers are initialized and hover marker exists
     if (!routeMarkers.current || routeMarkers.current.length < 3) {
-      console.warn('Hover marker not yet initialized');
       return;
     }
     
     const hoverMarker = routeMarkers.current[2]; // Third marker is the hover indicator
-    
-    // Additional safety check for the marker
-    if (!hoverMarker || !hoverMarker.getElement()) {
-      console.warn('Hover marker not available');
-      return;
-    }
     
     try {
       if (index !== null && index >= 0 && index < gpsData.coordinates.length && gpsData.coordinates[index]) {
