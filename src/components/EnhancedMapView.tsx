@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MapPin, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ElevationChart } from './ElevationChart';
 
 interface EnhancedMapViewProps {
   gpsData?: any;
@@ -19,6 +20,8 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const routeMarkers = useRef<mapboxgl.Marker[]>([]);
   const { toast } = useToast();
 
   const fetchMapboxToken = async () => {
@@ -114,17 +117,27 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
 
             // Add start marker - Default style
             const startCoord = coordinates[0];
-            new mapboxgl.Marker()
+            const startMarker = new mapboxgl.Marker()
               .setLngLat(startCoord as [number, number])
               .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Start</div>'))
               .addTo(map.current);
 
             // Add finish marker - Default style
             const endCoord = coordinates[coordinates.length - 1];
-            new mapboxgl.Marker()
+            const finishMarker = new mapboxgl.Marker()
               .setLngLat(endCoord as [number, number])
               .setPopup(new mapboxgl.Popup().setHTML('<div class="font-semibold">Finish</div>'))
               .addTo(map.current);
+
+            routeMarkers.current = [startMarker, finishMarker];
+
+            // Add hover indicator marker (initially hidden)
+            const hoverMarker = new mapboxgl.Marker({
+              color: '#3b82f6',
+              scale: 0.8
+            }).addTo(map.current);
+            hoverMarker.getElement().style.display = 'none';
+            routeMarkers.current.push(hoverMarker);
 
             // Fit map to route bounds
             const bounds = new mapboxgl.LngLatBounds();
@@ -206,6 +219,23 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
     }
   }, [gpsData, mapboxToken, activity, loading, toast]);
 
+  // Handle elevation chart hover
+  const handleElevationHover = (index: number | null) => {
+    setHoverIndex(index);
+    
+    if (!map.current || !gpsData?.coordinates) return;
+    
+    const hoverMarker = routeMarkers.current[2]; // Third marker is the hover indicator
+    
+    if (index !== null && gpsData.coordinates[index]) {
+      const coord = gpsData.coordinates[index];
+      hoverMarker.setLngLat(coord as [number, number]);
+      hoverMarker.getElement().style.display = 'block';
+    } else {
+      hoverMarker.getElement().style.display = 'none';
+    }
+  };
+
   if (loading) {
     return (
       <div className={`${className} bg-muted/20 rounded-lg flex items-center justify-center border`}>
@@ -252,8 +282,18 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   }
 
   return (
-    <div className={`${className} rounded-lg overflow-hidden border relative`}>
-      <div ref={mapContainer} className="w-full h-full" />
+    <div className="space-y-4">
+      <div className={`${className} rounded-lg overflow-hidden border relative`}>
+        <div ref={mapContainer} className="w-full h-full" />
+      </div>
+      
+      {/* Elevation Chart */}
+      <ElevationChart 
+        gpsData={gpsData} 
+        activity={activity}
+        onHover={handleElevationHover}
+        hoverIndex={hoverIndex}
+      />
     </div>
   );
 }

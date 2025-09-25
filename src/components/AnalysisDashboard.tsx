@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, Activity, Zap, Target, Crown, Flame, Calendar
 import { useMetabolicData } from "@/hooks/useMetabolicData";
 import { usePowerProfile } from "@/hooks/usePowerProfile";
 import { useTrainingHistory } from "@/hooks/useTrainingHistory";
+import { useCombinedTrainingHistory } from "@/hooks/useCombinedTrainingHistory";
 import { usePMCPopulation } from "@/hooks/usePMCPopulation";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -17,14 +18,19 @@ import { formatDateInUserTimezone } from "@/utils/dateFormat";
 import { useState, useMemo } from "react";
 
 export function AnalysisDashboard() {
-  const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
-  const { trainingHistory, loading: historyLoading } = useTrainingHistory();
-  const { isRunning } = useSportMode();
-  const { isPopulating } = usePMCPopulation();
   const [dateRange, setDateRange] = useState('30');
   const [combinedSports, setCombinedSports] = useState(false);
+  const { metabolicMetrics, loading: metabolicLoading } = useMetabolicData();
+  const { trainingHistory: singleSportHistory, loading: historyLoading } = useTrainingHistory(parseInt(dateRange));
+  const { trainingHistory: combinedHistory, loading: combinedLoading } = useCombinedTrainingHistory(parseInt(dateRange));
+  const { isRunning } = useSportMode();
+  const { isPopulating } = usePMCPopulation();
   const { powerProfile, loading: powerLoading } = usePowerProfile(parseInt(dateRange));
   const { timezone } = useUserTimezone();
+
+  // Use appropriate training history based on combined sports setting
+  const trainingHistory = combinedSports ? combinedHistory : singleSportHistory;
+  const currentHistoryLoading = combinedSports ? combinedLoading : historyLoading;
 
   const filteredTrainingHistory = useMemo(() => {
     const days = parseInt(dateRange === 'custom' ? '30' : dateRange);
@@ -175,7 +181,7 @@ export function AnalysisDashboard() {
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                {historyLoading ? (
+                {currentHistoryLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
@@ -256,10 +262,10 @@ export function AnalysisDashboard() {
                       {item.duration} {isRunning ? 'Pace' : 'Power'}
                     </p>
                     <p className="text-xl font-bold">
-                      {item.current > 0 ? `${item.current}${item.unit}` : '--'}
+                      {item.current > 0 ? `${Math.round(item.current)}${item.unit}` : '--'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Best: {item.best > 0 ? `${item.best}${item.unit}` : '--'}
+                      Best: {item.best > 0 ? `${Math.round(item.best)}${item.unit}` : '--'}
                     </p>
                   </div>
                 </CardContent>
@@ -399,28 +405,37 @@ export function AnalysisDashboard() {
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={[
-                    { date: '2024-01-01', aet: isRunning ? 4.8 : 220, gt: isRunning ? 4.2 : 280, map: isRunning ? 3.5 : 320 },
-                    { date: '2024-02-01', aet: isRunning ? 4.7 : 225, gt: isRunning ? 4.1 : 285, map: isRunning ? 3.4 : 325 },
-                    { date: '2024-03-01', aet: isRunning ? 4.6 : 230, gt: isRunning ? 4.0 : 290, map: isRunning ? 3.3 : 330 },
-                    { date: '2024-04-01', aet: isRunning ? 4.5 : 235, gt: isRunning ? 3.9 : 295, map: isRunning ? 3.2 : 335 },
-                    { date: '2024-05-01', aet: isRunning ? 4.4 : 240, gt: isRunning ? 3.8 : 300, map: isRunning ? 3.1 : 340 },
-                    { date: '2024-06-01', aet: isRunning ? 4.3 : 245, gt: isRunning ? 3.7 : 305, map: isRunning ? 3.0 : 345 },
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'MMM')}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
-                      formatter={(value, name) => [
-                        `${value}${isRunning ? ' min/km' : 'W'}`, 
-                        name === 'aet' ? 'AeT' : name === 'gt' ? 'GT' : 'MAP'
-                      ]}
-                    />
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={powerProfile.length > 5 ? powerProfile.slice(3, 8).map((item, index) => {
+                      const baseDate = new Date();
+                      baseDate.setMonth(baseDate.getMonth() - (powerProfile.length - index - 1));
+                      return {
+                        date: baseDate.toISOString().split('T')[0],
+                        aet: item.duration === '300' ? item.best : null, // 5min as VT1/AeT approximation  
+                        gt: item.duration === '1200' ? item.best : null, // 20min as VT2/LT2/GT approximation
+                        map: item.duration === '300' ? item.best * 1.1 : null // MAP approximation (slightly higher than 5min)
+                      };
+                    }).filter(item => item.aet || item.gt || item.map) : [
+                      { date: '2024-01-01', aet: isRunning ? 4.8 : 220, gt: isRunning ? 4.2 : 280, map: isRunning ? 3.5 : 320 },
+                      { date: '2024-02-01', aet: isRunning ? 4.7 : 225, gt: isRunning ? 4.1 : 285, map: isRunning ? 3.4 : 325 },
+                      { date: '2024-03-01', aet: isRunning ? 4.6 : 230, gt: isRunning ? 4.0 : 290, map: isRunning ? 3.3 : 330 },
+                      { date: '2024-04-01', aet: isRunning ? 4.5 : 235, gt: isRunning ? 3.9 : 295, map: isRunning ? 3.2 : 335 },
+                      { date: '2024-05-01', aet: isRunning ? 4.4 : 240, gt: isRunning ? 3.8 : 300, map: isRunning ? 3.1 : 340 },
+                      { date: '2024-06-01', aet: isRunning ? 4.3 : 245, gt: isRunning ? 3.7 : 305, map: isRunning ? 3.0 : 345 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'MMM')}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
+                        formatter={(value, name) => [
+                          `${Math.round(Number(value))}${isRunning ? ' min/km' : 'W'}`, 
+                          name === 'aet' ? 'AeT (VT1/LT1)' : name === 'gt' ? 'GT (VT2/LT2/CP/FTP)' : 'MAP (5min Power)'
+                        ]}
+                      />
                     <Line 
                       type="monotone" 
                       dataKey="aet" 
@@ -461,11 +476,16 @@ export function AnalysisDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                    <span className="text-sm text-green-500 font-medium">
+                      {powerProfile.length > 1 && powerProfile[0].best > powerProfile[1].best ? 'Increasing' : 'Stable'}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Steady improvement in aerobic power over the last 6 months. 
-                    {isRunning ? ' Pace improving by ~2s/km per month.' : ' Power increasing by ~5W per month.'}
+                    {powerProfile.length > 1 ? 
+                      (powerProfile[0].best > powerProfile[1].best ? 
+                        `Recent improvement in aerobic threshold power.` : 
+                        `Aerobic threshold power maintaining steady levels.`) :
+                      `Steady improvement in aerobic power over the last 6 months. ${isRunning ? ' Pace improving by ~2s/km per month.' : ' Power increasing by ~5W per month.'}`}
                   </p>
                 </div>
               </CardContent>
@@ -480,11 +500,16 @@ export function AnalysisDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                    <span className="text-sm text-green-500 font-medium">
+                      {powerProfile.length > 3 && powerProfile[2].best > powerProfile[3].best ? 'Increasing' : 'Stable'}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Strong progression in lactate threshold power. 
-                    {isRunning ? ' Sustainable pace improving significantly.' : ' FTP equivalent showing consistent gains.'}
+                    {powerProfile.length > 3 ? 
+                      (powerProfile[2].best > powerProfile[3].best ? 
+                        `Strong progression in glycolytic threshold power.` : 
+                        `Glycolytic threshold power holding steady.`) :
+                      `Strong progression in lactate threshold power. ${isRunning ? ' Sustainable pace improving significantly.' : ' FTP equivalent showing consistent gains.'}`}
                   </p>
                 </div>
               </CardContent>
@@ -499,11 +524,16 @@ export function AnalysisDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-500 font-medium">Increasing</span>
+                    <span className="text-sm text-green-500 font-medium">
+                      {powerProfile.length > 0 && powerProfile[0].current >= powerProfile[0].best * 0.95 ? 'Increasing' : 'Developing'}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Peak aerobic capacity showing excellent development. 
-                    {isRunning ? ' VO2max pace trending upward.' : ' Maximum sustainable power at VO2max improving.'}
+                    {powerProfile.length > 0 ? 
+                      (powerProfile[0].current >= powerProfile[0].best * 0.95 ? 
+                        `Peak aerobic capacity showing excellent development.` : 
+                        `Peak aerobic capacity developing well.`) :
+                      `Peak aerobic capacity showing excellent development. ${isRunning ? ' VO2max pace trending upward.' : ' Maximum sustainable power at VO2max improving.'}`}
                   </p>
                 </div>
               </CardContent>
@@ -512,18 +542,18 @@ export function AnalysisDashboard() {
 
           <Card className="card-gradient">
             <CardHeader>
-              <CardTitle>Training Stress Score Trends</CardTitle>
-              <CardDescription>Daily TLI over the last 30 days</CardDescription>
+              <CardTitle>Training Load Index Trends</CardTitle>
+              <CardDescription>Daily TLI over the selected time period</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {historyLoading ? (
+                {currentHistoryLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={trainingHistory}>
+                    <BarChart data={filteredTrainingHistory}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis dataKey="date" tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'd')} />
                       <YAxis />
@@ -576,7 +606,7 @@ export function AnalysisDashboard() {
                 <div className="flex justify-between items-center p-3 rounded-lg bg-muted/20">
                   <span className="text-sm">7-day average TLI</span>
                   <span className="font-semibold">
-                    {Math.round(trainingHistory.slice(-7).reduce((acc, day) => acc + day.tss, 0) / 7)}
+                    {Math.round(filteredTrainingHistory.slice(-7).reduce((acc, day) => acc + day.tss, 0) / 7)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 rounded-lg bg-muted/20">

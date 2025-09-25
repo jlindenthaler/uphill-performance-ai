@@ -25,7 +25,7 @@ export function PowerProfileChart() {
       const seconds = Math.round((value - minutes) * 60);
       return `${minutes}:${seconds.toString().padStart(2, '0')}/km`;
     }
-    return `${Math.round(value)}W`;
+    return `${Math.round(value)}W`; // No decimals for power values
   };
 
   const chartData = powerProfile.map(item => ({
