@@ -76,8 +76,8 @@ export function EnhancedPowerProfileChart({
   // Get activity best power for key durations from real mean max data
   const calculateActivityBestPowers = () => {
     if (!activityMeanMax.length) return [];
-    const keyDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
-    const keyLabels = ['5s', '1min', '5min', '20min', '60min'];
+    const keyDurations = [1, 5, 60, 300, 1200, 3600]; // 1s, 5s, 1min, 5min, 20min, 60min
+    const keyLabels = ['1s', '5s', '1min', '5min', '20min', '60min'];
     
     return keyDurations.map((duration, index) => {
       const meanMaxItem = activityMeanMax.find(item => item.durationSeconds === duration);
@@ -176,6 +176,10 @@ export function EnhancedPowerProfileChart({
   };
 
   const bestEfforts = [{
+    duration: '1s',
+    best: activityBestPowers.find(p => p.duration === '1s')?.value || 0,
+    unit: 'W'
+  }, {
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
     unit: 'W'
@@ -236,7 +240,7 @@ export function EnhancedPowerProfileChart({
           </div>
         </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-6 gap-4">
               {activityBestPowers.map(power => <div key={power.duration} className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-2">
                     <Clock className="w-3 h-3 text-muted-foreground" />

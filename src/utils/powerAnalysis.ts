@@ -16,6 +16,14 @@ export function calculateMeanMaximalPower(records: any[], targetDurationSeconds:
     .map(r => unwrapValue(r.power))
     .filter(p => p !== undefined && p !== null && p > 0);
     
+  if (powerData.length === 0) return null;
+  
+  // For very short durations (1-5 seconds), find the absolute peak
+  if (targetDurationSeconds <= 5) {
+    return Math.max(...powerData);
+  }
+  
+  // For longer durations, need enough data points
   if (powerData.length < targetDurationSeconds) return null;
 
   let maxAvgPower = 0;
@@ -38,6 +46,17 @@ export function calculateMeanMaximalPace(records: any[], targetDurationSeconds: 
     .map(r => unwrapValue(r.speed))
     .filter(s => s !== undefined && s !== null && s > 0);
     
+  if (speedData.length === 0) return null;
+  
+  // For very short durations (1-5 seconds), find the absolute peak speed
+  if (targetDurationSeconds <= 5) {
+    const maxSpeed = Math.max(...speedData);
+    const kmhSpeed = maxSpeed * 3.6;
+    const minPerKm = 60 / kmhSpeed;
+    return minPerKm;
+  }
+  
+  // For longer durations, need enough data points
   if (speedData.length < targetDurationSeconds) return null;
 
   let maxAvgSpeed = 0;
