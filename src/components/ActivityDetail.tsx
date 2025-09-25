@@ -261,7 +261,7 @@ export function ActivityDetail({ activity, onBack, onEdit, onDelete }: ActivityD
             <CardTitle>Route Map</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-80" />
+            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-96" />
           </CardContent>
         </Card>
       )}

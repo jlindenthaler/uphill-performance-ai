@@ -52,6 +52,11 @@ export function usePowerProfile(dateRangeDays?: number) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
         cutoffDate.setHours(0, 0, 0, 0); // Start of day for consistent filtering
+        console.log('Power profile date filter:', {
+          dateRangeDays,
+          cutoffDate: cutoffDate.toISOString(),
+          today: new Date().toISOString()
+        });
         query = query.gte('date_achieved', cutoffDate.toISOString());
       }
 
@@ -59,12 +64,16 @@ export function usePowerProfile(dateRangeDays?: number) {
 
       if (error) throw error;
 
+      console.log('Power profile raw data:', data?.length, 'records');
+      console.log('Date range days:', dateRangeDays);
+
       // Create separate maps for range-filtered and all-time records
       const allTimeProfileMap = new Map();
       const rangeFilteredProfileMap = new Map();
       const mostRecentMap = new Map(); // Track most recent for "current"
       
       const cutoffDate = dateRangeDays ? new Date(Date.now() - (dateRangeDays * 24 * 60 * 60 * 1000)) : null;
+      console.log('Cutoff date for processing:', cutoffDate?.toISOString());
 
       data?.forEach(record => {
         const duration = durations.find(d => d.seconds === record.duration_seconds);
@@ -106,8 +115,7 @@ export function usePowerProfile(dateRangeDays?: number) {
               current: value || 0,
               best: value || 0,
               date: record.date_achieved,
-              unit: isRunning ? 'min/km' : 'W',
-              rangeBest: value || 0 // Track range-specific best
+              unit: isRunning ? 'min/km' : 'W'
             });
           }
         }
@@ -124,8 +132,16 @@ export function usePowerProfile(dateRangeDays?: number) {
         
         // Current = most recent value, Best = best within range (or all-time if no range)
         const current = recentData?.current || 0;
-        const best = dateRangeDays ? (rangeData?.rangeBest || 0) : (allTimeData?.best || 0);
+        const best = dateRangeDays ? (rangeData?.best || 0) : (allTimeData?.best || 0);
         const allTimeBest = allTimeData?.best || 0;
+        
+        console.log(`Duration ${duration.label}:`, {
+          dateRangeDays,
+          rangeDataBest: rangeData?.best,
+          allTimeDataBest: allTimeData?.best,
+          finalBest: best,
+          current
+        });
         
         return {
           duration: duration.label,
@@ -134,7 +150,7 @@ export function usePowerProfile(dateRangeDays?: number) {
           allTimeBest, // Add all-time best for comparison
           date: (rangeData || allTimeData || recentData)?.date || new Date().toISOString(),
           unit: isRunning ? 'min/km' : 'W',
-          rangeBest: rangeData?.rangeBest || 0 // Specific range best
+          rangeBest: rangeData?.best || 0 // Specific range best
         };
       });
 

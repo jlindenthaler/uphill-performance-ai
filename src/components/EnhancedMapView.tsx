@@ -13,7 +13,7 @@ interface EnhancedMapViewProps {
   activity?: any;
 }
 
-export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }: EnhancedMapViewProps) {
+export function EnhancedMapView({ gpsData, className = "w-full h-96", activity }: EnhancedMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
@@ -277,12 +277,12 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   return (
     <div className={`${className} rounded-lg overflow-hidden border relative flex flex-col`}>
       {/* Map */}
-      <div ref={mapContainer} className="w-full flex-1 min-h-[300px]" />
+      <div ref={mapContainer} className="w-full flex-1 min-h-[250px]" />
       
       {/* Enhanced Elevation Chart */}
       {elevationData.length > 0 && (
-        <div className="w-full h-40 bg-muted/10 border-t p-3">
-          <div className="text-xs font-medium mb-2 text-muted-foreground flex justify-between">
+        <div className="w-full h-32 bg-muted/10 border-t p-2">
+          <div className="text-xs font-medium mb-1 text-muted-foreground flex justify-between">
             <span>Elevation Profile</span>
             <span>
               {Math.min(...elevationData.map(p => p.elevation)).toFixed(0)}m - {Math.max(...elevationData.map(p => p.elevation)).toFixed(0)}m
@@ -290,8 +290,8 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
           </div>
           <svg
             width="100%"
-            height="120"
-            viewBox="0 0 400 100"
+            height="100"
+            viewBox="0 0 400 80"
             className="w-full h-full cursor-crosshair"
           >
             {/* Grid lines */}
@@ -300,7 +300,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
                 <path d="M 40 0 L 0 0 0 20" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" opacity="0.3"/>
               </pattern>
             </defs>
-            <rect width="400" height="100" fill="url(#grid)" />
+            <rect width="400" height="80" fill="url(#grid)" />
             
             {/* Create elevation path */}
             {elevationData.length > 1 && (
@@ -310,7 +310,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
                   const minElev = Math.min(...elevationData.map(p => p.elevation));
                   const maxElev = Math.max(...elevationData.map(p => p.elevation));
                   const range = maxElev - minElev;
-                  const y = range > 0 ? 90 - ((point.elevation - minElev) / range) * 80 : 90;
+                  const y = range > 0 ? 70 - ((point.elevation - minElev) / range) * 60 : 70;
                   return `${x},${y}`;
                 }).join(' L ')}`}
                 stroke="hsl(var(--primary))"
@@ -329,14 +329,14 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
                   </linearGradient>
                 </defs>
                 <path
-                  d={`M 0,90 L ${elevationData.map((point, index) => {
+                  d={`M 0,70 L ${elevationData.map((point, index) => {
                     const x = (index / (elevationData.length - 1)) * 400;
                     const minElev = Math.min(...elevationData.map(p => p.elevation));
                     const maxElev = Math.max(...elevationData.map(p => p.elevation));
                     const range = maxElev - minElev;
-                    const y = range > 0 ? 90 - ((point.elevation - minElev) / range) * 80 : 90;
+                    const y = range > 0 ? 70 - ((point.elevation - minElev) / range) * 60 : 70;
                     return `${x},${y}`;
-                  }).join(' L ')} L 400,90 Z`}
+                  }).join(' L ')} L 400,70 Z`}
                   fill="url(#elevationGradient)"
                 />
               </>
@@ -349,8 +349,8 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
               const x = ratio * 400;
               return (
                 <g key={ratio}>
-                  <line x1={x} y1="90" x2={x} y2="95" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.6"/>
-                  <text x={x} y="98" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">
+                  <line x1={x} y1="70" x2={x} y2="75" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.6"/>
+                  <text x={x} y="78" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">
                     {distance.toFixed(1)}km
                   </text>
                 </g>

@@ -321,7 +321,8 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
               <CardContent>
                 <EnhancedMapView 
                   gpsData={activity.gps_data} 
-                  className="h-64 rounded-lg"
+                  activity={activity}
+                  className="h-80 rounded-lg"
                 />
               </CardContent>
             </Card>
