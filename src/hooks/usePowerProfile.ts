@@ -9,8 +9,6 @@ interface PowerProfileData {
   best: number;
   date: string;
   unit: string;
-  allTimeBest?: number;
-  rangeBest?: number;
 }
 
 export function usePowerProfile(dateRangeDays?: number) {
@@ -20,17 +18,10 @@ export function usePowerProfile(dateRangeDays?: number) {
   const [loading, setLoading] = useState(false);
 
   const durations = [
-    { seconds: 1, label: '1s' },
     { seconds: 5, label: '5s' },
-    { seconds: 10, label: '10s' },
-    { seconds: 15, label: '15s' },
-    { seconds: 30, label: '30s' },
     { seconds: 60, label: '1min' },
-    { seconds: 120, label: '2min' },
     { seconds: 300, label: '5min' },
-    { seconds: 600, label: '10min' },
     { seconds: 1200, label: '20min' },
-    { seconds: 1800, label: '30min' },
     { seconds: 3600, label: '60min' }
   ];
 
@@ -47,16 +38,10 @@ export function usePowerProfile(dateRangeDays?: number) {
         .in('duration_seconds', durations.map(d => d.seconds))
         .order('date_achieved', { ascending: false });
 
-      // Add date filter if dateRangeDays is provided - Fixed to properly filter by date range
-      if (dateRangeDays && dateRangeDays > 0) {
+      // Add date filter if dateRangeDays is provided
+      if (dateRangeDays) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
-        cutoffDate.setHours(0, 0, 0, 0); // Start of day for consistent filtering
-        console.log('Power profile date filter:', {
-          dateRangeDays,
-          cutoffDate: cutoffDate.toISOString(),
-          today: new Date().toISOString()
-        });
         query = query.gte('date_achieved', cutoffDate.toISOString());
       }
 
@@ -64,93 +49,35 @@ export function usePowerProfile(dateRangeDays?: number) {
 
       if (error) throw error;
 
-      console.log('Power profile raw data:', data?.length, 'records');
-      console.log('Date range days:', dateRangeDays);
-
-      // Create separate maps for range-filtered and all-time records
-      const allTimeProfileMap = new Map();
-      const rangeFilteredProfileMap = new Map();
-      const mostRecentMap = new Map(); // Track most recent for "current"
-      
-      const cutoffDate = dateRangeDays ? new Date(Date.now() - (dateRangeDays * 24 * 60 * 60 * 1000)) : null;
-      console.log('Cutoff date for processing:', cutoffDate?.toISOString());
-
+      // Group by duration and get best values
+      const profileMap = new Map();
       data?.forEach(record => {
         const duration = durations.find(d => d.seconds === record.duration_seconds);
         if (!duration) return;
 
-        const recordDate = new Date(record.date_achieved);
+        const existing = profileMap.get(duration.seconds);
         const value = isRunning ? record.pace_per_km : record.power_watts;
         
-        // All-time best processing
-        const existing = allTimeProfileMap.get(duration.seconds);
         if (!existing || (isRunning ? value < existing.best : value > existing.best)) {
-          allTimeProfileMap.set(duration.seconds, {
+          profileMap.set(duration.seconds, {
             duration: duration.label,
             current: value || 0,
             best: value || 0,
             date: record.date_achieved,
             unit: isRunning ? 'min/km' : 'W'
           });
-        }
-
-        // Most recent processing (for current values)
-        const recentExisting = mostRecentMap.get(duration.seconds);
-        if (!recentExisting || new Date(record.date_achieved) > new Date(recentExisting.date)) {
-          mostRecentMap.set(duration.seconds, {
-            duration: duration.label,
-            current: value || 0,
-            best: value || 0,
-            date: record.date_achieved,
-            unit: isRunning ? 'min/km' : 'W'
-          });
-        }
-
-        // Range-filtered processing if within date range
-        if (!cutoffDate || recordDate >= cutoffDate) {
-          const rangeExisting = rangeFilteredProfileMap.get(duration.seconds);
-          if (!rangeExisting || (isRunning ? value < rangeExisting.best : value > rangeExisting.best)) {
-            rangeFilteredProfileMap.set(duration.seconds, {
-              duration: duration.label,
-              current: value || 0,
-              best: value || 0,
-              date: record.date_achieved,
-              unit: isRunning ? 'min/km' : 'W'
-            });
-          }
         }
       });
 
-      // Combine data: use range-filtered best when available, otherwise all-time best
-      const activeMap = dateRangeDays ? rangeFilteredProfileMap : allTimeProfileMap;
-      
-      // Fill in missing durations with proper current/best separation
+      // Fill in missing durations with placeholder data
       const profile = durations.map(duration => {
-        const allTimeData = allTimeProfileMap.get(duration.seconds);
-        const rangeData = rangeFilteredProfileMap.get(duration.seconds);
-        const recentData = mostRecentMap.get(duration.seconds);
-        
-        // Current = most recent value, Best = best within range (or all-time if no range)
-        const current = recentData?.current || 0;
-        const best = dateRangeDays ? (rangeData?.best || 0) : (allTimeData?.best || 0);
-        const allTimeBest = allTimeData?.best || 0;
-        
-        console.log(`Duration ${duration.label}:`, {
-          dateRangeDays,
-          rangeDataBest: rangeData?.best,
-          allTimeDataBest: allTimeData?.best,
-          finalBest: best,
-          current
-        });
-        
-        return {
+        const existing = profileMap.get(duration.seconds);
+        return existing || {
           duration: duration.label,
-          current,
-          best,
-          allTimeBest, // Add all-time best for comparison
-          date: (rangeData || allTimeData || recentData)?.date || new Date().toISOString(),
-          unit: isRunning ? 'min/km' : 'W',
-          rangeBest: rangeData?.best || 0 // Specific range best
+          current: 0,
+          best: 0,
+          date: new Date().toISOString(),
+          unit: isRunning ? 'min/km' : 'W'
         };
       });
 

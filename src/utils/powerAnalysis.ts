@@ -16,14 +16,6 @@ export function calculateMeanMaximalPower(records: any[], targetDurationSeconds:
     .map(r => unwrapValue(r.power))
     .filter(p => p !== undefined && p !== null && p > 0);
     
-  if (powerData.length === 0) return null;
-  
-  // For 1 second, find the absolute peak
-  if (targetDurationSeconds === 1) {
-    return Math.max(...powerData);
-  }
-  
-  // For longer durations, need enough data points
   if (powerData.length < targetDurationSeconds) return null;
 
   let maxAvgPower = 0;
@@ -46,17 +38,6 @@ export function calculateMeanMaximalPace(records: any[], targetDurationSeconds: 
     .map(r => unwrapValue(r.speed))
     .filter(s => s !== undefined && s !== null && s > 0);
     
-  if (speedData.length === 0) return null;
-  
-  // For 1 second, find the absolute peak speed
-  if (targetDurationSeconds === 1) {
-    const maxSpeed = Math.max(...speedData);
-    const kmhSpeed = maxSpeed * 3.6;
-    const minPerKm = 60 / kmhSpeed;
-    return minPerKm;
-  }
-  
-  // For longer durations, need enough data points
   if (speedData.length < targetDurationSeconds) return null;
 
   let maxAvgSpeed = 0;
@@ -83,17 +64,10 @@ export function extractPowerProfileFromActivity(gpsData: any, sportMode: string)
 
   const records = gpsData.trackPoints;
   const durations = [
-    { seconds: 1, label: '1s' },
     { seconds: 5, label: '5s' },
-    { seconds: 10, label: '10s' },
-    { seconds: 15, label: '15s' },
-    { seconds: 30, label: '30s' },
     { seconds: 60, label: '1min' },
-    { seconds: 120, label: '2min' },
     { seconds: 300, label: '5min' },
-    { seconds: 600, label: '10min' },
     { seconds: 1200, label: '20min' },
-    { seconds: 1800, label: '30min' },
     { seconds: 3600, label: '60min' }
   ];
 

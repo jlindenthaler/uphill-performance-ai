@@ -41,7 +41,7 @@ function calculateTSB(ctl: number, atl: number): number {
 }
 
 /**
- * Calculate PMC metrics for a series of training data with proper daily decay
+ * Calculate PMC metrics for a series of training data
  */
 export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
   if (trainingData.length === 0) return [];
@@ -49,14 +49,11 @@ export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
   // Sort by date to ensure chronological order
   const sortedData = [...trainingData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  // Fill gaps in data to ensure daily calculations for proper decay
-  const filledData = fillMissingDays(sortedData);
-
   const pmcData: PMCData[] = [];
   let previousCTL = 0;
   let previousATL = 0;
 
-  for (const training of filledData) {
+  for (const training of sortedData) {
     const ctl = calculateCTL(previousCTL, training.tss);
     const atl = calculateATL(previousATL, training.tss);
     const tsb = calculateTSB(ctl, atl);
@@ -79,62 +76,11 @@ export function calculatePMCMetrics(trainingData: TrainingData[]): PMCData[] {
 }
 
 /**
- * Fill missing days between training activities with zero TSS to ensure proper PMC decay
- */
-function fillMissingDays(trainingData: TrainingData[]): TrainingData[] {
-  if (trainingData.length === 0) return [];
-
-  const result: TrainingData[] = [];
-  const startDate = new Date(trainingData[0].date);
-  const endDate = new Date(trainingData[trainingData.length - 1].date);
-
-  // Extend to today if the last activity is not today
-  const today = new Date();
-  if (endDate < today) {
-    endDate.setTime(today.getTime());
-  }
-
-  let currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const dateString = currentDate.toISOString().split('T')[0];
-    
-    // Find if there's training data for this date
-    const existingData = trainingData.find(data => data.date === dateString);
-    
-    if (existingData) {
-      result.push(existingData);
-    } else {
-      // Add zero TSS day for proper decay calculation
-      result.push({
-        date: dateString,
-        tss: 0,
-        duration_minutes: 0,
-        sport: trainingData[0].sport // Use the sport from the first activity
-      });
-    }
-    
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return result;
-}
-
-/**
  * Populate training_history table with PMC calculations from activities
  */
 export async function populateTrainingHistory(userId: string): Promise<void> {
   try {
     console.log('Populating training history for user:', userId);
-
-    // Clear existing training history to ensure clean calculation
-    const { error: deleteError } = await supabase
-      .from('training_history')
-      .delete()
-      .eq('user_id', userId);
-
-    if (deleteError) throw deleteError;
-    console.log('Cleared existing training history');
 
     // Fetch all activities for the user
     const { data: activities, error: activitiesError } = await supabase
@@ -150,84 +96,44 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       return;
     }
 
-    // Convert activities to training data format and aggregate by date/sport
-    const activityMap = new Map<string, { tss: number; duration_minutes: number; sport: string }>();
-    
-    activities.forEach(activity => {
-      // Convert timestamp to date-only format
-      const dateOnly = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateOnly}_${activity.sport_mode}`;
-      
-      const existing = activityMap.get(key);
-      if (existing) {
-        // Aggregate TSS and duration for multiple activities on same day
-        existing.tss += activity.tss || 0;
-        existing.duration_minutes += Math.round(activity.duration_seconds / 60);
-      } else {
-        activityMap.set(key, {
-          tss: activity.tss || 0,
-          duration_minutes: Math.round(activity.duration_seconds / 60),
-          sport: activity.sport_mode
-        });
-      }
-    });
-    
-    // Convert map to training data array
-    const trainingData: TrainingData[] = Array.from(activityMap.entries()).map(([key, data]) => {
-      const [date, sport] = key.split('_');
-      return {
-        date,
-        tss: data.tss,
-        duration_minutes: data.duration_minutes,
-        sport
-      };
-    });
+    // Convert activities to training data format
+    const trainingData: TrainingData[] = activities.map(activity => ({
+      date: activity.date,
+      tss: activity.tss || 0,
+      duration_minutes: Math.round(activity.duration_seconds / 60),
+      sport: activity.sport_mode
+    }));
 
-    // Group by sport for separate PMC calculations
-    const sportGroups = new Map<string, TrainingData[]>();
-    
-    Array.from(activityMap.entries()).forEach(([key, data]) => {
-      const [date, sport] = key.split('_');
-      if (!sportGroups.has(sport)) {
-        sportGroups.set(sport, []);
-      }
-      sportGroups.get(sport)!.push({
-        date,
-        tss: data.tss,
-        duration_minutes: data.duration_minutes,
-        sport
-      });
-    });
+    // Calculate PMC metrics
+    const pmcData = calculatePMCMetrics(trainingData);
 
-    // Calculate PMC metrics for each sport separately
-    const allPmcData: any[] = [];
-    
-    for (const [sport, trainingData] of sportGroups) {
-      const pmcData = calculatePMCMetrics(trainingData);
-      allPmcData.push(...pmcData.map(data => ({
-        user_id: userId,
-        date: data.date,
-        tss: data.tss,
-        ctl: data.ctl,
-        atl: data.atl,
-        tsb: data.tsb,
-        duration_minutes: data.duration_minutes,
-        sport: data.sport
-      })));
-    }
+    // Clear existing training history for this user
+    const { error: deleteError } = await supabase
+      .from('training_history')
+      .delete()
+      .eq('user_id', userId);
 
-    // Upsert PMC data to handle existing records
-    if (allPmcData.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('training_history')
-        .upsert(allPmcData, {
-          onConflict: 'user_id,date,sport'
-        });
+    if (deleteError) throw deleteError;
 
-      if (upsertError) throw upsertError;
-    }
+    // Insert new PMC data
+    const insertData = pmcData.map(data => ({
+      user_id: userId,
+      date: data.date,
+      tss: data.tss,
+      ctl: data.ctl,
+      atl: data.atl,
+      tsb: data.tsb,
+      duration_minutes: data.duration_minutes,
+      sport: data.sport
+    }));
 
-    console.log(`Successfully populated ${allPmcData.length} training history records across ${sportGroups.size} sports`);
+    const { error: insertError } = await supabase
+      .from('training_history')
+      .insert(insertData);
+
+    if (insertError) throw insertError;
+
+    console.log(`Successfully populated ${pmcData.length} training history records`);
   } catch (error) {
     console.error('Error populating training history:', error);
     throw error;
@@ -251,38 +157,13 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
 
     if (!activities || activities.length === 0) return;
 
-    // Convert to training data format and aggregate by date/sport
-    const activityMap = new Map<string, { tss: number; duration_minutes: number; sport: string }>();
-    
-    activities.forEach(activity => {
-      // Convert timestamp to date-only format
-      const dateOnly = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateOnly}_${activity.sport_mode}`;
-      
-      const existing = activityMap.get(key);
-      if (existing) {
-        // Aggregate TSS and duration for multiple activities on same day
-        existing.tss += activity.tss || 0;
-        existing.duration_minutes += Math.round(activity.duration_seconds / 60);
-      } else {
-        activityMap.set(key, {
-          tss: activity.tss || 0,
-          duration_minutes: Math.round(activity.duration_seconds / 60),
-          sport: activity.sport_mode
-        });
-      }
-    });
-    
-    // Convert map to training data array
-    const trainingData: TrainingData[] = Array.from(activityMap.entries()).map(([key, data]) => {
-      const [date, sport] = key.split('_');
-      return {
-        date,
-        tss: data.tss,
-        duration_minutes: data.duration_minutes,
-        sport
-      };
-    });
+    // Convert to training data format
+    const trainingData: TrainingData[] = activities.map(activity => ({
+      date: activity.date,
+      tss: activity.tss || 0,
+      duration_minutes: Math.round(activity.duration_seconds / 60),
+      sport: activity.sport_mode
+    }));
 
     // Calculate PMC metrics from the beginning
     const pmcData = calculatePMCMetrics(trainingData);

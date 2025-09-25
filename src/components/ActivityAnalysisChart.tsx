@@ -21,91 +21,28 @@ export function ActivityAnalysisChart({
   } = useSportMode();
   const isRunning = sportMode === 'running';
 
-  // Validate required data
-  if (!activity?.gps_data?.trackPoints?.length) {
-    console.log('ActivityAnalysisChart - No trackPoints available:', {
-      hasActivity: !!activity,
-      hasGpsData: !!activity?.gps_data,
-      trackPointsLength: activity?.gps_data?.trackPoints?.length
-    });
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Timeline</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No GPS data available for this activity</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!activity) {
-    console.log('ActivityAnalysisChart - No activity provided');
-    return <Card>
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No activity selected for analysis</p>
-        </CardContent>
-      </Card>;
-  }
-
-  // Calculate activity duration for intelligent X-axis intervals
-  const activityDuration = useMemo(() => {
-    if (!activity?.gps_data?.trackPoints?.length) {
-      return 0;
-    }
-    const trackPoints = activity.gps_data.trackPoints;
-    
-    const firstTimestamp = trackPoints[0]?.timestamp;
-    const lastTimestamp = trackPoints[trackPoints.length - 1]?.timestamp;
-    
-    if (!firstTimestamp || !lastTimestamp) {
-      return 0;
-    }
-    
-    const startTime = new Date(firstTimestamp).getTime();
-    const endTime = new Date(lastTimestamp).getTime();
-    
-    const duration = (endTime - startTime) / 1000;
-    return duration;
-  }, [activity]);
-
-  // Determine optimal X-axis interval based on activity duration
-  const xAxisInterval = useMemo(() => {
-    const durationMinutes = activityDuration / 60;
-    if (durationMinutes < 30) return 5 * 60; // 5-minute intervals
-    if (durationMinutes < 120) return 10 * 60; // 10-minute intervals  
-    if (durationMinutes < 240) return 15 * 60; // 15-minute intervals
-    return 20 * 60; // 20-minute intervals for activities > 4hrs
-  }, [activityDuration]);
-
-  // Use real activity trackPoints data for timeline with intelligent sampling
+  // Use real activity trackPoints data for timeline
   const timelineData = useMemo(() => {
-    if (!activity?.gps_data?.trackPoints) {
-      return [];
-    }
+    if (!activity?.gps_data?.trackPoints) return [];
     const trackPoints = activity.gps_data.trackPoints;
-    if (!trackPoints.length) {
-      return [];
-    }
-    
     const startTime = trackPoints[0]?.timestamp;
     let cumulativeDistance = 0;
-    let cumulativeRecordingTime = 0;
+    let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
 
-    // Process all data points first
-    const allDataPoints = trackPoints.map((point: any, index: number) => {
+    return trackPoints.map((point: any, index: number) => {
       let timeElapsed;
       if (index === 0) {
         timeElapsed = 0;
       } else {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? 
-          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
 
+        // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
+        // Larger gaps indicate pauses and should create natural breaks in the timeline
         if (timeInterval <= 10) {
           cumulativeRecordingTime += timeInterval;
         } else {
+          // For large gaps, create a null data point to break the line
           cumulativeRecordingTime += timeInterval;
         }
         timeElapsed = cumulativeRecordingTime;
@@ -114,27 +51,27 @@ export function ActivityAnalysisChart({
       // Calculate cumulative distance by integrating speed over time
       if (index > 0 && point.speed) {
         const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? 
-          (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+
+        // Use speed (m/s) * time (s) = distance (m)
         const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
         cumulativeDistance += avgSpeed * timeInterval;
       }
-
       const hours = Math.floor(timeElapsed / 3600);
       const minutes = Math.floor(timeElapsed % 3600 / 60);
       const seconds = Math.floor(timeElapsed % 60);
-      const timeFormatted = hours > 0 ? 
-        `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : 
-        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
       const distanceKm = cumulativeDistance / 1000;
       const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
 
+      // Convert speed from m/s to km/h if needed
       const speedKmh = point.speed ? point.speed * 3.6 : 0;
+
+      // Handle power balance (convert to percentage if available)
       const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
       const totalPower = point.power || 0;
       const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
-
-      const processedPoint = {
+      return {
         time: timeFormatted,
         distance: distanceFormatted,
         xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
@@ -143,7 +80,9 @@ export function ActivityAnalysisChart({
         cadence: point.cadence || 0,
         heartRate: point.heartRate || 0,
         wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
+        // Left power
         wr: rPower,
+        // Right power
         speed: Math.round(speedKmh * 10) / 10,
         temp: point.temperature || 20,
         elevation: Math.round((point.altitude || 0) * 10) / 10,
@@ -151,108 +90,13 @@ export function ActivityAnalysisChart({
         balance: leftRightBalance,
         rPower: rPower
       };
-
-      if (index < 5) {
-        console.log(`ActivityAnalysisChart - Processed point ${index}:`, processedPoint);
-      }
-
-      return processedPoint;
     });
-
-    console.log('ActivityAnalysisChart - Processed data points:', allDataPoints.length);
-
-    // Smart sampling for performance - keep every Nth point based on data density
-    if (allDataPoints.length > 1000) {
-      const sampleRate = Math.ceil(allDataPoints.length / 1000);
-      const sampledPoints = [];
-      
-      // Always keep first and last points
-      sampledPoints.push(allDataPoints[0]);
-      
-      // Sample intermediate points at regular intervals
-      for (let i = sampleRate; i < allDataPoints.length - 1; i += sampleRate) {
-        sampledPoints.push(allDataPoints[i]);
-      }
-      
-      // Always keep last point
-      if (allDataPoints.length > 1) {
-        sampledPoints.push(allDataPoints[allDataPoints.length - 1]);
-      }
-      
-      console.log('ActivityAnalysisChart - Applied sampling, final points:', sampledPoints.length);
-      return sampledPoints;
-    }
-
-    console.log('ActivityAnalysisChart - No sampling needed, final points:', allDataPoints.length);
-    return allDataPoints;
   }, [activity, xAxisMode]);
 
-  // Check data availability for each metric
-  const dataAvailability = useMemo(() => {
-    return {
-      cadence: timelineData.some(point => point.cadence > 0),
-      heartRate: timelineData.some(point => point.heartRate > 0),
-      power: timelineData.some(point => point.power > 0),
-      speed: timelineData.some(point => point.speed > 0),
-      temperature: timelineData.some(point => point.temp !== 20), // 20 is default fallback
-      elevation: timelineData.some(point => point.elevation > 0),
-      rPower: timelineData.some(point => point.rPower > 0)
-    };
+  // Check if there's any R power data in the activity
+  const hasRPowerData = useMemo(() => {
+    return timelineData.some(point => point.rPower > 0);
   }, [timelineData]);
-
-  // Auto-scale Y-axes based on visible metrics and data
-  const yAxisScales = useMemo(() => {
-    const leftMetrics = ['cadence', 'speed', 'wl'].filter(m => visibleMetrics.includes(m));
-    const rightMetrics = ['hr', 'elevation'].filter(m => visibleMetrics.includes(m));
-    
-    let leftMin = Infinity, leftMax = -Infinity;
-    let rightMin = Infinity, rightMax = -Infinity;
-    
-    timelineData.forEach(point => {
-      if (leftMetrics.includes('cadence') && point.cadence > 0) {
-        leftMin = Math.min(leftMin, point.cadence);
-        leftMax = Math.max(leftMax, point.cadence);
-      }
-      if (leftMetrics.includes('speed') && point.speed > 0) {
-        leftMin = Math.min(leftMin, point.speed);
-        leftMax = Math.max(leftMax, point.speed);
-      }
-      if (leftMetrics.includes('wl') && point.power > 0) {
-        leftMin = Math.min(leftMin, point.power);
-        leftMax = Math.max(leftMax, point.power);
-      }
-      if (rightMetrics.includes('hr') && point.heartRate > 0) {
-        rightMin = Math.min(rightMin, point.heartRate);
-        rightMax = Math.max(rightMax, point.heartRate);
-      }
-      if (rightMetrics.includes('elevation')) {
-        rightMin = Math.min(rightMin, point.elevation);
-        rightMax = Math.max(rightMax, point.elevation);
-      }
-    });
-    
-    return {
-      left: leftMin === Infinity ? undefined : { min: leftMin * 0.95, max: leftMax * 1.05 },
-      right: rightMin === Infinity ? undefined : { min: rightMin * 0.95, max: rightMax * 1.05 }
-    };
-  }, [timelineData, visibleMetrics]);
-
-  // Generate X-axis ticks based on intelligent intervals
-  const xAxisTicks = useMemo(() => {
-    if (!timelineData.length) return [];
-    
-    const ticks = [];
-    const totalDuration = timelineData[timelineData.length - 1].timeSeconds;
-    
-    for (let t = 0; t <= totalDuration; t += xAxisInterval) {
-      const dataPoint = timelineData.find(point => Math.abs(point.timeSeconds - t) < xAxisInterval / 2);
-      if (dataPoint) {
-        ticks.push(xAxisMode === 'time' ? dataPoint.time : dataPoint.distance);
-      }
-    }
-    
-    return ticks;
-  }, [timelineData, xAxisInterval, xAxisMode]);
 
   // Generate peak power curve data
   const peakPowerData = useMemo(() => {
@@ -371,7 +215,13 @@ export function ActivityAnalysisChart({
     }
     return null;
   };
-  
+  if (!activity) {
+    return <Card>
+        <CardContent className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">No activity selected for analysis</p>
+        </CardContent>
+      </Card>;
+  }
   return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -421,52 +271,25 @@ export function ActivityAnalysisChart({
         <CardContent>
           <div className="mb-4">
             <ToggleGroup type="multiple" value={visibleMetrics} onValueChange={setVisibleMetrics} className="flex gap-1 flex-wrap">
-              <ToggleGroupItem 
-                value="cadence" 
-                disabled={!dataAvailability.cadence}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                RPM {!dataAvailability.cadence && "⚠"}
+              <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
+                RPM
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="hr" 
-                disabled={!dataAvailability.heartRate}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                BPM {!dataAvailability.heartRate && "⚠"}
+              <ToggleGroupItem value="hr" className="text-xs px-3 py-1.5 h-7 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 data-[state=on]:bg-destructive data-[state=on]:text-white shadow-sm transition-all">
+                BPM
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="wl" 
-                disabled={!dataAvailability.power}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Power {!dataAvailability.power && "⚠"}
+              <ToggleGroupItem value="wl" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-3/10 text-zone-3 border border-zone-3/20 hover:bg-zone-3/20 data-[state=on]:bg-zone-3 data-[state=on]:text-white shadow-sm transition-all">
+                Power
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="speed" 
-                disabled={!dataAvailability.speed}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Speed {!dataAvailability.speed && "⚠"}
+              <ToggleGroupItem value="speed" className="text-xs px-3 py-1.5 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 data-[state=on]:bg-primary data-[state=on]:text-white shadow-sm transition-all">
+                Speed
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="temp" 
-                disabled={!dataAvailability.temperature}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Temp {!dataAvailability.temperature && "⚠"}
+              <ToggleGroupItem value="temp" className="text-xs px-3 py-1.5 h-7 rounded-full bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 data-[state=on]:bg-accent data-[state=on]:text-white shadow-sm transition-all">
+                C
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="elevation" 
-                disabled={!dataAvailability.elevation}
-                className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Elev {!dataAvailability.elevation && "⚠"}
+              <ToggleGroupItem value="elevation" className="text-xs px-3 py-1.5 h-7 rounded-full bg-muted/10 text-muted-foreground border border-muted/20 hover:bg-muted/20 data-[state=on]:bg-muted data-[state=on]:text-white shadow-sm transition-all">
+                Elev
               </ToggleGroupItem>
             </ToggleGroup>
-            <div className="text-xs text-muted-foreground mt-2">
-              Interval: {xAxisInterval / 60}min • Points: {timelineData.length} • Duration: {Math.round(activityDuration / 60)}min
-            </div>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -477,24 +300,18 @@ export function ActivityAnalysisChart({
               left: 20
             }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="xValue" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  ticks={xAxisTicks}
-                  interval={0}
-                />
-                <YAxis 
-                  yAxisId="power" 
-                  orientation="left" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  domain={yAxisScales.left ? [yAxisScales.left.min, yAxisScales.left.max] : ['auto', 'auto']}
-                />
-                <YAxis 
-                  yAxisId="hr" 
-                  orientation="right" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  domain={yAxisScales.right ? [yAxisScales.right.min, yAxisScales.right.max] : ['auto', 'auto']}
-                />
+                <XAxis dataKey="xValue" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} interval="preserveStartEnd" />
+                <YAxis yAxisId="power" orientation="left" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
+                <YAxis yAxisId="hr" orientation="right" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} />
                 <Tooltip content={<TimelineTooltip />} />
                 
                 {/* Conditionally render Total Power */}

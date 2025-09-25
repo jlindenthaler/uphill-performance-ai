@@ -169,7 +169,7 @@ export function AnalysisDashboard() {
             <CardHeader>
               <CardTitle>Performance Readiness Chart</CardTitle>
               <CardDescription>
-                LTL (blue), STL (pink), and FI (yellow) over time
+                LTL (blue), STL (red), and FI (yellow) over time
                 {combinedSports && " - Combined across all sports"}
               </CardDescription>
             </CardHeader>
@@ -399,77 +399,54 @@ export function AnalysisDashboard() {
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={filteredTrainingHistory.slice(-90).map((entry, index) => {
-                      const now = new Date();
-                      const entryDate = new Date();
-                      entryDate.setDate(now.getDate() - (90 - index));
-                      
-                      // Use lab results if available, otherwise use power profile and estimated values
-                      const aetValue = isRunning 
-                        ? entry.tss > 0 ? 4.8 - (index * 0.002) // Improving pace trend
-                        : 0
-                        : entry.tss > 0 ? 220 + (index * 0.3) // Improving power trend
-                        : 0;
-                      
-                      const gtValue = isRunning
-                        ? entry.tss > 0 ? 4.2 - (index * 0.002) // Improving pace trend
-                        : 0
-                        : entry.tss > 0 ? 280 + (index * 0.4) // Improving power trend
-                        : 0;
-                      
-                      const mapValue = isRunning
-                        ? entry.tss > 0 ? 3.5 - (index * 0.002) // Improving pace trend
-                        : 0
-                        : entry.tss > 0 ? 320 + (index * 0.5) // Improving power trend
-                        : 0;
-                      
-                      return {
-                        date: entryDate.toISOString().split('T')[0],
-                        aet: aetValue,
-                        gt: gtValue,
-                        map: mapValue
-                      };
-                    })}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'MMM')}
-                      />
-                      <YAxis />
-                      <Tooltip 
-                        labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
-                        formatter={(value, name) => [
-                          `${Number(value).toFixed(1)}${isRunning ? ' min/km' : 'W'}`, 
-                          name === 'aet' ? 'AeT (VT1/LT1)' : name === 'gt' ? 'GT (VT2/LT2/FTP)' : 'MAP (5min Power)'
-                        ]}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="aet" 
-                        stroke="hsl(var(--zone-2))" 
-                        strokeWidth={3}
-                        dot={{ fill: 'hsl(var(--zone-2))', strokeWidth: 2, r: 4 }}
-                        name="AeT"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="gt" 
-                        stroke="hsl(var(--zone-3))" 
-                        strokeWidth={3}
-                        dot={{ fill: 'hsl(var(--zone-3))', strokeWidth: 2, r: 4 }}
-                        name="GT"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="map" 
-                        stroke="hsl(var(--zone-4))" 
-                        strokeWidth={3}
-                        dot={{ fill: 'hsl(var(--zone-4))', strokeWidth: 2, r: 4 }}
-                        name="MAP"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={[
+                    { date: '2024-01-01', aet: isRunning ? 4.8 : 220, gt: isRunning ? 4.2 : 280, map: isRunning ? 3.5 : 320 },
+                    { date: '2024-02-01', aet: isRunning ? 4.7 : 225, gt: isRunning ? 4.1 : 285, map: isRunning ? 3.4 : 325 },
+                    { date: '2024-03-01', aet: isRunning ? 4.6 : 230, gt: isRunning ? 4.0 : 290, map: isRunning ? 3.3 : 330 },
+                    { date: '2024-04-01', aet: isRunning ? 4.5 : 235, gt: isRunning ? 3.9 : 295, map: isRunning ? 3.2 : 335 },
+                    { date: '2024-05-01', aet: isRunning ? 4.4 : 240, gt: isRunning ? 3.8 : 300, map: isRunning ? 3.1 : 340 },
+                    { date: '2024-06-01', aet: isRunning ? 4.3 : 245, gt: isRunning ? 3.7 : 305, map: isRunning ? 3.0 : 345 },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={(value) => formatDateInUserTimezone(value, timezone, 'MMM')}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
+                      formatter={(value, name) => [
+                        `${value}${isRunning ? ' min/km' : 'W'}`, 
+                        name === 'aet' ? 'AeT' : name === 'gt' ? 'GT' : 'MAP'
+                      ]}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="aet" 
+                      stroke="hsl(var(--zone-2))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-2))', strokeWidth: 2, r: 4 }}
+                      name="AeT"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="gt" 
+                      stroke="hsl(var(--zone-3))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-3))', strokeWidth: 2, r: 4 }}
+                      name="GT"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="map" 
+                      stroke="hsl(var(--zone-4))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--zone-4))', strokeWidth: 2, r: 4 }}
+                      name="MAP"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -535,7 +512,7 @@ export function AnalysisDashboard() {
 
           <Card className="card-gradient">
             <CardHeader>
-              <CardTitle>Training Load Index Trends</CardTitle>
+              <CardTitle>Training Stress Score Trends</CardTitle>
               <CardDescription>Daily TLI over the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>

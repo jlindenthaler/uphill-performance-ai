@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
 import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
 interface EnhancedPowerProfileChartProps {
   activity?: any;
@@ -23,15 +22,11 @@ export function EnhancedPowerProfileChart({
   } = useSportMode();
   const isRunning = sportMode === 'running';
   const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) {
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = seconds % 60;
-      return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
-    }
+    if (seconds < 60) return `${(seconds / 60).toFixed(2)}m`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor(seconds % 3600 / 60);
-    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   };
   const formatValue = (value: number) => {
     if (isRunning) {
@@ -42,72 +37,77 @@ export function EnhancedPowerProfileChart({
     return `${Math.round(value)}W`;
   };
 
-  // Calculate real activity mean max power from cached data or GPS data
+  // Calculate activity mean max power (mock implementation for now)
   const calculateActivityMeanMax = () => {
-    // First try to use cached power curve data if available
-    if (activity?.power_curve_cache) {
-      console.log('Using cached power curve data for performance');
-      const cache = activity.power_curve_cache;
-      return Object.entries(cache).map(([durationStr, data]: [string, any]) => {
-        const durationSeconds = parseInt(durationStr);
-        return {
-          duration: formatDuration(durationSeconds),
-          durationSeconds,
-          activityMeanMax: data.value
-        };
-      });
-    }
+    if (!activity) return [];
+    const durations = [1, 5, 10, 20, 60, 300, 600, 1200, 3600];
+    return durations.map(duration => {
+      const durationLabel = formatDuration(duration);
 
-    // Fallback to real-time calculation if no cache available
-    if (!activity || !activity.gps_data?.trackPoints) return [];
-    console.log('Calculating power curve in real-time (no cache available)');
-
-    // Dynamic durations based on activity duration
-    const records = activity.gps_data.trackPoints;
-    const activityDurationSeconds = records.length; // Assuming 1 record per second
-
-    // Standard durations, but extend to activity duration if longer
-    let durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-
-    // Add activity duration if it's longer than our max duration and significant
-    if (activityDurationSeconds > 3600 && activityDurationSeconds < 7200) {
-      durations.push(activityDurationSeconds);
-    }
-    const results = [];
-    for (const duration of durations) {
-      // Skip if duration is longer than the activity
-      if (duration > activityDurationSeconds) continue;
+      // Calculate mean max power/pace based on activity data
       let value = 0;
-      if (isRunning) {
-        const meanMaxPace = calculateMeanMaximalPace(records, duration);
-        value = meanMaxPace || 0;
-      } else {
-        const meanMaxPower = calculateMeanMaximalPower(records, duration);
-        value = meanMaxPower || 0;
+      if (isRunning && activity.avg_pace_per_km) {
+        // For running, estimate pace at different durations
+        const basePace = activity.avg_pace_per_km;
+        // Shorter durations = faster pace (lower time per km)
+        const factor = duration <= 20 ? 0.85 : duration <= 300 ? 0.9 : duration <= 1200 ? 1.0 : 1.1;
+        value = basePace * factor;
+      } else if (!isRunning && activity.avg_power) {
+        // For cycling, estimate power at different durations using power curve
+        const basePower = activity.avg_power;
+        let factor = 1.0;
+
+        // Power curve approximation - shorter durations have higher power
+        if (duration <= 10) factor = 1.8; // Neuromuscular power
+        else if (duration <= 60) factor = 1.5; // VO2max power
+        else if (duration <= 300) factor = 1.2; // 5min power
+        else if (duration <= 1200) factor = 1.0; // Threshold power
+        else factor = 0.85; // Endurance power
+
+        // Use max power if available for very short durations
+        if (duration <= 20 && activity.max_power) {
+          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
+        } else {
+          value = basePower * factor;
+        }
       }
-      if (value > 0) {
-        results.push({
-          duration: formatDuration(duration),
-          durationSeconds: duration,
-          activityMeanMax: value
-        });
-      }
-    }
-    return results;
+      return {
+        duration: durationLabel,
+        activityMeanMax: value
+      };
+    });
   };
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
 
-  // Get activity best power for key durations from real mean max data
+  // Calculate activity best power for specific durations
   const calculateActivityBestPowers = () => {
-    if (!activityMeanMax.length) return [];
-    const keyDurations = [1, 5, 60, 300, 1200, 3600]; // 1s, 5s, 1min, 5min, 20min, 60min
-    const keyLabels = ['1s', '5s', '1min', '5min', '20min', '60min'];
-    return keyDurations.map((duration, index) => {
-      const meanMaxItem = activityMeanMax.find(item => item.durationSeconds === duration);
+    if (!activity) return [];
+    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
+    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
+    return targetDurations.map((duration, index) => {
+      let value = 0;
+      if (!isRunning && activity.avg_power) {
+        const basePower = activity.avg_power;
+        let factor = 1.0;
+
+        // Power curve approximation - shorter durations have higher power
+        if (duration <= 10) factor = 1.8; // Neuromuscular power
+        else if (duration <= 60) factor = 1.5; // VO2max power
+        else if (duration <= 300) factor = 1.2; // 5min power
+        else if (duration <= 1200) factor = 1.0; // Threshold power
+        else factor = 0.85; // Endurance power
+
+        // Use max power if available for very short durations
+        if (duration <= 20 && activity.max_power) {
+          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
+        } else {
+          value = basePower * factor;
+        }
+      }
       return {
-        duration: keyLabels[index],
+        duration: targetLabels[index],
         durationSeconds: duration,
-        value: meanMaxItem?.activityMeanMax || 0
+        value: Math.round(value)
       };
     });
   };
@@ -116,26 +116,18 @@ export function EnhancedPowerProfileChart({
   // Use the already filtered power profile from the hook
   const filteredPowerProfile = powerProfile;
   const chartData = useMemo(() => {
-    // Get all unique durations from both activity and profile data
-    const activityDurations = activityMeanMax.map(item => item.durationSeconds);
-    const profileDurations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-
-    // Combine and sort durations
-    const allDurations = [...new Set([...profileDurations, ...activityDurations])].sort((a, b) => a - b);
-    return allDurations.map(durationSeconds => {
-      const durationLabel = formatDuration(durationSeconds);
-      const profileItem = filteredPowerProfile.find(item => item.duration === durationLabel);
-      const activityItem = activityMeanMax.find(item => item.durationSeconds === durationSeconds);
+    const durations = ['1s', '5s', '10s', '20s', '1min', '5min', '10min', '20min', '60min'];
+    return durations.map((duration, index) => {
+      const profileItem = filteredPowerProfile.find(item => item.duration === duration);
+      const activityItem = activityMeanMax.find(item => item.duration === duration);
       return {
-        duration: durationLabel,
-        durationSeconds,
-        logDuration: Math.log10(durationSeconds),
-        // For logarithmic scaling
-        allTimeBest: profileItem?.allTimeBest || 0,
-        rangeFiltered: profileItem?.best || 0,
+        duration,
+        durationLabel: formatDuration([1, 5, 10, 20, 60, 300, 600, 1200, 3600][index]),
+        allTimeBest: profileItem?.best || 0,
+        rangeFiltered: profileItem?.current || 0,
         activityMeanMax: activityItem?.activityMeanMax || 0
       };
-    }).filter(item => item.allTimeBest > 0 || item.rangeFiltered > 0 || item.activityMeanMax > 0);
+    });
   }, [filteredPowerProfile, activityMeanMax]);
   if (loading) {
     return <Card>
@@ -161,10 +153,10 @@ export function EnhancedPowerProfileChart({
       </Card>;
   }
 
-  // Get best power for duration - Show range best, not comparison
+  // Get best power for duration from filtered data
   const getBestPowerForDuration = (duration: string) => {
-    const powerProfileItem = filteredPowerProfile.find(item => item.duration === duration);
-    return powerProfileItem?.best || 0;
+    const chartItem = chartData.find(item => item.duration === duration);
+    return chartItem?.rangeFiltered || chartItem?.allTimeBest || 0;
   };
 
   // Get date range label
@@ -187,10 +179,6 @@ export function EnhancedPowerProfileChart({
     }
   };
   const bestEfforts = [{
-    duration: '1s',
-    best: activityBestPowers.find(p => p.duration === '1s')?.value || 0,
-    unit: 'W'
-  }, {
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
     unit: 'W'
@@ -213,7 +201,15 @@ export function EnhancedPowerProfileChart({
   }];
   return <div className="space-y-6">
       {/* Header */}
-      
+      <div>
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+          {isRunning ? 'Pace Profile' : 'Power Profile'}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Mean maximal {isRunning ? 'pace' : 'power'} across different durations
+        </p>
+      </div>
 
       {/* Activity Best Power Block */}
       {activity && !isRunning && <Card>
@@ -242,7 +238,7 @@ export function EnhancedPowerProfileChart({
           </div>
         </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-6 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {activityBestPowers.map(power => <div key={power.duration} className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-2">
                     <Clock className="w-3 h-3 text-muted-foreground" />
@@ -251,19 +247,19 @@ export function EnhancedPowerProfileChart({
                   <div className="text-lg font-bold">{formatValue(power.value)}</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Best: {formatValue(getBestPowerForDuration(power.duration))}
-                    {(() => {
-                const rangeBest = filteredPowerProfile.find(item => item.duration === power.duration)?.best || 0;
-                const activityPower = power.value;
-                const isNewBest = isRunning ? rangeBest === 0 || activityPower < rangeBest : rangeBest === 0 || activityPower > rangeBest;
-                return isNewBest && activityPower > 0 ? <Badge variant="secondary" className="ml-1 text-xs">NEW BEST</Badge> : null;
-              })()}
                   </div>
                 </div>)}
             </div>
           </CardContent>
         </Card>}
 
-      {/* Enhanced Power/Pace Curve Chart */}
+      {/* Best Efforts Cards */}
       
+
+      {/* Enhanced Power/Pace Curve Chart */}
+      <Card>
+        
+        
+      </Card>
     </div>;
 }

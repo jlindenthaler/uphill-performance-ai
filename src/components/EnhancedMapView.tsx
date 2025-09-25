@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
@@ -13,45 +13,13 @@ interface EnhancedMapViewProps {
   activity?: any;
 }
 
-export function EnhancedMapView({ gpsData, className = "w-full h-96", activity }: EnhancedMapViewProps) {
+export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }: EnhancedMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  // Calculate elevation data from cached data or GPS coordinates
-  const elevationData = useMemo(() => {
-    // First try to use cached elevation profile if available
-    if (activity?.elevation_profile?.elevationData) {
-      console.log('Using cached elevation profile data for performance');
-      return activity.elevation_profile.elevationData;
-    }
-    
-    // Fallback to real-time calculation if no cache available
-    if (!gpsData?.coordinates || !Array.isArray(gpsData.coordinates)) return [];
-    
-    console.log('Calculating elevation profile in real-time (no cache available)');
-    
-    let cumulativeDistance = 0;
-    return gpsData.coordinates.map((coord: number[], index: number) => {
-      if (index > 0) {
-        const prevCoord = gpsData.coordinates[index - 1];
-        // Simple distance calculation (Haversine would be more accurate)
-        const deltaLat = coord[1] - prevCoord[1];
-        const deltaLng = coord[0] - prevCoord[0];
-        const distance = Math.sqrt(deltaLat * deltaLat + deltaLng * deltaLng) * 111000; // Rough conversion to meters
-        cumulativeDistance += distance;
-      }
-      
-      return {
-        distance: cumulativeDistance / 1000, // Convert to km
-        elevation: coord[2] || 0, // Altitude if available, otherwise 0
-        index
-      };
-    });
-  }, [gpsData, activity]);
 
   const fetchMapboxToken = async () => {
     try {
@@ -284,90 +252,8 @@ export function EnhancedMapView({ gpsData, className = "w-full h-96", activity }
   }
 
   return (
-    <div className={`${className} rounded-lg overflow-hidden border relative flex flex-col`}>
-      {/* Map */}
-      <div ref={mapContainer} className="w-full flex-1 min-h-[250px]" />
-      
-      {/* Enhanced Elevation Chart */}
-      {elevationData.length > 0 && (
-        <div className="w-full h-32 bg-muted/10 border-t p-2">
-          <div className="text-xs font-medium mb-1 text-muted-foreground flex justify-between">
-            <span>Elevation Profile</span>
-            <span>
-              {Math.min(...elevationData.map(p => p.elevation)).toFixed(0)}m - {Math.max(...elevationData.map(p => p.elevation)).toFixed(0)}m
-            </span>
-          </div>
-          <svg
-            width="100%"
-            height="100"
-            viewBox="0 0 400 80"
-            className="w-full h-full cursor-crosshair"
-          >
-            {/* Grid lines */}
-            <defs>
-              <pattern id="grid" width="40" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 20" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" opacity="0.3"/>
-              </pattern>
-            </defs>
-            <rect width="400" height="80" fill="url(#grid)" />
-            
-            {/* Create elevation path */}
-            {elevationData.length > 1 && (
-              <path
-                d={`M ${elevationData.map((point, index) => {
-                  const x = (index / (elevationData.length - 1)) * 400;
-                  const minElev = Math.min(...elevationData.map(p => p.elevation));
-                  const maxElev = Math.max(...elevationData.map(p => p.elevation));
-                  const range = maxElev - minElev;
-                  const y = range > 0 ? 70 - ((point.elevation - minElev) / range) * 60 : 70;
-                  return `${x},${y}`;
-                }).join(' L ')}`}
-                stroke="hsl(var(--primary))"
-                strokeWidth="2"
-                fill="none"
-              />
-            )}
-            
-            {/* Fill area under curve with gradient */}
-            {elevationData.length > 1 && (
-              <>
-                <defs>
-                  <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4"/>
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1"/>
-                  </linearGradient>
-                </defs>
-                <path
-                  d={`M 0,70 L ${elevationData.map((point, index) => {
-                    const x = (index / (elevationData.length - 1)) * 400;
-                    const minElev = Math.min(...elevationData.map(p => p.elevation));
-                    const maxElev = Math.max(...elevationData.map(p => p.elevation));
-                    const range = maxElev - minElev;
-                    const y = range > 0 ? 70 - ((point.elevation - minElev) / range) * 60 : 70;
-                    return `${x},${y}`;
-                  }).join(' L ')} L 400,70 Z`}
-                  fill="url(#elevationGradient)"
-                />
-              </>
-            )}
-
-            {/* Distance markers */}
-            {elevationData.length > 0 && [0, 0.25, 0.5, 0.75, 1].map(ratio => {
-              const totalDistance = elevationData[elevationData.length - 1]?.distance || 0;
-              const distance = totalDistance * ratio;
-              const x = ratio * 400;
-              return (
-                <g key={ratio}>
-                  <line x1={x} y1="70" x2={x} y2="75" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.6"/>
-                  <text x={x} y="78" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">
-                    {distance.toFixed(1)}km
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      )}
+    <div className={`${className} rounded-lg overflow-hidden border relative`}>
+      <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
 }

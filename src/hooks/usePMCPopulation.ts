@@ -8,7 +8,7 @@ export function usePMCPopulation() {
   const [isPopulating, setIsPopulating] = useState(false);
 
   const populatePMCData = async () => {
-    if (!user || isPopulating) return;
+    if (!user || isPopulated || isPopulating) return;
 
     setIsPopulating(true);
     try {
@@ -23,24 +23,18 @@ export function usePMCPopulation() {
     }
   };
 
-  const forceRepopulate = async () => {
-    setIsPopulated(false);
-    await populatePMCData();
-  };
-
   useEffect(() => {
     if (user && !isPopulated && !isPopulating) {
-      // Force re-population on every user login for now to ensure data is fresh
+      // Small delay to ensure activities are loaded first
       setTimeout(() => {
         populatePMCData();
       }, 1000);
     }
-  }, [user, isPopulated, isPopulating]);
+  }, [user]);
 
   return {
     isPopulated,
     isPopulating,
-    populatePMCData,
-    forceRepopulate
+    populatePMCData
   };
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { usePaginatedActivities } from '@/hooks/usePaginatedActivities';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
@@ -21,8 +20,7 @@ import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 
 export function Activities() {
-  const { activities, pagination, loadNextPage, loadActivityDetails, refreshActivities, isLoading } = usePaginatedActivities(20);
-  const { deleteActivity, reprocessActivityTimestamps } = useActivities();
+  const { activities, loading, deleteActivity, reprocessActivityTimestamps } = useActivities();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +28,6 @@ export function Activities() {
   const [filterSport, setFilterSport] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [loadingActivityDetails, setLoadingActivityDetails] = useState<string | null>(null);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -87,24 +84,8 @@ export function Activities() {
     }
   };
 
-  const handleActivityToggle = async (activityId: string) => {
-    try {
-      if (expandedActivity === activityId) {
-        setExpandedActivity(null);
-        setLoadingActivityDetails(null);
-      } else {
-        // Set loading state and load full activity details when expanding
-        setLoadingActivityDetails(activityId);
-        await loadActivityDetails(activityId);
-        setExpandedActivity(activityId);
-        setLoadingActivityDetails(null);
-      }
-    } catch (error) {
-      console.error('Error toggling activity:', error);
-      // Reset to safe state on error
-      setExpandedActivity(null);
-      setLoadingActivityDetails(null);
-    }
+  const handleActivityToggle = (activityId: string) => {
+    setExpandedActivity(expandedActivity === activityId ? null : activityId);
   };
 
   const handleDeleteActivity = async (activityId: string) => {
@@ -115,16 +96,14 @@ export function Activities() {
   };
 
   const handleUploadSuccess = (activityId?: string) => {
+    console.log('handleUploadSuccess called with activityId:', activityId);
     // Close the modal immediately
     setUploadModalOpen(false);
     
-    // Refresh the activities list
-    refreshActivities();
-    
     if (activityId) {
       // Expand the newly uploaded activity after a brief delay to ensure data is loaded
-      setTimeout(async () => {
-        await loadActivityDetails(activityId);
+      setTimeout(() => {
+        console.log('Expanding activity:', activityId);
         setExpandedActivity(activityId);
       }, 1000);
     }
@@ -172,35 +151,7 @@ export function Activities() {
         )}
       </div>
 
-      {/* Activity Analysis Chart - Timeline */}
-      <div className="mt-6">
-        {loadingActivityDetails === activity.id ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="flex flex-col items-center gap-2">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="text-muted-foreground">Loading activity data...</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : activity.gps_data?.trackPoints?.length ? (
-          <ActivityAnalysisChart activity={activity} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-64">
-              <p className="text-muted-foreground">No GPS data available for this activity</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Enhanced Power Profile - With Activity Comparison */}
+      {/* Enhanced Power Profile */}
       <div className="mt-6">
         <EnhancedPowerProfileChart activity={activity} />
       </div>
@@ -209,16 +160,18 @@ export function Activities() {
       {activity.gps_data && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Route Map
-            </CardTitle>
+            <CardTitle>Route Map</CardTitle>
           </CardHeader>
           <CardContent>
-            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-96" />
+            <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-80" />
           </CardContent>
         </Card>
       )}
+
+      {/* Activity Analysis Chart */}
+      <div className="mt-6">
+        <ActivityAnalysisChart activity={activity} />
+      </div>
 
       {/* Detailed Metrics */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -288,16 +241,10 @@ export function Activities() {
           </CardContent>
         </Card>
 
-        {/* Training Load & Performance Summary */}
+        {/* Training Load */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Training Load
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Training stress and intensity metrics for this activity
-            </CardDescription>
+            <CardTitle>Training Load</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
@@ -320,66 +267,10 @@ export function Activities() {
                 <span className="font-medium">{activity.variability_index.toFixed(2)}</span>
               </div>
             )}
-
-            {/* Activity Bests Summary */}
-            {activity.power_curve_cache && (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                <div className="text-sm font-medium mb-2">Activity Bests</div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {Object.entries(activity.power_curve_cache)
-                    .slice(0, 4)
-                    .map(([duration, data]: [string, any]) => {
-                      const durationSeconds = parseInt(duration);
-                      const formatDuration = (seconds: number) => {
-                        if (seconds < 60) return `${seconds}s`;
-                        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-                        return `${Math.floor(seconds / 3600)}h`;
-                      };
-                      return (
-                        <div key={duration} className="flex justify-between">
-                          <span className="text-muted-foreground">{formatDuration(durationSeconds)}</span>
-                          <span className="font-medium">{Math.round(data.value)}W</span>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
-
-      {/* File Information & Upload Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>File Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {activity.original_filename && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Original Filename</span>
-              <span className="font-medium text-sm">{activity.original_filename}</span>
-            </div>
-          )}
-          {activity.file_type && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">File Type</span>
-              <span className="font-medium uppercase">{activity.file_type}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Uploaded</span>
-            <span className="font-medium text-sm">{formatActivityDateTime(activity.created_at, timezone)}</span>
-          </div>
-          {activity.weather_conditions && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Weather</span>
-              <span className="font-medium text-sm">{JSON.stringify(activity.weather_conditions)}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Activity Notes */}
       {activity.notes && (
@@ -404,7 +295,7 @@ export function Activities() {
     });
   }
 
-  if (isLoading && activities.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -487,26 +378,13 @@ export function Activities() {
             <Collapsible 
               key={activity.id} 
               open={expandedActivity === activity.id}
-              onOpenChange={(open) => {
-                try {
-                  console.log('Collapsible onOpenChange:', open, 'for activity:', activity.id);
-                  setExpandedActivity(open ? activity.id : null);
-                } catch (error) {
-                  console.error('Error in onOpenChange:', error);
-                  // Reset to safe state
-                  setExpandedActivity(null);
-                }
-              }}
+              onOpenChange={() => handleActivityToggle(activity.id)}
             >
               <Card className="overflow-hidden">
                 <CollapsibleTrigger asChild>
                   <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start space-x-4 flex-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleActivityToggle(activity.id);
-                        }}>
+                      <div className="flex items-start space-x-4 flex-1" onClick={(e) => e.stopPropagation()}>
                         <div className="relative">
                           <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>
                           {activity.tss && activity.tss > 100 && (
@@ -671,38 +549,12 @@ export function Activities() {
                 
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
-                    <div className="border-t">
-                      {renderExpandedActivity(activity)}
-                    </div>
+                    {renderExpandedActivity(activity)}
                   </div>
                 </CollapsibleContent>
               </Card>
             </Collapsible>
           ))}
-          
-          {/* Load More Button */}
-          {pagination.hasMore && !isLoading && (
-            <div className="flex justify-center pt-4">
-              <Button 
-                variant="outline" 
-                onClick={loadNextPage}
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4" />
-                    Load More Activities
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
