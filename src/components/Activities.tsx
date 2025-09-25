@@ -195,11 +195,6 @@ export function Activities() {
         </Card>
       )}
 
-      {/* Activity Analysis Chart */}
-      <div className="mt-6">
-        <ActivityAnalysisChart activity={activity} />
-      </div>
-
       {/* Detailed Metrics */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Performance Metrics */}
