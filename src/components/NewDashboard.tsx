@@ -27,6 +27,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
+import { useCombinedTrainingHistory } from '@/hooks/useCombinedTrainingHistory';
 import { useActivities } from '@/hooks/useActivities';
 import { useGoals } from '@/hooks/useGoals';
 import { useWeeklyTargets } from '@/hooks/useWeeklyTargets';
@@ -45,7 +46,8 @@ interface DashboardProps {
 }
 
 export function NewDashboard({ onNavigate }: DashboardProps) {
-  const { trainingHistory } = useTrainingHistory();
+  const { trainingHistory: singleSportHistory } = useTrainingHistory();
+  const { trainingHistory: combinedSportsHistory } = useCombinedTrainingHistory();
   const { activities, loading: activitiesLoading } = useActivities();
   const { goals, createGoal } = useGoals();
   const { weeklyTarget } = useWeeklyTargets();
@@ -113,18 +115,14 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
 
   // Calculate current week metrics
   const currentWeekData = useMemo(() => {
+    const trainingHistory = combinedSports ? combinedSportsHistory : singleSportHistory;
+    
     if (combinedSports) {
-      // For combined sports, we need to aggregate across all sports
-      const allActivities = activities.filter(activity => {
-        const activityDate = new Date(activity.date);
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        return activityDate >= sevenDaysAgo;
-      });
-      
-      const weeklyTSS = allActivities.reduce((sum, activity) => sum + (activity.tss || 0), 0);
-      const weeklyHours = allActivities.reduce((sum, activity) => sum + ((activity.duration_seconds || 0) / 3600), 0);
-      const completedSessions = allActivities.length;
+      // For combined sports, use the aggregated training history data
+      const currentWeek = trainingHistory.slice(-7);
+      const weeklyTSS = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
+      const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
+      const completedSessions = currentWeek.filter(day => day.tss > 0).length;
       
       return { weeklyTSS, weeklyHours, completedSessions };
     } else {
@@ -136,7 +134,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
       
       return { weeklyTSS, weeklyHours, completedSessions };
     }
-  }, [combinedSports, activities, trainingHistory]);
+  }, [combinedSports, combinedSportsHistory, singleSportHistory]);
   
   const weeklyTSS = currentWeekData.weeklyTSS;
   const weeklyHours = currentWeekData.weeklyHours;
@@ -149,55 +147,17 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
     new Date(activity.date) >= sevenDaysAgo
   ).slice(0, 7);
 
-  // Calculate CTL/ATL/TSB from recent data
+  // Calculate CTL/ATL/TSB from training history
   const pmcMetrics = useMemo(() => {
-    if (combinedSports) {
-      // For combined sports, we need to aggregate PMC values across all sports
-      // This would require fetching training history from all sports and combining them
-      // For now, we'll use a simplified approach of summing the latest metrics
-      // In a production app, you'd want to recalculate CTL/ATL/TSB from combined TSS history
-      
-      // Calculate basic combined metrics from activities
-      const last42Days = activities.filter(activity => {
-        const activityDate = new Date(activity.date);
-        const fortyTwoDaysAgo = new Date();
-        fortyTwoDaysAgo.setDate(fortyTwoDaysAgo.getDate() - 42);
-        return activityDate >= fortyTwoDaysAgo;
-      });
-      
-      const last7Days = activities.filter(activity => {
-        const activityDate = new Date(activity.date);
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        return activityDate >= sevenDaysAgo;
-      });
-      
-      // Calculate approximate CTL (42-day exponentially weighted moving average)
-      const totalTSS42 = last42Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
-      const approximateCTL = totalTSS42 / 42; // Simplified approximation
-      
-      // Calculate approximate ATL (7-day exponentially weighted moving average)
-      const totalTSS7 = last7Days.reduce((sum, activity) => sum + (activity.tss || 0), 0);
-      const approximateATL = totalTSS7 / 7; // Simplified approximation
-      
-      // Calculate TSB (Training Stress Balance)
-      const approximateTSB = approximateCTL - approximateATL;
-      
-      return {
-        ctl: approximateCTL,
-        atl: approximateATL,
-        tsb: approximateTSB
-      };
-    } else {
-      // Original sport-specific calculation
-      const latestMetrics = trainingHistory[trainingHistory.length - 1];
-      return {
-        ctl: latestMetrics?.ctl || 0,
-        atl: latestMetrics?.atl || 0,
-        tsb: latestMetrics?.tsb || 0
-      };
-    }
-  }, [combinedSports, activities, trainingHistory]);
+    // Use the appropriate training history based on combined sports mode
+    const trainingHistory = combinedSports ? combinedSportsHistory : singleSportHistory;
+    const latestMetrics = trainingHistory[trainingHistory.length - 1];
+    return {
+      ctl: latestMetrics?.ctl || 0,
+      atl: latestMetrics?.atl || 0,
+      tsb: latestMetrics?.tsb || 0
+    };
+  }, [combinedSports, combinedSportsHistory, singleSportHistory]);
   
   const ctl = pmcMetrics.ctl;
   const atl = pmcMetrics.atl;
