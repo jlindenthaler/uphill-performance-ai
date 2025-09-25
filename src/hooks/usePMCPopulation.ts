@@ -8,7 +8,7 @@ export function usePMCPopulation() {
   const [isPopulating, setIsPopulating] = useState(false);
 
   const populatePMCData = async () => {
-    if (!user || isPopulating) return;
+    if (!user || isPopulated || isPopulating) return;
 
     setIsPopulating(true);
     try {
@@ -18,7 +18,6 @@ export function usePMCPopulation() {
       console.log('PMC data population completed');
     } catch (error) {
       console.error('Failed to populate PMC data:', error);
-      // Don't set isPopulated to true on error, but also don't prevent retry
     } finally {
       setIsPopulating(false);
     }
@@ -27,13 +26,11 @@ export function usePMCPopulation() {
   useEffect(() => {
     if (user && !isPopulated && !isPopulating) {
       // Small delay to ensure activities are loaded first
-      const timeoutId = setTimeout(() => {
+      setTimeout(() => {
         populatePMCData();
       }, 1000);
-      
-      return () => clearTimeout(timeoutId);
     }
-  }, [user, isPopulated, isPopulating]);
+  }, [user]);
 
   return {
     isPopulated,
