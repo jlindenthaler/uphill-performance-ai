@@ -185,6 +185,57 @@ export function ActivityAnalysisChart({
     });
   }, [activity]);
 
+  // Calculate intelligent time interval based on activity duration
+  const timeInterval = useMemo(() => {
+    if (!timelineData.length) return 300; // 5 minutes default
+    
+    const totalDurationSeconds = timelineData[timelineData.length - 1]?.timeSeconds || 0;
+    const totalDurationMinutes = totalDurationSeconds / 60;
+    
+    if (totalDurationMinutes < 30) return 300; // 5 minutes
+    if (totalDurationMinutes < 120) return 600; // 10 minutes  
+    if (totalDurationMinutes < 240) return 900; // 15 minutes
+    return 1200; // 20 minutes
+  }, [timelineData]);
+
+  // Create custom tick formatter for intelligent time intervals
+  const formatTimeAxisTick = (tickItem: string) => {
+    if (xAxisMode === 'distance') return tickItem;
+    
+    // Find the data point for this tick
+    const dataPoint = timelineData.find(point => point.time === tickItem);
+    if (!dataPoint) return tickItem;
+    
+    const timeSeconds = dataPoint.timeSeconds;
+    const hours = Math.floor(timeSeconds / 3600);
+    const minutes = Math.floor((timeSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:00`;
+  };
+
+  // Generate custom ticks based on time interval
+  const getCustomTicks = () => {
+    if (xAxisMode === 'distance' || !timelineData.length) return undefined;
+    
+    const ticks = [];
+    const maxTime = timelineData[timelineData.length - 1]?.timeSeconds || 0;
+    
+    for (let time = 0; time <= maxTime; time += timeInterval) {
+      // Find closest data point to this time
+      const closestPoint = timelineData.reduce((prev, curr) => 
+        Math.abs(curr.timeSeconds - time) < Math.abs(prev.timeSeconds - time) ? curr : prev
+      );
+      if (closestPoint) {
+        ticks.push(closestPoint.time);
+      }
+    }
+    
+    return ticks;
+  };
+
   // Custom tooltip for timeline
   const TimelineTooltip = ({
     active,
@@ -300,10 +351,16 @@ export function ActivityAnalysisChart({
               left: 20
             }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="xValue" tick={{
-                fill: 'hsl(var(--muted-foreground))',
-                fontSize: 10
-              }} interval="preserveStartEnd" />
+                <XAxis 
+                  dataKey="xValue" 
+                  tick={{
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: 10
+                  }} 
+                  tickFormatter={formatTimeAxisTick}
+                  ticks={getCustomTicks()}
+                  interval={0}
+                />
                 <YAxis yAxisId="power" orientation="left" tick={{
                 fill: 'hsl(var(--muted-foreground))',
                 fontSize: 10
