@@ -65,6 +65,27 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     setCurrentWeek(weekStart);
   }, []);
 
+  // Center the current week in viewport on initial load
+  useEffect(() => {
+    if (weeks.length > 0 && scrollContainerRef.current) {
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          const weekHeight = 180; // Height per week row
+          const { clientHeight } = scrollContainerRef.current;
+          const currentWeekIndex = 4; // Current week is at index 4 in the weeks array
+          
+          // Calculate position to center the current week in viewport
+          const targetScrollTop = (currentWeekIndex * weekHeight) - (clientHeight / 2) + (weekHeight / 2);
+          
+          scrollContainerRef.current.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth'
+          });
+        }
+      }, 100); // Small delay to ensure DOM is rendered
+    }
+  }, [weeks.length]);
+
   // Generate month options for dropdown (2 years back, 2 years forward)
   const generateMonthOptions = () => {
     const options = [];
