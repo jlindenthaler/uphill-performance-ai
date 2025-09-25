@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserSettings } from "@/components/settings/UserSettings";
 import { AppSettings } from "@/components/settings/AppSettings";
 import { SimpleTimeSettings } from "@/components/SimpleTimeSettings";
+import { SecurityAuditLog } from "@/components/SecurityAuditLog";
 
 import { User, Settings as SettingsIcon } from "lucide-react";
 
@@ -16,7 +17,7 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="user" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="user" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             User Settings
@@ -24,6 +25,10 @@ export function Settings() {
           <TabsTrigger value="time" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
             Time & Schedule
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4" />
+            Security
           </TabsTrigger>
           <TabsTrigger value="app" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -37,6 +42,10 @@ export function Settings() {
 
         <TabsContent value="time">
           <SimpleTimeSettings />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecurityAuditLog />
         </TabsContent>
 
         <TabsContent value="app">

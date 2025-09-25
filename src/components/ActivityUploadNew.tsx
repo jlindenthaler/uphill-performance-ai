@@ -1,18 +1,21 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, File, X, CheckCircle, FileText } from 'lucide-react';
-import { useUserTimezone } from '@/hooks/useUserTimezone';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { useActivities } from '@/hooks/useActivities';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from '@/hooks/use-toast';
+import { Upload, X, CheckCircle, AlertCircle, FileText, MapPin, Clock, Shield } from 'lucide-react';
+import { useUploadActivity } from '@/hooks/useUploadActivity';
 import { useSportMode } from '@/contexts/SportModeContext';
-import { CP_PROTOCOLS } from '@/utils/cp-detection';
+import { detectActivityInfo, type DetectedActivityInfo } from '@/utils/activityDetection';
+import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
+import { activityUploadSchema, fileUploadSchema, type ActivityUploadFormData } from '@/lib/validation';
 
 interface ActivityUploadNewProps {
   onUploadSuccess?: (activityId?: string) => void;
@@ -21,24 +24,23 @@ interface ActivityUploadNewProps {
 export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState<{ file: File; progress: number; status: 'uploading' | 'processing' | 'complete' | 'error' }[]>([]);
-  const [activityName, setActivityName] = useState('');
-  const [notes, setNotes] = useState('');
-  
-  // Auto-detection preview states
-  const [detectedSport, setDetectedSport] = useState<string>('');
-  const [suggestedName, setSuggestedName] = useState<string>('');
-  const [isDetecting, setIsDetecting] = useState(false);
-  
-  // CP Test specific states
+  const [uploadingFiles, setUploadingFiles] = useState<{file: File, progress: number, status: 'uploading' | 'processing' | 'complete' | 'error'}[]>([]);
+  const [formData, setFormData] = useState<ActivityUploadFormData>({
+    activityName: '',
+    notes: '',
+    cpTargetDuration: undefined
+  });
+  const [detectedSport, setDetectedSport] = useState<string | null>(null);
+  const [suggestedName, setSuggestedName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [isCPTest, setIsCPTest] = useState(false);
-  const [cpProtocol, setCPProtocol] = useState('');
-  const [cpTargetDuration, setCPTargetDuration] = useState('');
+  const [cpProtocol, setCpProtocol] = useState<string>('8min');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
-  const { toast } = useToast();
-  const { uploadActivity, loading } = useActivities();
-  const { sportMode, setSportMode } = useSportMode();
-  const { timezone } = useUserTimezone();
+  const { sportMode } = useSportMode();
+  const { uploadActivity } = useUploadActivity();
+  const { checkUploadRateLimit, logSecurityEvent, clearRateLimit, isBlocked } = useSecurityMonitoring();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -60,143 +62,157 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
     }
   }, []);
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
       addFiles(Array.from(e.target.files));
     }
-  };
+  }, []);
 
-  const addFiles = async (files: File[]) => {
-    const validFiles = files.filter(file => {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      return ['gpx', 'tcx', 'fit'].includes(extension || '');
-    });
-
-    if (validFiles.length !== files.length) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload GPX, TCX, or FIT files only.',
-        variant: 'destructive'
-      });
+  // Enhanced file validation with security checks
+  const addFiles = useCallback((files: File[]) => {
+    // Rate limit check
+    if (!checkUploadRateLimit()) {
+      return;
     }
 
-    if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-      
-      // Auto-detect for the first file
-      if (validFiles.length === 1) {
-        await detectActivityInfo(validFiles[0]);
-      }
-    }
-  };
-
-  const detectActivityInfo = async (file: File) => {
-    setIsDetecting(true);
-    try {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      
-      let detectedInfo: { sport_mode: string; name?: string; timestamp?: Date } | null = null;
-      
-      if (extension === 'fit') {
-        const { parseFitFile } = await import('@/utils/fitParser');
-        const parsed = await parseFitFile(file, timezone);
-        detectedInfo = {
-          sport_mode: parsed.sport_mode,
-          name: parsed.name,
-          timestamp: new Date(parsed.date)
-        };
-      } else if (extension === 'gpx') {
-        const { parseGPXFile } = await import('@/utils/gpxParser');
-        const { analyzeGPSTrack, inferActivityTypeFromGPS } = await import('@/utils/activityDetection');
-        const parsed = await parseGPXFile(file);
-        
-        // Try GPS inference if no sport detected
-        let sportMode = parsed.sport_mode;
-        if (!sportMode || sportMode === 'cycling') {
-          const analysis = analyzeGPSTrack(parsed.trackPoints);
-          const inferred = inferActivityTypeFromGPS(analysis);
-          if (inferred.confidence > 0.6) {
-            sportMode = inferred.sport_mode;
-          }
-        }
-        
-        detectedInfo = {
-          sport_mode: sportMode,
-          name: parsed.name,
-          timestamp: new Date(parsed.date)
-        };
-      } else if (extension === 'tcx') {
-        const { parseTCXFile } = await import('@/utils/tcxParser');
-        const parsed = await parseTCXFile(file);
-        detectedInfo = {
-          sport_mode: parsed.sport_mode,
-          name: parsed.name,
-          timestamp: new Date(parsed.date)
-        };
-      }
-      
-      if (detectedInfo) {
-        const validSportMode = ['cycling', 'running', 'swimming'].includes(detectedInfo.sport_mode) 
-          ? detectedInfo.sport_mode as 'cycling' | 'running' | 'swimming'
-          : 'cycling';
-          
-        setDetectedSport(validSportMode);
-        setSportMode(validSportMode); // Now properly typed
-        
-        // Generate name if not provided in file
-        if (!detectedInfo.name && detectedInfo.timestamp) {
-          const { generateActivityName } = await import('@/utils/activityNaming');
-          const suggestedName = generateActivityName({
-            sport_mode: validSportMode,
-            timestamp: detectedInfo.timestamp
-          });
-          setSuggestedName(suggestedName);
-          if (!activityName) { // Only set if user hasn't entered a name
-            setActivityName(suggestedName);
-          }
-        } else if (detectedInfo.name) {
-          setSuggestedName(detectedInfo.name);
-          if (!activityName) {
-            setActivityName(detectedInfo.name);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Auto-detection failed:', error);
-      // Set default suggested name based on time
-      const { generateActivityName } = await import('@/utils/activityNaming');
-      const defaultName = generateActivityName({
-        sport_mode: sportMode,
-        timestamp: new Date()
-      });
-      setSuggestedName(defaultName);
-      if (!activityName) {
-        setActivityName(defaultName);
-      }
-    } finally {
-      setIsDetecting(false);
-    }
-  };
-
-  const removeFile = (fileToRemove: File) => {
-    setSelectedFiles(prev => prev.filter(file => file !== fileToRemove));
+    // Validate files using schema
+    const fileValidation = fileUploadSchema.safeParse({ files: Array.from(files) });
     
-    // Clear detection results if removing the file we detected
-    if (selectedFiles.length === 1) {
-      setDetectedSport('');
-      setSuggestedName('');
-    }
-  };
-
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0) {
+    if (!fileValidation.success) {
+      const errorMessage = fileValidation.error.errors[0]?.message || 'Invalid files';
+      
+      logSecurityEvent('file_validation_failed', { 
+        fileCount: files.length,
+        totalSize: Array.from(files).reduce((sum, f) => sum + f.size, 0),
+        error: errorMessage
+      });
+      
       toast({
-        title: 'No files selected',
-        description: 'Please select at least one file to upload.',
+        title: 'Invalid files detected',
+        description: errorMessage,
         variant: 'destructive'
       });
       return;
     }
+
+    const validFiles = fileValidation.data.files;
+
+    // Additional security checks
+    const suspiciousFiles = validFiles.filter(file => {
+      // Check for suspicious file names
+      const hasNullBytes = file.name.includes('\0');
+      const hasControlChars = /[\x00-\x1f\x7f-\x9f]/.test(file.name);
+      const isExcessivelyLong = file.name.length > 255;
+      
+      return hasNullBytes || hasControlChars || isExcessivelyLong;
+    });
+
+    if (suspiciousFiles.length > 0) {
+      logSecurityEvent('suspicious_files_detected', { 
+        suspiciousFileNames: suspiciousFiles.map(f => f.name.substring(0, 50))
+      });
+      
+      toast({
+        title: 'Security Warning',
+        description: 'Some files have suspicious names and were rejected.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+    
+    logSecurityEvent('files_accepted', { 
+      fileCount: validFiles.length,
+      totalSize: validFiles.reduce((sum, f) => sum + f.size, 0),
+      fileTypes: validFiles.map(f => f.name.split('.').pop()?.toLowerCase())
+    });
+    
+    // Auto-detect activity info for the first valid file
+    if (validFiles.length > 0) {
+      detectActivityInfo(validFiles[0]);
+    }
+  }, [checkUploadRateLimit, logSecurityEvent]);
+
+import { useState, useCallback } from 'react';
+// ... keep existing imports
+import { useActivities } from '@/hooks/useActivities';
+import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
+import { activityUploadSchema, fileUploadSchema, type ActivityUploadFormData } from '@/lib/validation';
+
+// ... keep existing code
+
+  const detectActivityInfo = async (file: File) => {
+    try {
+      // Simplified detection - just extract basic info from filename
+      const name = file.name.replace(/\.(gpx|tcx|fit)$/i, '');
+      const info = {
+        sport_mode: 'cycling', // default
+        name: name
+      };
+      
+      setDetectedSport(info.sport_mode || null);
+      setSuggestedName(info.name || null);
+      
+      // Auto-populate form if values are detected
+      if (info.name && !formData.activityName) {
+        setFormData(prev => ({ ...prev, activityName: info.name }));
+      }
+    } catch (error) {
+      console.warn('Failed to detect activity info:', error);
+    }
+  };
+
+  const removeFile = (fileToRemove: File) => {
+    setSelectedFiles(prev => prev.filter(f => f !== fileToRemove));
+    
+    // Clear detection results if this was the only file
+    if (selectedFiles.length === 1) {
+      setDetectedSport(null);
+      setSuggestedName(null);
+    }
+  };
+
+  // Form validation
+  const validateForm = () => {
+    const result = activityUploadSchema.safeParse({
+      activityName: formData.activityName || undefined,
+      notes: formData.notes || undefined,
+      cpTargetDuration: formData.cpTargetDuration ? formData.cpTargetDuration.toString() : undefined
+    });
+    
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach(error => {
+        newErrors[error.path[0] as string] = error.message;
+      });
+      setErrors(newErrors);
+      return false;
+    }
+    
+    setErrors({});
+    return true;
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    // Rate limit check
+    if (!checkUploadRateLimit()) {
+      return;
+    }
+    
+    // Form validation
+    if (!validateForm()) {
+      logSecurityEvent('upload_validation_failed', { 
+        errors: Object.keys(errors),
+        fileCount: selectedFiles.length
+      });
+      return;
+    }
+    
+    setLoading(true);
+    setUploadingFiles([]);
 
     for (const file of selectedFiles) {
       setUploadingFiles(prev => [...prev, { file, progress: 0, status: 'uploading' }]);
@@ -220,16 +236,25 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
         const cpTestData = isCPTest ? {
           activity_type: 'cp_test',
           cp_test_protocol: cpProtocol,
-          cp_test_target_duration: cpTargetDuration ? parseInt(cpTargetDuration) : undefined
+          cp_test_target_duration: formData.cpTargetDuration ? parseInt(formData.cpTargetDuration.toString()) : undefined
         } : undefined;
         
         const uploadedActivity = await uploadActivity(
           file, 
-          activityName || undefined, 
-          notes || undefined,
+          formData.activityName || undefined, 
+          formData.notes || undefined,
           cpTestData
         );
         console.log('Activity uploaded successfully:', uploadedActivity);
+        
+        logSecurityEvent('upload_success', { 
+          fileName: file.name.substring(0, 50),
+          fileSize: file.size,
+          activityId: uploadedActivity?.id
+        });
+        
+        // Clear rate limits on success
+        clearRateLimit('upload');
         
         toast({
           title: 'Activity uploaded successfully',
@@ -248,244 +273,296 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
           setUploadingFiles(prev => prev.filter(item => item.file !== file));
           // Trigger a window event to refresh activities with a slight delay
           setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('activity-uploaded'));
-          }, 500);
-        }, 1500);
-
-      } catch (error) {
+            window.dispatchEvent(new CustomEvent('activityUploaded'));
+          }, 100);
+        }, 2000);
+        
+      } catch (error: any) {
+        console.error('Error uploading activity:', error);
+        
+        logSecurityEvent('upload_failed', { 
+          fileName: file.name.substring(0, 50),
+          fileSize: file.size,
+          error: error.message
+        });
+        
         setUploadingFiles(prev => prev.map(item => 
-          item.file === file ? { ...item, progress: 0, status: 'error' } : item
+          item.file === file ? { ...item, status: 'error' } : item
         ));
         
         toast({
           title: 'Upload failed',
-          description: `Failed to upload ${file.name}. Please try again.`,
+          description: `Failed to upload ${file.name}: ${error.message || 'Unknown error'}`,
           variant: 'destructive'
         });
       }
     }
 
-    // Clear selected files after upload attempt
+    // Clear form after upload attempt
     setSelectedFiles([]);
-    setActivityName('');
-    setNotes('');
-    setDetectedSport('');
-    setSuggestedName('');
+    setUploadingFiles([]);
+    setFormData({ activityName: '', notes: '', cpTargetDuration: undefined });
+    setDetectedSport(null);
+    setSuggestedName(null);
     setIsCPTest(false);
-    setCPProtocol('');
-    setCPTargetDuration('');
+    setCpProtocol('8min');
+    setErrors({});
+    setLoading(false);
   };
 
   const removeUploadingFile = (file: File) => {
     setUploadingFiles(prev => prev.filter(item => item.file !== file));
   };
 
+  const handleInputChange = (field: keyof ActivityUploadFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Auto-Detection Status */}
-      {(detectedSport || suggestedName || isDetecting) && (
-        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <div className="flex items-center space-x-2 mb-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              {isDetecting ? 'Analyzing file...' : 'Auto-detected'}
-            </span>
-          </div>
-          {detectedSport && (
-            <p className="text-sm text-muted-foreground">
-              Sport: <span className="font-medium capitalize">{detectedSport}</span>
-            </p>
-          )}
-          {suggestedName && (
-            <p className="text-sm text-muted-foreground">
-              Suggested name: <span className="font-medium">{suggestedName}</span>
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Activity Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="w-5 h-5" />
+          Upload Training Files
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {isBlocked && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Too many upload attempts. Please wait before trying again.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Auto-Detection Results */}
+        {(detectedSport || suggestedName) && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-medium">Auto-detected information:</p>
+                {detectedSport && (
+                  <p className="text-sm">Sport: <span className="font-medium capitalize">{detectedSport}</span></p>
+                )}
+                {suggestedName && (
+                  <p className="text-sm">Suggested name: <span className="font-medium">{suggestedName}</span></p>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Sport Selection */}
         <div className="space-y-2">
-          <Label htmlFor="sport">Sport {detectedSport && <span className="text-xs text-muted-foreground">(auto-detected)</span>}</Label>
-          <Select value={sportMode} onValueChange={setSportMode}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select sport" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border border-border z-50">
-              <SelectItem value="cycling">Cycling</SelectItem>
-              <SelectItem value="running">Running</SelectItem>
-              <SelectItem value="swimming">Swimming</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="activityName">Activity Name {suggestedName && <span className="text-xs text-muted-foreground">(auto-generated)</span>}</Label>
-          <Input
-            id="activityName"
-            value={activityName}
-            onChange={(e) => setActivityName(e.target.value)}
-            placeholder={suggestedName || "e.g., Morning Ride"}
-          />
-        </div>
-      </div>
-
-      {/* CP Test Toggle */}
-      <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
-        <Switch
-          id="cp-test"
-          checked={isCPTest}
-          onCheckedChange={setIsCPTest}
-        />
-        <Label htmlFor="cp-test" className="text-sm font-medium">
-          Mark as Critical Power Test
-        </Label>
-      </div>
-
-      {/* CP Test Configuration */}
-      {isCPTest && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
-          <div className="space-y-2">
-            <Label htmlFor="cp-protocol">Test Protocol</Label>
-            <Select value={cpProtocol} onValueChange={setCPProtocol}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select protocol" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border z-50">
-                {Object.entries(CP_PROTOCOLS).map(([key, protocol]) => (
-                  <SelectItem key={key} value={key}>
-                    {protocol.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Label>Current Sport Mode</Label>
+          <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+            <span className="text-sm font-medium capitalize">{sportMode}</span>
+            {detectedSport && detectedSport !== sportMode && (
+              <span className="text-xs text-muted-foreground">
+                (detected: {detectedSport})
+              </span>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="cp-duration">Target Duration (seconds, optional)</Label>
-            <Input
-              id="cp-duration"
-              type="number"
-              value={cpTargetDuration}
-              onChange={(e) => setCPTargetDuration(e.target.value)}
-              placeholder="Override duration for multi-effort protocols"
+        </div>
+
+        {/* File Upload Area */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragActive 
+              ? 'border-primary bg-primary/10' 
+              : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <div>
+            <p className="text-lg font-medium mb-2">
+              Drop your activity files here
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Supports GPX, TCX, and FIT files (max 20MB each, 10 files total)
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".gpx,.tcx,.fit"
+              onChange={handleFileInput}
+              className="hidden"
             />
-            <p className="text-xs text-muted-foreground">
-              Multi-effort tests can be completed on alternate days within 4 days maximum. 
-              Each protocol requires specific durations to be completed for CP & W' calculation.
-            </p>
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+              Browse Files
+            </Button>
           </div>
         </div>
-      )}
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes (Optional)</Label>
-        <Textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add any notes about your activity..."
-          rows={3}
-        />
-      </div>
-
-      {/* File Upload Area */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          dragActive 
-            ? 'border-primary bg-primary/10' 
-            : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-        }`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <div>
-          <p className="text-lg font-medium mb-2">
-            Drop your activity files here
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Supports GPX, TCX, and FIT files
-          </p>
-          <input
-            type="file"
-            multiple
-            accept=".gpx,.tcx,.fit"
-            onChange={handleFileInput}
-            className="hidden"
-            id="file-upload"
-          />
-          <Button asChild variant="outline">
-            <label htmlFor="file-upload" className="cursor-pointer">
-              Browse Files
-            </label>
-          </Button>
-        </div>
-      </div>
-
-      {/* Selected Files */}
-      {selectedFiles.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-medium">Selected Files</h4>
-          {selectedFiles.map((file, index) => (
-            <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(file.size / 1024).toFixed(1)} KB
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFile(file)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button onClick={handleUpload} disabled={loading} className="w-full">
-            {loading ? 'Uploading...' : `Upload ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}`}
-          </Button>
-        </div>
-      )}
-
-      {/* Upload Progress */}
-      {uploadingFiles.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-medium">Uploading Files</h4>
-          {uploadingFiles.map((item, index) => (
-            <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-              <File className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{item.file.name}</p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Progress value={item.progress} className="flex-1" />
-                  <span className="text-xs text-muted-foreground">
-                    {item.status === 'uploading' ? 'Uploading...' : 
-                     item.status === 'processing' ? 'Processing...' : 
-                     item.status === 'complete' ? 'Complete' : 'Error'}
-                  </span>
+        {/* Selected Files */}
+        {selectedFiles.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium">Selected Files ({selectedFiles.length})</h4>
+            {selectedFiles.map((file, index) => (
+              <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
-              </div>
-              {item.status === 'complete' ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              ) : item.status === 'error' ? (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeUploadingFile(item.file)}
+                  onClick={() => removeFile(file)}
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              ) : null}
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Activity Name */}
+        <div className="space-y-2">
+          <Label htmlFor="activity-name">Activity Name (optional)</Label>
+          <Input
+            id="activity-name"
+            type="text"
+            value={formData.activityName}
+            onChange={(e) => handleInputChange('activityName', e.target.value)}
+            placeholder={suggestedName || "Enter activity name..."}
+            className={errors.activityName ? 'border-destructive' : ''}
+          />
+          {errors.activityName && (
+            <p className="text-sm text-destructive">{errors.activityName}</p>
+          )}
+          {suggestedName && !errors.activityName && (
+            <p className="text-sm text-muted-foreground">
+              Suggested: {suggestedName}
+            </p>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <Textarea
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            placeholder="Add any notes about this activity..."
+            rows={3}
+            className={errors.notes ? 'border-destructive' : ''}
+          />
+          {errors.notes && (
+            <p className="text-sm text-destructive">{errors.notes}</p>
+          )}
+        </div>
+
+        {/* CP Test Toggle */}
+        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={isCPTest}
+              onCheckedChange={setIsCPTest}
+            />
+            <Label className="text-sm font-medium">
+              Mark as Critical Power Test
+            </Label>
+          </div>
+          
+          {isCPTest && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Test Protocol</Label>
+                <RadioGroup value={cpProtocol} onValueChange={setCpProtocol}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="8min" id="8min" />
+                    <Label htmlFor="8min">8-minute test</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="20min" id="20min" />
+                    <Label htmlFor="20min">20-minute test</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="custom" id="custom" />
+                    <Label htmlFor="custom">Custom duration</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              {cpProtocol === 'custom' && (
+                <div className="space-y-2">
+                  <Label htmlFor="cp-duration">Target Duration (seconds)</Label>
+                  <Input
+                    id="cp-duration"
+                    type="number"
+                    value={formData.cpTargetDuration || ''}
+                    onChange={(e) => handleInputChange('cpTargetDuration', e.target.value)}
+                    placeholder="e.g., 480 for 8 minutes"
+                    min="1"
+                    max="3600"
+                    className={errors.cpTargetDuration ? 'border-destructive' : ''}
+                  />
+                  {errors.cpTargetDuration && (
+                    <p className="text-sm text-destructive">{errors.cpTargetDuration}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Uploading Files Progress */}
+        {uploadingFiles.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium">Upload Progress</h4>
+            {uploadingFiles.map((item, index) => (
+              <div key={index} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.file.name}</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Progress value={item.progress} className="flex-1" />
+                    <span className="text-xs text-muted-foreground">
+                      {item.status === 'uploading' ? 'Uploading...' : 
+                       item.status === 'processing' ? 'Processing...' : 
+                       item.status === 'complete' ? 'Complete' : 'Error'}
+                    </span>
+                  </div>
+                </div>
+                {item.status === 'complete' ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : item.status === 'error' ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeUploadingFile(item.file)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Button 
+          onClick={handleUpload} 
+          disabled={selectedFiles.length === 0 || loading || isBlocked}
+          className="w-full"
+        >
+          {loading ? 'Uploading...' : `Upload ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}`}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
