@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -170,7 +170,12 @@ export function Activities() {
         )}
       </div>
 
-      {/* Enhanced Power Profile */}
+      {/* Activity Analysis Chart - Timeline */}
+      <div className="mt-6">
+        <ActivityAnalysisChart activity={activity} />
+      </div>
+
+      {/* Enhanced Power Profile - With Activity Comparison */}
       <div className="mt-6">
         <EnhancedPowerProfileChart activity={activity} />
       </div>
@@ -179,7 +184,10 @@ export function Activities() {
       {activity.gps_data && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Route Map</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Route Map
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <EnhancedMapView gpsData={activity.gps_data} activity={activity} className="w-full h-96" />
@@ -260,10 +268,16 @@ export function Activities() {
           </CardContent>
         </Card>
 
-        {/* Training Load */}
+        {/* Training Load & Performance Summary */}
         <Card>
           <CardHeader>
-            <CardTitle>Training Load</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Training Load
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Training stress and intensity metrics for this activity
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
@@ -286,10 +300,66 @@ export function Activities() {
                 <span className="font-medium">{activity.variability_index.toFixed(2)}</span>
               </div>
             )}
+
+            {/* Activity Bests Summary */}
+            {activity.power_curve_cache && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <div className="text-sm font-medium mb-2">Activity Bests</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {Object.entries(activity.power_curve_cache)
+                    .slice(0, 4)
+                    .map(([duration, data]: [string, any]) => {
+                      const durationSeconds = parseInt(duration);
+                      const formatDuration = (seconds: number) => {
+                        if (seconds < 60) return `${seconds}s`;
+                        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+                        return `${Math.floor(seconds / 3600)}h`;
+                      };
+                      return (
+                        <div key={duration} className="flex justify-between">
+                          <span className="text-muted-foreground">{formatDuration(durationSeconds)}</span>
+                          <span className="font-medium">{Math.round(data.value)}W</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
+
+      {/* File Information & Upload Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>File Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {activity.original_filename && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Original Filename</span>
+              <span className="font-medium text-sm">{activity.original_filename}</span>
+            </div>
+          )}
+          {activity.file_type && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">File Type</span>
+              <span className="font-medium uppercase">{activity.file_type}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Uploaded</span>
+            <span className="font-medium text-sm">{formatActivityDateTime(activity.created_at, timezone)}</span>
+          </div>
+          {activity.weather_conditions && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Weather</span>
+              <span className="font-medium text-sm">{JSON.stringify(activity.weather_conditions)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Activity Notes */}
       {activity.notes && (
