@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { usePaginatedActivities } from '@/hooks/usePaginatedActivities';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { ActivityUploadNew } from './ActivityUploadNew';
@@ -20,7 +21,8 @@ import { LazyPowerProfileChart } from './LazyPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 
 export function Activities() {
-  const { activities, loading, deleteActivity, reprocessActivityTimestamps } = useActivities();
+  const { activities, pagination, loadNextPage, loadActivityDetails, refreshActivities, isLoading } = usePaginatedActivities(20);
+  const { deleteActivity, reprocessActivityTimestamps } = useActivities();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,10 +86,16 @@ export function Activities() {
     }
   };
 
-  const handleActivityToggle = (activityId: string) => {
+  const handleActivityToggle = async (activityId: string) => {
     try {
       console.log('Toggling activity:', activityId, 'current expanded:', expandedActivity);
-      setExpandedActivity(expandedActivity === activityId ? null : activityId);
+      if (expandedActivity === activityId) {
+        setExpandedActivity(null);
+      } else {
+        // Load full activity details when expanding
+        await loadActivityDetails(activityId);
+        setExpandedActivity(activityId);
+      }
     } catch (error) {
       console.error('Error toggling activity:', error);
       // Reset to safe state on error
@@ -107,10 +115,14 @@ export function Activities() {
     // Close the modal immediately
     setUploadModalOpen(false);
     
+    // Refresh the activities list
+    refreshActivities();
+    
     if (activityId) {
       // Expand the newly uploaded activity after a brief delay to ensure data is loaded
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log('Expanding activity:', activityId);
+        await loadActivityDetails(activityId);
         setExpandedActivity(activityId);
       }, 1000);
     }
@@ -302,7 +314,7 @@ export function Activities() {
     });
   }
 
-  if (loading) {
+  if (isLoading && activities.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -577,6 +589,30 @@ export function Activities() {
               </Card>
             </Collapsible>
           ))}
+          
+          {/* Load More Button */}
+          {pagination.hasMore && !isLoading && (
+            <div className="flex justify-center pt-4">
+              <Button 
+                variant="outline" 
+                onClick={loadNextPage}
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Load More Activities
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -61,7 +61,28 @@ export function useActivities() {
     try {
       let query = supabase
         .from('activities')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          name,
+          sport_mode,
+          date,
+          duration_seconds,
+          distance_meters,
+          elevation_gain_meters,
+          avg_power,
+          max_power,
+          avg_heart_rate,
+          max_heart_rate,
+          avg_pace_per_km,
+          avg_speed_kmh,
+          avg_cadence,
+          calories,
+          tss,
+          notes,
+          created_at,
+          updated_at
+        `)
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
