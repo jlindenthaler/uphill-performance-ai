@@ -11,7 +11,7 @@ interface ActivityPowerComparisonProps {
 }
 
 export function ActivityPowerComparison({ activity }: ActivityPowerComparisonProps) {
-  const { powerProfile, loading } = usePowerProfile();
+  const { powerProfile, loading } = usePowerProfile(90); // 90-day historical data
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -32,23 +32,33 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
     return `${Math.round(value)}W`;
   };
 
-  // Mock activity power/pace data - in real implementation, this would come from activity analysis
+  // Calculate real activity power/pace data from GPS data using mean maximal calculations
   const getActivityEfforts = () => {
-    if (isRunning) {
-      return [
-        { duration: '1min', value: activity.avg_pace_per_km ? activity.avg_pace_per_km * 0.85 : 0, unit: 'min/km' },
-        { duration: '5min', value: activity.avg_pace_per_km ? activity.avg_pace_per_km * 0.90 : 0, unit: 'min/km' },
-        { duration: '20min', value: activity.avg_pace_per_km ? activity.avg_pace_per_km * 0.95 : 0, unit: 'min/km' },
-        { duration: '60min', value: activity.avg_pace_per_km || 0, unit: 'min/km' }
-      ];
-    } else {
-      return [
-        { duration: '1min', value: activity.max_power ? activity.max_power * 0.95 : 0, unit: 'W' },
-        { duration: '5min', value: activity.max_power ? activity.max_power * 0.85 : 0, unit: 'W' },
-        { duration: '20min', value: activity.normalized_power || activity.avg_power || 0, unit: 'W' },
-        { duration: '60min', value: activity.avg_power ? activity.avg_power * 0.90 : 0, unit: 'W' }
-      ];
-    }
+    if (!activity?.gps_data?.trackPoints) return [];
+    
+    const durations = [
+      { label: '1min', seconds: 60 },
+      { label: '5min', seconds: 300 },
+      { label: '20min', seconds: 1200 },
+      { label: '60min', seconds: 3600 }
+    ];
+
+    return durations.map(duration => {
+      let value = 0;
+      if (isRunning) {
+        const { calculateMeanMaximalPace } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPace(activity.gps_data.trackPoints, duration.seconds) || 0;
+      } else {
+        const { calculateMeanMaximalPower } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPower(activity.gps_data.trackPoints, duration.seconds) || 0;
+      }
+      
+      return {
+        duration: duration.label,
+        value: value,
+        unit: isRunning ? 'min/km' : 'W'
+      };
+    });
   };
 
   const activityEfforts = getActivityEfforts();

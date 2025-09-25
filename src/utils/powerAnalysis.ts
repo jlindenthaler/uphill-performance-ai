@@ -111,6 +111,7 @@ export async function populatePowerProfileForActivity(
   const insertPromises = powerProfile.map(async (profile) => {
     const insertData = {
       user_id: userId,
+      activity_id: activityId,
       duration_seconds: profile.durationSeconds,
       sport: sportMode,
       date_achieved: activityDate,

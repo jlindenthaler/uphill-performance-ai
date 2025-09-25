@@ -11,7 +11,7 @@ interface PowerProfileData {
   unit: string;
 }
 
-export function usePowerProfile(dateRangeDays?: number) {
+export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: string) {
   const { user } = useAuth();
   const { sportMode, isRunning } = useSportMode();
   const [powerProfile, setPowerProfile] = useState<PowerProfileData[]>([]);
@@ -43,6 +43,11 @@ export function usePowerProfile(dateRangeDays?: number) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
         query = query.gte('date_achieved', cutoffDate.toISOString());
+      }
+
+      // Exclude specific activity if provided
+      if (excludeActivityId) {
+        query = query.neq('activity_id', excludeActivityId);
       }
 
       const { data, error } = await query;
@@ -98,6 +103,7 @@ export function usePowerProfile(dateRangeDays?: number) {
         duration_seconds: durationSeconds,
         sport: sportMode,
         date_achieved: new Date().toISOString(),
+        activity_id: null, // Manual entry, no associated activity
         ...(isRunning 
           ? { pace_per_km: value } 
           : { power_watts: value }
@@ -119,7 +125,7 @@ export function usePowerProfile(dateRangeDays?: number) {
     if (user) {
       fetchPowerProfile();
     }
-  }, [user, sportMode, dateRangeDays]);
+  }, [user, sportMode, dateRangeDays, excludeActivityId]);
 
   return {
     powerProfile,

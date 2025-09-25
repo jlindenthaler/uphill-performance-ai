@@ -37,40 +37,23 @@ export function EnhancedPowerProfileChart({
     return `${Math.round(value)}W`;
   };
 
-  // Calculate activity mean max power (mock implementation for now)
+  // Calculate activity mean max power/pace using real GPS data
   const calculateActivityMeanMax = () => {
-    if (!activity) return [];
+    if (!activity?.gps_data?.trackPoints) return [];
+    
     const durations = [1, 5, 10, 20, 60, 300, 600, 1200, 3600];
     return durations.map(duration => {
       const durationLabel = formatDuration(duration);
-
-      // Calculate mean max power/pace based on activity data
       let value = 0;
-      if (isRunning && activity.avg_pace_per_km) {
-        // For running, estimate pace at different durations
-        const basePace = activity.avg_pace_per_km;
-        // Shorter durations = faster pace (lower time per km)
-        const factor = duration <= 20 ? 0.85 : duration <= 300 ? 0.9 : duration <= 1200 ? 1.0 : 1.1;
-        value = basePace * factor;
-      } else if (!isRunning && activity.avg_power) {
-        // For cycling, estimate power at different durations using power curve
-        const basePower = activity.avg_power;
-        let factor = 1.0;
-
-        // Power curve approximation - shorter durations have higher power
-        if (duration <= 10) factor = 1.8; // Neuromuscular power
-        else if (duration <= 60) factor = 1.5; // VO2max power
-        else if (duration <= 300) factor = 1.2; // 5min power
-        else if (duration <= 1200) factor = 1.0; // Threshold power
-        else factor = 0.85; // Endurance power
-
-        // Use max power if available for very short durations
-        if (duration <= 20 && activity.max_power) {
-          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
-        } else {
-          value = basePower * factor;
-        }
+      
+      if (isRunning) {
+        const { calculateMeanMaximalPace } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPace(activity.gps_data.trackPoints, duration) || 0;
+      } else {
+        const { calculateMeanMaximalPower } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPower(activity.gps_data.trackPoints, duration) || 0;
       }
+      
       return {
         duration: durationLabel,
         activityMeanMax: value
@@ -79,31 +62,24 @@ export function EnhancedPowerProfileChart({
   };
   const activityMeanMax = useMemo(() => calculateActivityMeanMax(), [activity, isRunning]);
 
-  // Calculate activity best power for specific durations
+  // Calculate activity best power/pace for specific durations using real GPS data
   const calculateActivityBestPowers = () => {
-    if (!activity) return [];
+    if (!activity?.gps_data?.trackPoints) return [];
+    
     const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
     const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
+    
     return targetDurations.map((duration, index) => {
       let value = 0;
-      if (!isRunning && activity.avg_power) {
-        const basePower = activity.avg_power;
-        let factor = 1.0;
-
-        // Power curve approximation - shorter durations have higher power
-        if (duration <= 10) factor = 1.8; // Neuromuscular power
-        else if (duration <= 60) factor = 1.5; // VO2max power
-        else if (duration <= 300) factor = 1.2; // 5min power
-        else if (duration <= 1200) factor = 1.0; // Threshold power
-        else factor = 0.85; // Endurance power
-
-        // Use max power if available for very short durations
-        if (duration <= 20 && activity.max_power) {
-          value = activity.max_power * (duration <= 10 ? 1.0 : 0.9);
-        } else {
-          value = basePower * factor;
-        }
+      
+      if (isRunning) {
+        const { calculateMeanMaximalPace } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPace(activity.gps_data.trackPoints, duration) || 0;
+      } else {
+        const { calculateMeanMaximalPower } = require('@/utils/powerAnalysis');
+        value = calculateMeanMaximalPower(activity.gps_data.trackPoints, duration) || 0;
       }
+      
       return {
         duration: targetLabels[index],
         durationSeconds: duration,
