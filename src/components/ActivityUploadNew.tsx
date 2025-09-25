@@ -11,7 +11,6 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useActivities } from '@/hooks/useActivities';
-import { useSportMode } from '@/contexts/SportModeContext';
 import { CP_PROTOCOLS } from '@/utils/cp-detection';
 
 interface ActivityUploadNewProps {
@@ -32,7 +31,6 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   
   const { toast } = useToast();
   const { uploadActivity, loading } = useActivities();
-  const { sportMode, setSportMode } = useSportMode();
   const { timezone } = useUserTimezone();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -174,30 +172,18 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Sport Mode Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="sport">Sport</Label>
-          <Select value={sportMode} onValueChange={setSportMode}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select sport" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border border-border z-50">
-              <SelectItem value="cycling">Cycling</SelectItem>
-              <SelectItem value="running">Running</SelectItem>
-              <SelectItem value="swimming">Swimming</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="activityName">Activity Name (Optional)</Label>
-          <Input
-            id="activityName"
-            value={activityName}
-            onChange={(e) => setActivityName(e.target.value)}
-            placeholder="e.g., Morning Ride"
-          />
-        </div>
+      {/* Activity Name */}
+      <div className="space-y-2">
+        <Label htmlFor="activityName">Activity Name (Optional)</Label>
+        <Input
+          id="activityName"
+          value={activityName}
+          onChange={(e) => setActivityName(e.target.value)}
+          placeholder="Leave empty for auto-generated name (e.g., Morning Ride)"
+        />
+        <p className="text-xs text-muted-foreground">
+          Sport type will be automatically detected from your FIT file data
+        </p>
       </div>
 
       {/* CP Test Toggle */}

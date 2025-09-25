@@ -104,9 +104,9 @@ export function useActivities() {
 
       let activityData: any = {
         name: shouldUseAutoName(activityName) 
-          ? generateActivityName({ date: new Date().toISOString(), sportMode })
+          ? generateActivityName({ date: new Date().toISOString(), sportMode: 'cycling' })
           : activityName || file.name.replace(/\.[^/.]+$/, ""),
-        sport_mode: sportMode,
+        sport_mode: 'cycling', // Default fallback, will be overridden by FIT data if available
         date: new Date().toISOString(), // Store full timestamp, not just date
         duration_seconds: 0,
         file_path: fileName,
@@ -132,16 +132,16 @@ export function useActivities() {
           console.log('Original activity date (before merge):', activityData.date);
           console.log('Parsed activity date:', parsedData.date);
           
-          // Merge parsed data with basic activity data
+          // Merge parsed data with basic activity data - prioritize FIT file data
           activityData = {
             ...activityData,
             ...parsedData,
             // Determine activity name using auto-naming if user didn't provide one
             name: shouldUseAutoName(activityName) 
-              ? generateActivityName({ date: parsedData.date || activityData.date, sportMode: parsedData.sport_mode || sportMode })
+              ? generateActivityName({ date: parsedData.date || activityData.date, sportMode: parsedData.sport_mode || 'cycling' })
               : activityName || parsedData.name || activityData.name,
-            // Keep user-selected sport mode if specified, otherwise use parsed
-            sport_mode: sportMode !== 'cycling' ? sportMode : parsedData.sport_mode
+            // Always use FIT-detected sport mode as it's most accurate
+            sport_mode: parsedData.sport_mode || activityData.sport_mode
           };
           
           console.log('Final merged activity date:', activityData.date);
