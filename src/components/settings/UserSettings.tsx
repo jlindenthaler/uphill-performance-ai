@@ -11,12 +11,10 @@ import { useUserProfile } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useSupabase";
 
 import { useTimeAvailability } from "@/hooks/useTimeAvailability";
-import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload, Zap } from "lucide-react";
+import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSportMode } from "@/contexts/SportModeContext";
 import { GarminConnection } from "@/components/GarminConnection";
-import { RecoveryToolsManager } from "@/components/RecoveryToolsManager";
-import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function UserSettings() {
   const { user } = useAuth();
@@ -292,23 +290,6 @@ export function UserSettings() {
         </CardContent>
       </Card>
 
-      {/* Recovery Tools & Services */}
-      <Card className="card-gradient">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-green-500" />
-            Recovery Tools & Services
-          </CardTitle>
-          <CardDescription>
-            Manage your recovery methods and track usage frequency
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ErrorBoundary>
-            <RecoveryToolsManager />
-          </ErrorBoundary>
-        </CardContent>
-      </Card>
 
       {/* Lab Test Results - REMOVED - Now in Settings/User Settings */}
 
