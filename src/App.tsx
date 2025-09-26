@@ -34,9 +34,9 @@ const AppContent = () => {
     );
   }
 
-   if (!user) {
-     return <AuthForm />;
-  }
+   // if (!user) {
+   // return <AuthForm />;
+  //}
 
   return (
     <SportModeProvider>
