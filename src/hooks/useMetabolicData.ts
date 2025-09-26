@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth, usePhysiologyData } from './useSupabase';
+import { useLabResults } from './useLabResults';
 import { useSportMode } from '@/contexts/SportModeContext';
 
 interface MetabolicMetrics {
@@ -11,6 +12,7 @@ interface MetabolicMetrics {
 export function useMetabolicData() {
   const { user } = useAuth();
   const { getPhysiologyData } = usePhysiologyData();
+  const { labResults } = useLabResults();
   const { sportMode } = useSportMode();
   const [physiologyData, setPhysiologyData] = useState<any>(null);
   const [metabolicMetrics, setMetabolicMetrics] = useState<MetabolicMetrics | null>(null);
@@ -24,14 +26,14 @@ export function useMetabolicData() {
       const data = await getPhysiologyData(sportMode);
       setPhysiologyData(data);
       
-      // Mock metabolic metrics calculation
-      if (data) {
-        setMetabolicMetrics({
-          vo2max: { value: data.vo2_max || 58, percentile: 75 },
-          vlamax: { value: 0.35, percentile: 65 },
-          fatMax: { value: 0.42, percentile: 80, unit: 'g/min/kg' }
-        });
-      }
+      // Use most recent lab result for VO2max, fallback to physiology data or default
+      const vo2maxValue = labResults?.vo2_max || data?.vo2_max || 58;
+      
+      setMetabolicMetrics({
+        vo2max: { value: vo2maxValue, percentile: 75 },
+        vlamax: { value: labResults?.vla_max || 0.35, percentile: 65 },
+        fatMax: { value: labResults?.fat_max || 0.42, percentile: 80, unit: 'g/min/kg' }
+      });
 
       return data;
     } catch (error) {
@@ -46,7 +48,7 @@ export function useMetabolicData() {
     if (user) {
       fetchPhysiologyData();
     }
-  }, [user, sportMode]);
+  }, [user, sportMode, labResults]);
 
   return {
     physiologyData,
