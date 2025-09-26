@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/hooks/useSettings";
 import { useActivities } from "@/hooks/useActivities";
+import { useAuth } from "@/hooks/useSupabase";
 import { 
   Settings, 
   Bell, 
@@ -25,7 +26,9 @@ import {
   Plus,
   Database,
   RotateCcw,
-  Calculator
+  Calculator,
+  LogOut,
+  User
 } from "lucide-react";
 import { GarminConnection } from "@/components/GarminConnection";
 import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
@@ -33,6 +36,7 @@ import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
   const { reprocessActivityTimestamps, recalculateTLIBasedOnLabResults, loading: activitiesLoading } = useActivities();
+  const { signOut } = useAuth();
 
   if (!settings) return null;
 
@@ -329,6 +333,40 @@ export function AppSettings() {
             >
               <Calculator className="w-4 h-4 mr-2" />
               Recalculate TLI
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account */}
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5 text-orange-500" />
+            Account
+          </CardTitle>
+          <CardDescription>
+            Manage your account and authentication
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Sign out of your account
+              </p>
+            </div>
+            <Button
+              onClick={() => signOut()}
+              variant="destructive"
+              size="sm"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
             </Button>
           </div>
         </CardContent>
