@@ -34,9 +34,10 @@ const AppContent = () => {
     );
   }
 
-  if (!user) {
-    return <AuthForm />;
-  }
+  // Temporarily bypassed authentication - uncomment to re-enable
+  // if (!user) {
+  //   return <AuthForm />;
+  // }
 
   return (
     <SportModeProvider>
