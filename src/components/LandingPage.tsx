@@ -150,8 +150,8 @@ export const LandingPage: React.FC = () => {
               <div className="text-sm text-muted-foreground">Lactate Production</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-zone-4 mb-2">PMC</div>
-              <div className="text-sm text-muted-foreground">Performance Management</div>
+              <div className="text-3xl font-bold text-zone-4 mb-2">PRC</div>
+              <div className="text-sm text-muted-foreground">Performance Readiness</div>
             </div>
           </div>
         </div>
