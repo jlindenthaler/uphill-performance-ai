@@ -132,7 +132,7 @@ export const LandingPage: React.FC = () => {
               Professional-Grade Metrics
             </h2>
             <p className="text-lg text-muted-foreground">
-              Track the metrics that matter for elite performance
+              Elite physiological markers for advanced performance analysis
             </p>
           </div>
 
@@ -142,8 +142,8 @@ export const LandingPage: React.FC = () => {
               <div className="text-sm text-muted-foreground">Aerobic Capacity</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-zone-2 mb-2">FTP</div>
-              <div className="text-sm text-muted-foreground">Functional Threshold</div>
+              <div className="text-3xl font-bold text-zone-2 mb-2">LT2</div>
+              <div className="text-sm text-muted-foreground">Glucolytic Threshold</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-zone-3 mb-2">VLaMax</div>
