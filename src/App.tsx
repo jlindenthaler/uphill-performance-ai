@@ -4,8 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "@/hooks/useSupabase";
-import { AuthForm } from "@/components/AuthForm";
 import { SportModeProvider } from "@/contexts/SportModeContext";
+import { LandingPage } from "@/components/LandingPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -34,15 +34,16 @@ const AppContent = () => {
     );
   }
 
-   // if (!user) {
-   // return <AuthForm />;
-  //}
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
     <SportModeProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
