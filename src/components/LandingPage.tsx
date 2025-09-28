@@ -51,6 +51,11 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Coming Soon Banner */}
+      <div className="w-full bg-primary text-primary-foreground py-3 px-4 text-center font-semibold">
+        Coming Soon
+      </div>
+      
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
