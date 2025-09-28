@@ -19,7 +19,6 @@ import {
   Moon,
   Sun,
   Monitor,
-  Link,
   Wifi,
   Smartphone,
   Link as LinkIcon,
@@ -30,7 +29,6 @@ import {
   LogOut,
   User
 } from "lucide-react";
-import { GarminConnection } from "@/components/GarminConnection";
 import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 
 export function AppSettings() {
@@ -257,22 +255,6 @@ export function AppSettings() {
               }
             />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Connections */}
-      <Card className="card-gradient">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="w-5 h-5 text-blue-500" />
-            Connections
-          </CardTitle>
-          <CardDescription>
-            Connect and manage integrations with external services
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GarminConnection />
         </CardContent>
       </Card>
 
