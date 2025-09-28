@@ -14,7 +14,6 @@ import { useTimeAvailability } from "@/hooks/useTimeAvailability";
 import { User, Mail, Lock, Globe, Ruler, Clock, Activity, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSportMode } from "@/contexts/SportModeContext";
-import { GarminConnection } from "@/components/GarminConnection";
 
 export function UserSettings() {
   const { user } = useAuth();

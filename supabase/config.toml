@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.garmin-connect]
 verify_jwt = true
+
+[functions.strava-oauth]
+verify_jwt = true
+
+[functions.strava-sync]
+verify_jwt = true

@@ -78,7 +78,8 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error in garmin-connect function:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -169,8 +170,9 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
     })
   } catch (error) {
     // Only log errors, not sensitive data
-    console.error('Error handling Garmin callback:', error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error handling Garmin callback:', error)
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -222,7 +224,8 @@ async function syncGarminActivities(supabaseClient: any, userId: string) {
     })
   } catch (error) {
     console.error('Error syncing Garmin activities:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -255,7 +258,8 @@ async function getActivityDetails(supabaseClient: any, userId: string, activityI
     })
   } catch (error) {
     console.error('Error fetching activity details:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
