@@ -218,6 +218,8 @@ export function useAppSettings() {
           user_id: user.id,
           ...settings,
           ...updates,
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
