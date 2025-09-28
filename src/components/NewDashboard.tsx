@@ -37,6 +37,7 @@ import { usePMCPopulation } from '@/hooks/usePMCPopulation';
 import { ActivityUploadNew } from './ActivityUploadNew';
 import { RecoverySessionModal } from './RecoverySessionModal';
 import { LabResults } from './LabResults';
+import { AICoachRecommendation } from './AICoachRecommendation';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatActivityDate } from '@/utils/dateFormat';
@@ -324,22 +325,11 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-              <h3 className="font-semibold mb-2">AI Coach Recommendation</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Based on your current form and training load, today is perfect for a Zone 2 endurance session.
-                Your TSB indicates you're well-recovered.
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => onNavigate('workouts')}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Plan Session
-                </Button>
-                <Button variant="outline" size="sm">
-                  View Alternatives
-                </Button>
-              </div>
-            </div>
+            <AICoachRecommendation 
+              onNavigate={onNavigate}
+              currentTSB={tsb}
+              tsbStatus={getTSBStatus(tsb).status}
+            />
             
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
