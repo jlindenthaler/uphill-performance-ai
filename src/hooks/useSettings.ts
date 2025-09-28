@@ -17,7 +17,6 @@ interface AppSettings {
   workout_reminders: boolean;
   data_sharing: boolean;
   auto_sync: boolean;
-  default_sport: 'cycling' | 'running';
   privacy_mode: boolean;
 }
 
@@ -186,7 +185,6 @@ export function useAppSettings() {
           workout_reminders: data.workout_reminders ?? true,
           data_sharing: data.data_sharing ?? false,
           auto_sync: data.auto_sync ?? true,
-          default_sport: (data.default_sport as 'cycling' | 'running') || 'cycling',
           privacy_mode: data.privacy_mode ?? false
         });
       } else {
@@ -198,7 +196,6 @@ export function useAppSettings() {
           workout_reminders: true,
           data_sharing: false,
           auto_sync: true,
-          default_sport: 'cycling',
           privacy_mode: false
         };
         setSettings(defaultSettings);

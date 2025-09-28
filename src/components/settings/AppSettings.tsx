@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/hooks/useSettings";
+import { useTheme } from "@/hooks/useTheme";
 import { useActivities } from "@/hooks/useActivities";
 import { useAuth } from "@/hooks/useSupabase";
 import { 
@@ -15,7 +16,6 @@ import {
   Palette, 
   Shield, 
   RefreshCw, 
-  Bike,
   Moon,
   Sun,
   Monitor,
@@ -35,6 +35,7 @@ export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
   const { reprocessActivityTimestamps, recalculateTLIBasedOnLabResults, loading: activitiesLoading } = useActivities();
   const { signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   if (!settings) return null;
 
@@ -66,7 +67,7 @@ export function AppSettings() {
               <Select
                 value={settings.theme}
                 onValueChange={(value: 'light' | 'dark' | 'system') => 
-                  updateSettings({ theme: value })
+                  setTheme(value)
                 }
               >
                 <SelectTrigger className="w-40">
@@ -95,33 +96,6 @@ export function AppSettings() {
               </Select>
             </div>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="flex items-center gap-2">
-                  <Bike className="w-4 h-4" />
-                  Default Sport
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Your preferred sport for new workouts
-                </p>
-              </div>
-              <Select
-                value={settings.default_sport}
-                onValueChange={(value: 'cycling' | 'running') => 
-                  updateSettings({ default_sport: value })
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cycling">Cycling</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>
