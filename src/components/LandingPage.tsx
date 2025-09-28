@@ -11,6 +11,7 @@ import {
   Zap,
   ChevronRight 
 } from 'lucide-react';
+import uphillLogo from '@/assets/uphill-logo.jpg';
 
 export const LandingPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -54,8 +55,8 @@ export const LandingPage: React.FC = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 primary-gradient rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <img src={uphillLogo} alt="UpHill Ai Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-xl font-bold text-foreground">UpHill Ai</h1>
           </div>

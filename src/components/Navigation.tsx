@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SportModeToggle } from "@/components/SportModeToggle";
 import { Home, Calendar, Activity, Target, Heart, Download, Settings, Zap, TrendingUp, BookOpen, Upload, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react";
+import uphillLogo from '@/assets/uphill-logo.jpg';
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string, openDialog?: boolean) => void;
@@ -64,8 +65,8 @@ export function Navigation({
       <div className={`${collapsed ? 'p-3' : 'p-6'} border-b border-border transition-all duration-300`}>
         {!collapsed && (
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
-              <Zap className="w-6 h-6 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+              <img src={uphillLogo} alt="UpHill Ai Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-bold">UpHill Ai</h1>
@@ -76,8 +77,8 @@ export function Navigation({
         
         {collapsed && (
           <div className="flex justify-center mb-4">
-            <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
-              <Zap className="w-6 h-6 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+              <img src={uphillLogo} alt="UpHill Ai Logo" className="w-full h-full object-contain" />
             </div>
           </div>
         )}

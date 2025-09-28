@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { useAuth } from '@/hooks/useSupabase';
 import { toast } from '@/hooks/use-toast';
 import { Activity } from 'lucide-react';
+import uphillLogo from '@/assets/uphill-logo.jpg';
 
 interface AuthModalProps {
   open: boolean;
@@ -102,8 +103,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center space-x-2 mb-2">
-            <div className="w-8 h-8 primary-gradient rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <img src={uphillLogo} alt="UpHill Ai Logo" className="w-full h-full object-contain" />
             </div>
             <DialogTitle className="text-xl">UpHill Ai</DialogTitle>
           </div>
