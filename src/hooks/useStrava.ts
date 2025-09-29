@@ -69,8 +69,7 @@ export const useStrava = () => {
       const session = await supabase.auth.getSession();
       if (!session.data.session) throw new Error('No session found');
       
-      const { data, error } = await supabase.functions.invoke('strava-auth', {
-        body: { action: 'authorize' },
+      const { data, error } = await supabase.functions.invoke('strava-auth?action=authorize', {
         headers: {
           'Authorization': `Bearer ${session.data.session.access_token}`,
         },
@@ -97,8 +96,7 @@ export const useStrava = () => {
       const session = await supabase.auth.getSession();
       if (!session.data.session) throw new Error('No session found');
       
-      const { data, error } = await supabase.functions.invoke('strava-auth', {
-        body: { action: 'disconnect' },
+      const { data, error } = await supabase.functions.invoke('strava-auth?action=disconnect', {
         headers: {
           'Authorization': `Bearer ${session.data.session.access_token}`,
         },
