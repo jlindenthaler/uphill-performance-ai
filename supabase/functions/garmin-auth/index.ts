@@ -70,7 +70,13 @@ Deno.serve(async (req) => {
       const clientSecret = Deno.env.get('GARMIN_CLIENT_SECRET');
       const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-auth?action=callback&origin=${encodeURIComponent(origin)}`;
 
-      console.log('Exchanging code for tokens...');
+      console.log('Token exchange details:', {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        hasCodeVerifier: !!codeVerifier,
+        redirectUri,
+        codeLength: code.length
+      });
 
       // Exchange code for tokens
       const tokenResponse = await fetch('https://diauth.garmin.com/di-oauth2-service/oauth/token', {
