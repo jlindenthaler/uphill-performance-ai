@@ -84,82 +84,49 @@ serve(async (req) => {
       }
 
       if (code && state) {
-        console.log('OAuth callback received, processing tokens and redirecting');
-        
-        try {
-          // Exchange code for access token
-          const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              client_id: STRAVA_CLIENT_ID,
-              client_secret: STRAVA_CLIENT_SECRET,
-              code: code,
-              grant_type: 'authorization_code',
-            }),
-          });
+        console.log('OAuth callback successful, sending message to opener');
+        return new Response(
+          `<!DOCTYPE html>
+          <html>
+          <head><title>Strava Authorization</title></head>
+          <body>
+            <p>Authorization successful! This window will close automatically.</p>
+            <script>
+              // Store result in localStorage as fallback
+              try {
+                localStorage.setItem('strava_auth_result', JSON.stringify({
+                  type: 'success', 
+                  code: '${code}', 
+                  state: '${state}',
+                  timestamp: Date.now()
+                }));
+              } catch (e) {
+                console.error('Failed to store in localStorage:', e);
+              }
 
-          if (!tokenResponse.ok) {
-            const errorText = await tokenResponse.text();
-            console.error('Token exchange failed:', tokenResponse.status, errorText);
-            throw new Error(`Failed to exchange code for token: ${tokenResponse.status}`);
+              // Try postMessage
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
+                }
+              } catch (e) {
+                console.error('Failed to send postMessage:', e);
+              }
+
+              // Close window
+              try {
+                window.close();
+              } catch (e) {
+                console.error('Failed to close window:', e);
+              }
+            </script>
+          </body>
+          </html>`,
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
           }
-
-          const tokenData = await tokenResponse.json();
-          console.log('Token exchange successful, Athlete ID:', tokenData.athlete?.id);
-          
-          if (tokenData.error) {
-            console.error('Strava OAuth error:', tokenData.error);
-            throw new Error(`Strava OAuth error: ${tokenData.error}`);
-          }
-
-          // Create a temporary Supabase client for processing
-          const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-          );
-
-          // Store tokens securely
-          const { error: storeError } = await supabaseClient.rpc('store_strava_tokens_secure', {
-            p_user_id: state,
-            p_access_token: tokenData.access_token,
-            p_refresh_token: tokenData.refresh_token,
-            p_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-            p_scope: tokenData.scope,
-            p_athlete_id: tokenData.athlete?.id || null,
-          });
-
-          if (storeError) {
-            console.error('Error storing Strava tokens:', storeError);
-            throw new Error(`Failed to store Strava tokens securely: ${storeError.message}`);
-          }
-
-          console.log('Successfully connected Strava for user:', state);
-
-          // Redirect back to settings page with success
-          const baseUrl = new URL(Deno.env.get('SUPABASE_URL') || '').origin;
-          return new Response(null, {
-            status: 302,
-            headers: {
-              ...corsHeaders,
-              'Location': `${baseUrl}/?strava=success#settings`
-            }
-          });
-
-        } catch (error) {
-          console.error('Error processing OAuth callback:', error);
-          // Redirect back to settings page with error
-          const baseUrl = new URL(Deno.env.get('SUPABASE_URL') || '').origin;
-          return new Response(null, {
-            status: 302,
-            headers: {
-              ...corsHeaders,
-              'Location': `${baseUrl}/?strava=error#settings`
-            }
-          });
-        }
+        );
       }
 
       return new Response(
@@ -231,7 +198,7 @@ serve(async (req) => {
       const { action, code, state } = await req.json();
 
       if (action === 'get_auth_url') {
-        // Generate OAuth URL for Strava - redirect back to settings page
+        // Generate OAuth URL for Strava - redirect back to edge function for popup
         const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/strava-oauth`;
         const scope = 'read,activity:read_all';
         const state = user.id; // Use user ID as state for security

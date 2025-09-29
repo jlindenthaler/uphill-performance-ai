@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,18 +33,133 @@ export function useStrava() {
       }
 
       if (data?.authUrl) {
-        // Redirect to Strava authorization page
-        window.location.href = data.authUrl;
+        // Open Strava authorization in popup window
+        const authWindow = window.open(
+          data.authUrl, 
+          'strava_auth', 
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        if (!authWindow) {
+          throw new Error('Popup blocked. Please allow popups and try again.');
+        }
+
+        // Listen for auth success/error messages
+        const messageHandler = async (event: MessageEvent) => {
+          console.log('Received message from popup:', event.origin, event.data);
+          
+          // Verify origin for security - allow messages from Supabase domain
+          if (!event.origin.includes('supabase.co') && event.origin !== window.location.origin) {
+            console.log('Message origin rejected:', event.origin);
+            return;
+          }
+
+          if (event.data.type === 'strava_auth_success') {
+            console.log('Processing Strava auth success');
+            clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
+            window.removeEventListener('message', messageHandler);
+            authWindow?.close();
+            
+            // Handle the OAuth callback
+            await handleStravaCallback(event.data.code, event.data.state);
+          } else if (event.data.type === 'strava_auth_error') {
+            console.log('Processing Strava auth error');
+            clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
+            window.removeEventListener('message', messageHandler);
+            authWindow?.close();
+            
+            setConnectionStatus(prev => ({ 
+              ...prev, 
+              loading: false, 
+              error: `Strava authorization failed: ${event.data.error}` 
+            }));
+            
+            toast({
+              title: "Authorization Failed",
+              description: `Strava authorization failed: ${event.data.error}`,
+              variant: "destructive"
+            });
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        // Poll localStorage as fallback communication method
+        const pollLocalStorage = setInterval(() => {
+          try {
+            const result = localStorage.getItem('strava_auth_result');
+            if (result) {
+              const authResult = JSON.parse(result);
+              // Only process results from the last 5 minutes
+              if (Date.now() - authResult.timestamp < 300000) {
+                localStorage.removeItem('strava_auth_result');
+                
+                if (authResult.type === 'success') {
+                  console.log('Processing localStorage auth success');
+                  clearInterval(pollClosed);
+                  clearInterval(pollLocalStorage);
+                  window.removeEventListener('message', messageHandler);
+                  authWindow?.close();
+                  
+                  handleStravaCallback(authResult.code, authResult.state);
+                } else if (authResult.type === 'error') {
+                  console.log('Processing localStorage auth error');
+                  clearInterval(pollClosed);
+                  clearInterval(pollLocalStorage);
+                  window.removeEventListener('message', messageHandler);
+                  authWindow?.close();
+                  
+                  setConnectionStatus(prev => ({ 
+                    ...prev, 
+                    loading: false, 
+                    error: `Strava authorization failed: ${authResult.error}` 
+                  }));
+                  
+                  toast({
+                    title: "Authorization Failed",
+                    description: `Strava authorization failed: ${authResult.error}`,
+                    variant: "destructive"
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error checking localStorage:', e);
+          }
+        }, 1000);
+
+        // Handle if popup is closed manually
+        const pollClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
+            window.removeEventListener('message', messageHandler);
+            setConnectionStatus(prev => ({ 
+              ...prev, 
+              loading: false, 
+              error: 'Authorization cancelled by user' 
+            }));
+          }
+        }, 1000);
+        
+        toast({
+          title: "Strava Authorization",
+          description: "Please complete the authorization process in the popup window."
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setConnectionStatus(prev => ({ ...prev, error: errorMessage, loading: false }));
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
       
       toast({
         title: "Connection Failed",
         description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setConnectionStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -196,44 +311,6 @@ export function useStrava() {
       }));
     }
   };
-
-  // Handle URL parameters for OAuth callback
-  useEffect(() => {
-    const handleUrlCallback = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const stravaResult = urlParams.get('strava');
-      
-      if (stravaResult === 'success') {
-        setConnectionStatus(prev => ({ ...prev, isConnected: true }));
-        toast({
-          title: "Success!",
-          description: "Your Strava account has been connected successfully."
-        });
-        // Clean up URL
-        const newUrl = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, document.title, newUrl);
-        
-        // Automatically sync recent activities
-        syncStravaActivities();
-      } else if (stravaResult === 'error') {
-        setConnectionStatus(prev => ({ 
-          ...prev, 
-          error: 'Strava authorization failed',
-          loading: false 
-        }));
-        toast({
-          title: "Authorization Failed",
-          description: "Strava authorization failed. Please try again.",
-          variant: "destructive"
-        });
-        // Clean up URL
-        const newUrl = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, document.title, newUrl);
-      }
-    };
-
-    handleUrlCallback();
-  }, [toast]);
 
   return {
     connectionStatus,
