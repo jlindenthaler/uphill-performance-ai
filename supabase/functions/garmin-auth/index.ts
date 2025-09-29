@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       console.log('Exchanging code for tokens...');
 
       // Exchange code for tokens
-      const tokenResponse = await fetch('https://connectapi.garmin.com/oauth-service/oauth/token', {
+      const tokenResponse = await fetch('https://diauth.garmin.com/di-oauth2-service/oauth/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
