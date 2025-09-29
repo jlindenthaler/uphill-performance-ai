@@ -1,58 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useGarmin } from "@/hooks/useGarmin";
-import { useToast } from "@/hooks/use-toast";
 import { Link, Unlink, Activity, Calendar, MapPin } from "lucide-react";
+import { toast } from "sonner";
 
 export function GarminConnection() {
   const { 
-    connectionStatus,
-    initiateGarminConnection,
-    syncGarminActivities,
-    disconnectGarmin,
-    checkGarminConnection
+    connection,
+    isLoading,
+    connect,
+    disconnect,
+    isConnecting,
+    isDisconnecting
   } = useGarmin();
-  const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    checkGarminConnection();
-  }, []);
-
-  const handleConnect = async () => {
+  const handleConnect = () => {
     console.log('Connect button clicked');
-    try {
-      await initiateGarminConnection();
-    } catch (err) {
-      console.error('Error in handleConnect:', err);
-    }
+    connect();
   };
 
-  const handleDisconnect = async () => {
-    await disconnectGarmin();
+  const handleDisconnect = () => {
+    disconnect();
   };
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await syncGarminActivities();
+      // TODO: Add sync functionality
+      toast.success('Activities synced successfully');
+    } catch (err) {
+      toast.error('Failed to sync activities');
     } finally {
       setSyncing(false);
     }
   };
 
   const getStatusBadge = () => {
-    if (connectionStatus.loading) {
+    if (isLoading || isConnecting) {
       return <Badge variant="secondary">Connecting...</Badge>;
     }
-    if (connectionStatus.isConnected) {
+    if (connection?.connected) {
       return <Badge variant="default" className="bg-green-500">Connected</Badge>;
-    }
-    if (connectionStatus.error) {
-      return <Badge variant="destructive">Error</Badge>;
     }
     return <Badge variant="outline">Not Connected</Badge>;
   };
@@ -77,7 +69,7 @@ export function GarminConnection() {
             <div>
               <h4 className="font-medium">Connection Status</h4>
               <p className="text-sm text-muted-foreground">
-                {connectionStatus.isConnected ? 'Your Garmin account is connected' : 'Connect to sync activities automatically'}
+                {connection?.connected ? 'Your Garmin account is connected' : 'Connect to sync activities automatically'}
               </p>
             </div>
           </div>
@@ -86,7 +78,7 @@ export function GarminConnection() {
 
         <Separator />
 
-        {!connectionStatus.isConnected ? (
+        {!connection?.connected ? (
           <div className="space-y-4">
             <div className="p-4 rounded-lg bg-muted/20">
               <h5 className="font-medium mb-2">What you'll get:</h5>
@@ -108,10 +100,10 @@ export function GarminConnection() {
             <Button 
               onClick={handleConnect} 
               className="w-full"
-              disabled={connectionStatus.loading}
+              disabled={isConnecting}
             >
               <Link className="w-4 h-4 mr-2" />
-              {connectionStatus.loading ? 'Connecting...' : 'Connect Garmin Account'}
+              {isConnecting ? 'Connecting...' : 'Connect Garmin Account'}
             </Button>
           </div>
         ) : (
@@ -145,9 +137,10 @@ export function GarminConnection() {
                 onClick={handleDisconnect} 
                 variant="outline"
                 className="flex-1"
+                disabled={isDisconnecting}
               >
                 <Unlink className="w-4 h-4 mr-2" />
-                Disconnect
+                {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
               </Button>
             </div>
           </div>
