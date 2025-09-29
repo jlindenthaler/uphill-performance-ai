@@ -21,7 +21,10 @@ export function useStrava() {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
       const { data, error } = await supabase.functions.invoke('strava-oauth', {
-        body: { action: 'get_auth_url' }
+        body: { 
+          action: 'get_auth_url',
+          frontend_url: window.location.origin
+        }
       });
 
       if (error) {
@@ -33,44 +36,8 @@ export function useStrava() {
       }
 
       if (data?.authUrl) {
-        // Open Strava authorization in new window
-        const authWindow = window.open(data.authUrl, 'strava_auth', 'width=600,height=600');
-        
-        // Listen for auth success/error messages
-        const messageHandler = async (event: MessageEvent) => {
-          if (event.data.type === 'strava_auth_success') {
-            window.removeEventListener('message', messageHandler);
-            authWindow?.close();
-            
-            // Handle the OAuth callback
-            await handleStravaCallback(event.data.code, event.data.state);
-          } else if (event.data.type === 'strava_auth_error') {
-            window.removeEventListener('message', messageHandler);
-            authWindow?.close();
-            
-            throw new Error(`Strava authorization failed: ${event.data.error}`);
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
-
-        // Handle if popup is closed manually
-        const pollClosed = setInterval(() => {
-          if (authWindow?.closed) {
-            clearInterval(pollClosed);
-            window.removeEventListener('message', messageHandler);
-            setConnectionStatus(prev => ({ 
-              ...prev, 
-              loading: false, 
-              error: 'Authorization cancelled by user' 
-            }));
-          }
-        }, 1000);
-        
-        toast({
-          title: "Strava Authorization",
-          description: "Please complete the authorization process in the popup window."
-        });
+        // Redirect to Strava authorization page
+        window.location.href = data.authUrl;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
