@@ -34,6 +34,26 @@ interface GarminActivity {
   variabilityIndex: number
 }
 
+// PKCE helper functions
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return btoa(String.fromCharCode.apply(null, Array.from(array)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(digest))))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -58,13 +78,13 @@ serve(async (req) => {
       })
     }
 
-    const { action, code, state } = await req.json()
+    const { action, code, state, codeVerifier } = await req.json()
 
     switch (action) {
       case 'get_auth_url':
         return await getGarminAuthUrl()
       case 'handle_callback':
-        return await handleGarminCallback(supabaseClient, user.id, code, state)
+        return await handleGarminCallback(supabaseClient, user.id, code, state, codeVerifier)
       case 'sync_activities':
         return await syncGarminActivities(supabaseClient, user.id)
       case 'get_activity_details':
@@ -97,26 +117,32 @@ async function getGarminAuthUrl() {
     })
   }
 
-  // OAuth 2.0 authorization URL for Garmin Connect IQ
+  // Generate PKCE code verifier and challenge for OAuth 2.0 with PKCE
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = await generateCodeChallenge(codeVerifier)
   const state = crypto.randomUUID()
-  const authUrl = new URL('https://connect.garmin.com/oauth-service/oauth/preauthorized')
+
+  // OAuth 2.0 authorization URL for Garmin Connect (with PKCE)
+  const authUrl = new URL('https://connect.garmin.com/oauth2Confirm')
+  authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', clientId)
   authUrl.searchParams.set('redirect_uri', `${redirectUri}/garmin-auth?action=callback`)
-  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('code_challenge', codeChallenge)
+  authUrl.searchParams.set('code_challenge_method', 'S256')
   authUrl.searchParams.set('state', state)
-  authUrl.searchParams.set('scope', 'read')
 
-  console.log('Generated Garmin OAuth 2.0 auth URL:', authUrl.toString())
+  console.log('Generated Garmin OAuth 2.0 PKCE auth URL:', authUrl.toString())
 
   return new Response(JSON.stringify({ 
     authUrl: authUrl.toString(),
-    state 
+    state,
+    codeVerifier // We'll need this for the token exchange
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
 
-async function handleGarminCallback(supabaseClient: any, userId: string, code: string, state: string) {
+async function handleGarminCallback(supabaseClient: any, userId: string, code: string, state: string, codeVerifier?: string) {
   try {
     const clientId = Deno.env.get('GARMIN_CLIENT_ID')
     const clientSecret = Deno.env.get('GARMIN_CLIENT_SECRET')
@@ -126,10 +152,14 @@ async function handleGarminCallback(supabaseClient: any, userId: string, code: s
       throw new Error('Garmin API credentials not configured')
     }
 
-    console.log('Exchanging authorization code for access token...')
+    if (!codeVerifier) {
+      throw new Error('Code verifier missing for PKCE flow')
+    }
 
-    // Exchange authorization code for access token (OAuth 2.0)
-    const tokenResponse = await fetch('https://connect.garmin.com/oauth-service/oauth/access_token', {
+    console.log('Exchanging authorization code for access token with PKCE...')
+
+    // Exchange authorization code for access token (OAuth 2.0 with PKCE)
+    const tokenResponse = await fetch('https://diauth.garmin.com/di-oauth2-service/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -140,6 +170,7 @@ async function handleGarminCallback(supabaseClient: any, userId: string, code: s
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
+        code_verifier: codeVerifier,
         redirect_uri: `${redirectUri}/garmin-auth?action=callback`
       })
     })
@@ -147,7 +178,7 @@ async function handleGarminCallback(supabaseClient: any, userId: string, code: s
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text()
       console.error('Garmin token exchange failed:', errorText)
-      throw new Error(`Token exchange failed: ${tokenResponse.status}`)
+      throw new Error(`Token exchange failed: ${tokenResponse.status} - ${errorText}`)
     }
 
     const tokenData = await tokenResponse.json()
@@ -312,22 +343,10 @@ function convertGarminActivity(garminActivity: GarminActivity) {
 }
 
 async function fetchWithGarminAuth(url: string, accessToken: string, tokenSecret: string) {
-  const clientId = Deno.env.get('GARMIN_CLIENT_ID')
-  const clientSecret = Deno.env.get('GARMIN_CLIENT_SECRET')
-  
-  if (!clientId || !clientSecret) {
-    throw new Error('Garmin API credentials not configured')
-  }
-
-  // Create OAuth 1.0a signature
-  const timestamp = Math.floor(Date.now() / 1000).toString()
-  const nonce = crypto.randomUUID()
-
-  const authHeader = `OAuth oauth_consumer_key="${clientId}", oauth_token="${accessToken}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="${timestamp}", oauth_nonce="${nonce}", oauth_version="1.0"`
-
+  // For OAuth 2.0, we'll use Bearer token authentication
   return fetch(url, {
     headers: {
-      'Authorization': authHeader,
+      'Authorization': `Bearer ${accessToken}`,
       'Accept': 'application/json'
     }
   })
