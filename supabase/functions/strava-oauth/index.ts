@@ -38,24 +38,93 @@ serve(async (req) => {
 
       console.log('OAuth callback received - Code:', !!code, 'State:', state, 'Error:', error);
 
-      // Get the app origin from the request
-      const appOrigin = url.origin.replace('.supabase.co', '').replace('https://srwuprrcbfuzvkehvgyt', 'https://srwuprrcbfuzvkehvgyt.lovable.app');
-      const callbackUrl = `${appOrigin}/auth/strava/callback`;
+      // Determine the correct app origin for redirect
+      let appOrigin;
+      if (url.origin.includes('.supabase.co')) {
+        // This is the edge function URL, construct the app URL
+        appOrigin = 'https://srwuprrcbfuzvkehvgyt.lovable.app';
+      } else {
+        // Direct access, use the origin
+        appOrigin = url.origin;
+      }
 
       if (error) {
         console.error('Strava OAuth error:', error);
-        const redirectUrl = `${callbackUrl}?error=${encodeURIComponent(error)}`;
+        const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent(error)}`;
         return Response.redirect(redirectUrl, 302);
       }
 
       if (code && state) {
-        console.log('OAuth callback successful, redirecting to app callback');
-        const redirectUrl = `${callbackUrl}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-        return Response.redirect(redirectUrl, 302);
+        try {
+          console.log('Processing Strava OAuth callback - exchanging code for tokens');
+
+          // Exchange code for access token
+          const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              client_id: STRAVA_CLIENT_ID,
+              client_secret: STRAVA_CLIENT_SECRET,
+              code: code,
+              grant_type: 'authorization_code',
+            }),
+          });
+
+          if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error('Token exchange failed:', tokenResponse.status, errorText);
+            const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent('Token exchange failed')}`;
+            return Response.redirect(redirectUrl, 302);
+          }
+
+          const tokenData = await tokenResponse.json();
+          console.log('Token exchange successful, Athlete ID:', tokenData.athlete?.id);
+          
+          if (tokenData.error) {
+            console.error('Strava OAuth error:', tokenData.error);
+            const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent(tokenData.error)}`;
+            return Response.redirect(redirectUrl, 302);
+          }
+
+          // Create a Supabase client without auth (since this is a callback from external service)
+          const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+          );
+
+          // Store tokens securely using the existing function
+          const { error: storeError } = await supabaseClient.rpc('store_strava_tokens_secure', {
+            p_user_id: state, // state is the user ID
+            p_access_token: tokenData.access_token,
+            p_refresh_token: tokenData.refresh_token,
+            p_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
+            p_scope: tokenData.scope,
+            p_athlete_id: tokenData.athlete?.id || null,
+          });
+
+          if (storeError) {
+            console.error('Error storing Strava tokens:', storeError);
+            const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent('Failed to store tokens')}`;
+            return Response.redirect(redirectUrl, 302);
+          }
+
+          console.log('Successfully connected Strava for user:', state);
+
+          // Redirect to app with success
+          const redirectUrl = `${appOrigin}/?tab=integrations&strava=connected`;
+          return Response.redirect(redirectUrl, 302);
+
+        } catch (err) {
+          console.error('Error processing Strava callback:', err);
+          const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent('Processing failed')}`;
+          return Response.redirect(redirectUrl, 302);
+        }
       }
 
       console.error('Missing code or state in OAuth callback');
-      const redirectUrl = `${callbackUrl}?error=${encodeURIComponent('Missing authorization code')}`;
+      const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent('Missing authorization code')}`;
       return Response.redirect(redirectUrl, 302);
     }
 
