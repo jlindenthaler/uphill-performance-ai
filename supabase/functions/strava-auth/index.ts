@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
 
       console.log('Strava integration successful, redirecting to app')
       
-      // Redirect back to app with success
-      return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_connected=true`)
+      // Redirect back to app with success - use relative path to maintain session
+      return Response.redirect(`/#/settings/integrations?strava_connected=true`)
     }
 
     // For other actions, require authentication
