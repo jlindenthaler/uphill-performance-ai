@@ -258,55 +258,108 @@ async function syncActivities(userId: string, supabaseClient: any) {
     throw new Error('No valid Garmin connection found');
   }
 
-  // Fetch activities from Garmin API
-  const activitiesUrl = `${GARMIN_API_BASE}/activities/api/v1/activities`;
-  const response = await fetch(activitiesUrl, {
-    headers: {
-      'Authorization': `Bearer ${tokenData.access_token}`,
-    },
-  });
+  // Try multiple possible Garmin API endpoints
+  const possibleEndpoints = [
+    `${GARMIN_API_BASE}/activitylist-service/activities/search/activities`,
+    `${GARMIN_API_BASE}/activity-service/activity/list`,
+    `${GARMIN_API_BASE}/wellness-api/rest/activities`
+  ];
 
-  if (!response.ok) {
-    console.error('Failed to fetch activities:', response.status);
-    throw new Error('Failed to fetch activities from Garmin');
-  }
+  let activities = null;
+  let lastError = null;
 
-  const activities = await response.json();
-  console.log('Fetched activities count:', activities?.length || 0);
-
-  let synced = 0;
-
-  for (const activity of activities || []) {
-    // Map Garmin activity to our schema
-    const mappedActivity = {
-      user_id: userId,
-      garmin_activity_id: activity.activityId?.toString(),
-      name: activity.activityName || 'Garmin Activity',
-      date: activity.startTimeGMT || new Date().toISOString(),
-      duration_seconds: Math.round(activity.duration || 0),
-      distance_meters: activity.distance || null,
-      elevation_gain_meters: activity.elevationGain || null,
-      avg_heart_rate: activity.averageHR || null,
-      max_heart_rate: activity.maxHR || null,
-      calories: activity.calories || null,
-      sport_mode: mapGarminSportType(activity.activityType?.typeKey),
-      external_sync_source: 'garmin',
-    };
-
-    // Upsert to avoid duplicates
-    const { error: insertError } = await supabaseClient
-      .from('activities')
-      .upsert(mappedActivity, {
-        onConflict: 'garmin_activity_id',
-        ignoreDuplicates: true,
+  for (const endpoint of possibleEndpoints) {
+    console.log('Trying Garmin endpoint:', endpoint);
+    try {
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Accept': 'application/json'
+        },
       });
 
-    if (!insertError) {
-      synced++;
+      console.log('Garmin API response status:', response.status);
+
+      if (response.ok) {
+        activities = await response.json();
+        console.log('Successfully fetched activities from:', endpoint);
+        console.log('Activities count:', activities?.length || Array.isArray(activities) ? activities.length : 'Not an array');
+        break;
+      } else {
+        const errorText = await response.text();
+        console.error(`Endpoint ${endpoint} failed:`, response.status, errorText);
+        lastError = `${response.status}: ${errorText}`;
+      }
+    } catch (err) {
+      console.error(`Error fetching from ${endpoint}:`, err);
+      lastError = err instanceof Error ? err.message : 'Unknown error';
     }
   }
 
-  console.log('Synced activities:', synced);
+  if (!activities) {
+    console.error('All Garmin API endpoints failed. Last error:', lastError);
+    throw new Error(`Failed to fetch activities from Garmin. Last error: ${lastError}`);
+  }
+
+  let synced = 0;
+  const activitiesArray = Array.isArray(activities) ? activities : activities.activities || [];
+
+  console.log('Processing', activitiesArray.length, 'activities');
+
+  for (const activity of activitiesArray) {
+    try {
+      // Check if activity already exists
+      const garminId = activity.activityId?.toString() || activity.id?.toString();
+      if (!garminId) {
+        console.warn('Activity missing ID, skipping:', activity);
+        continue;
+      }
+
+      const { data: existing } = await supabaseClient
+        .from('activities')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('garmin_activity_id', garminId)
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`Garmin activity ${garminId} already exists, skipping`);
+        continue;
+      }
+
+      // Map Garmin activity to our schema
+      const mappedActivity = {
+        user_id: userId,
+        garmin_activity_id: garminId,
+        name: activity.activityName || activity.name || 'Garmin Activity',
+        date: activity.startTimeGMT || activity.startTime || new Date().toISOString(),
+        duration_seconds: Math.round(activity.duration || activity.movingDuration || 0),
+        distance_meters: activity.distance || null,
+        elevation_gain_meters: activity.elevationGain || activity.totalAscent || null,
+        avg_heart_rate: activity.averageHR || activity.avgHr || null,
+        max_heart_rate: activity.maxHR || activity.maxHr || null,
+        calories: activity.calories || null,
+        sport_mode: mapGarminSportType(activity.activityType?.typeKey || activity.activityType),
+        external_sync_source: 'garmin',
+        activity_type: 'normal'
+      };
+
+      const { error: insertError } = await supabaseClient
+        .from('activities')
+        .insert(mappedActivity);
+
+      if (insertError) {
+        console.error(`Failed to insert activity ${garminId}:`, insertError.message, insertError.details);
+      } else {
+        synced++;
+        console.log(`Synced Garmin activity: ${mappedActivity.name} (ID: ${garminId})`);
+      }
+    } catch (activityError) {
+      console.error('Error processing Garmin activity:', activityError);
+    }
+  }
+
+  console.log('Garmin sync completed. Synced activities:', synced);
 
   return new Response(
     JSON.stringify({ success: true, synced }),

@@ -49,6 +49,7 @@ export type Database = {
           power_curve_cache: Json | null
           power_time_series: Json | null
           sport_mode: string
+          strava_activity_id: string | null
           summary_metrics: Json | null
           tss: number | null
           updated_at: string
@@ -90,6 +91,7 @@ export type Database = {
           power_curve_cache?: Json | null
           power_time_series?: Json | null
           sport_mode?: string
+          strava_activity_id?: string | null
           summary_metrics?: Json | null
           tss?: number | null
           updated_at?: string
@@ -131,6 +133,7 @@ export type Database = {
           power_curve_cache?: Json | null
           power_time_series?: Json | null
           sport_mode?: string
+          strava_activity_id?: string | null
           summary_metrics?: Json | null
           tss?: number | null
           updated_at?: string

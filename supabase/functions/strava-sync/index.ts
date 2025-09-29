@@ -143,7 +143,7 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
                 activity.type.toLowerCase() === 'run' ? 'running' : 
                 activity.type.toLowerCase(),
     external_sync_source: 'strava',
-    garmin_activity_id: activity.id.toString(),
+    strava_activity_id: activity.id.toString(),
     activity_type: 'normal'
   }
 }
@@ -179,8 +179,8 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
             .from('activities')
             .select('id')
             .eq('user_id', userId)
-            .eq('garmin_activity_id', activity.id.toString())
-            .single()
+            .eq('strava_activity_id', activity.id.toString())
+            .maybeSingle()
 
           if (existing) {
             console.log(`Activity ${activity.id} already exists, skipping`)
@@ -194,10 +194,10 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
             .insert(activityData)
 
           if (error) {
-            console.error(`Failed to insert activity ${activity.id}:`, error)
+            console.error(`Failed to insert activity ${activity.id}:`, error.message, error.details)
           } else {
             totalSynced++
-            console.log(`Synced activity: ${activity.name}`)
+            console.log(`Synced activity: ${activity.name} (ID: ${activity.id})`)
           }
         } catch (activityError) {
           console.error(`Error processing activity ${activity.id}:`, activityError)
