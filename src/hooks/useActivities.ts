@@ -228,68 +228,6 @@ export function useActivities() {
       }
 
       console.log('Saving activity data:', activityData);
-      
-      // Check for potential duplicates before inserting
-      const activityForDedup = {
-        date: activityData.date,
-        duration_seconds: activityData.duration_seconds,
-        distance_meters: activityData.distance_meters,
-        sport_mode: activityData.sport_mode,
-        external_sync_source: null, // Manual upload
-        garmin_activity_id: null,
-      };
-
-      // Check for potential duplicates based on activity characteristics
-      const timeWindow = 2; // 2 hours
-      const activityDate = new Date(activityData.date);
-      const startTime = new Date(activityDate.getTime() - timeWindow * 60 * 60 * 1000).toISOString();
-      const endTime = new Date(activityDate.getTime() + timeWindow * 60 * 60 * 1000).toISOString();
-      
-      const minDuration = activityData.duration_seconds - 30; // 30 second tolerance
-      const maxDuration = activityData.duration_seconds + 30;
-
-      let duplicateQuery = supabase
-        .from('activities')
-        .select('id, date, duration_seconds, distance_meters, external_sync_source, garmin_activity_id, created_at, name')
-        .eq('user_id', user.id)
-        .eq('sport_mode', activityData.sport_mode)
-        .gte('date', startTime)
-        .lte('date', endTime)
-        .gte('duration_seconds', minDuration)
-        .lte('duration_seconds', maxDuration);
-
-      // Add distance filter if activity has distance
-      if (activityData.distance_meters) {
-        const minDistance = Math.max(0, activityData.distance_meters - 100); // 100m tolerance
-        const maxDistance = activityData.distance_meters + 100;
-        duplicateQuery = duplicateQuery
-          .gte('distance_meters', minDistance)
-          .lte('distance_meters', maxDistance);
-      }
-
-      const { data: potentialDuplicates } = await duplicateQuery;
-
-      if (potentialDuplicates && potentialDuplicates.length > 0) {
-        console.log(`Found ${potentialDuplicates.length} potential duplicates for uploaded activity`);
-        console.log('Duplicate details:', potentialDuplicates.map(d => ({
-          id: d.id,
-          name: d.name,
-          source: d.external_sync_source || 'manual',
-          date: d.date,
-          duration: d.duration_seconds,
-          distance: d.distance_meters
-        })));
-        
-        // Show user a warning about potential duplicate
-        toast({
-          title: 'Potential Duplicate Activity Detected',
-          description: `Found ${potentialDuplicates.length} similar activity(ies) on ${new Date(activityData.date).toLocaleDateString()}. Uploading anyway...`,
-          variant: 'default'
-        });
-        
-        // Note: We're still allowing the upload but warning the user
-        // In a future version, we could ask for user confirmation
-      }
       const { data: savedActivity, error: saveError } = await supabase
         .from('activities')
         .insert({

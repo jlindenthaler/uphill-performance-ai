@@ -128,73 +128,19 @@ serve(async (req) => {
 
     let syncedCount = 0;
 
-    // Process each activity with smart deduplication
+    // Process each activity
     for (const activity of stravaActivities) {
-      // Create activity object for deduplication check
-      const activityForDedup = {
-        date: activity.start_date,
-        duration_seconds: activity.elapsed_time,
-        distance_meters: activity.distance,
-        sport_mode: mapStravaActivityType(activity.sport_type || activity.type),
-        external_sync_source: 'strava',
-        garmin_activity_id: activity.id.toString(),
-      };
-
-      // Check for exact Strava ID match first (fastest check)
-      const { data: exactMatch } = await supabaseClient
+      // Check if activity already exists
+      const { data: existingActivity } = await supabaseClient
         .from('activities')
-        .select('id, external_sync_source, garmin_activity_id')
+        .select('id')
         .eq('user_id', user.id)
         .eq('external_sync_source', 'strava')
-        .eq('garmin_activity_id', activity.id.toString())
-        .maybeSingle();
+        .eq('garmin_activity_id', activity.id.toString()) // Reuse this field for Strava ID
+        .single();
 
-      if (exactMatch) {
-        continue; // Skip if exact Strava activity already exists
-      }
-
-      // Check for potential duplicates based on activity characteristics
-      const timeWindow = 2; // 2 hours
-      const activityDate = new Date(activity.start_date);
-      const startTime = new Date(activityDate.getTime() - timeWindow * 60 * 60 * 1000).toISOString();
-      const endTime = new Date(activityDate.getTime() + timeWindow * 60 * 60 * 1000).toISOString();
-      
-      const minDuration = activity.elapsed_time - 30; // 30 second tolerance
-      const maxDuration = activity.elapsed_time + 30;
-
-      let duplicateQuery = supabaseClient
-        .from('activities')
-        .select('id, date, duration_seconds, distance_meters, external_sync_source, garmin_activity_id, created_at')
-        .eq('user_id', user.id)
-        .eq('sport_mode', activityForDedup.sport_mode)
-        .gte('date', startTime)
-        .lte('date', endTime)
-        .gte('duration_seconds', minDuration)
-        .lte('duration_seconds', maxDuration);
-
-      // Add distance filter if activity has distance
-      if (activity.distance) {
-        const minDistance = Math.max(0, activity.distance - 100); // 100m tolerance
-        const maxDistance = activity.distance + 100;
-        duplicateQuery = duplicateQuery
-          .gte('distance_meters', minDistance)
-          .lte('distance_meters', maxDistance);
-      }
-
-      const { data: potentialDuplicates } = await duplicateQuery;
-
-      if (potentialDuplicates && potentialDuplicates.length > 0) {
-        console.log(`Found ${potentialDuplicates.length} potential duplicates for Strava activity ${activity.id}`);
-        console.log('Duplicate details:', potentialDuplicates.map(d => ({
-          id: d.id,
-          source: d.external_sync_source || 'manual',
-          date: d.date,
-          duration: d.duration_seconds,
-          distance: d.distance_meters
-        })));
-        
-        // Skip this activity as it's likely a duplicate
-        continue;
+      if (existingActivity) {
+        continue; // Skip if already synced
       }
 
       // Map Strava activity to our schema
