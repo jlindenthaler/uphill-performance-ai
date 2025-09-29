@@ -56,6 +56,8 @@ export function useStrava() {
 
           if (event.data.type === 'strava_auth_success') {
             console.log('Processing Strava auth success');
+            clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
             window.removeEventListener('message', messageHandler);
             authWindow?.close();
             
@@ -63,6 +65,8 @@ export function useStrava() {
             await handleStravaCallback(event.data.code, event.data.state);
           } else if (event.data.type === 'strava_auth_error') {
             console.log('Processing Strava auth error');
+            clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
             window.removeEventListener('message', messageHandler);
             authWindow?.close();
             
@@ -82,10 +86,55 @@ export function useStrava() {
 
         window.addEventListener('message', messageHandler);
 
+        // Poll localStorage as fallback communication method
+        const pollLocalStorage = setInterval(() => {
+          try {
+            const result = localStorage.getItem('strava_auth_result');
+            if (result) {
+              const authResult = JSON.parse(result);
+              // Only process results from the last 5 minutes
+              if (Date.now() - authResult.timestamp < 300000) {
+                localStorage.removeItem('strava_auth_result');
+                
+                if (authResult.type === 'success') {
+                  console.log('Processing localStorage auth success');
+                  clearInterval(pollClosed);
+                  clearInterval(pollLocalStorage);
+                  window.removeEventListener('message', messageHandler);
+                  authWindow?.close();
+                  
+                  handleStravaCallback(authResult.code, authResult.state);
+                } else if (authResult.type === 'error') {
+                  console.log('Processing localStorage auth error');
+                  clearInterval(pollClosed);
+                  clearInterval(pollLocalStorage);
+                  window.removeEventListener('message', messageHandler);
+                  authWindow?.close();
+                  
+                  setConnectionStatus(prev => ({ 
+                    ...prev, 
+                    loading: false, 
+                    error: `Strava authorization failed: ${authResult.error}` 
+                  }));
+                  
+                  toast({
+                    title: "Authorization Failed",
+                    description: `Strava authorization failed: ${authResult.error}`,
+                    variant: "destructive"
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error checking localStorage:', e);
+          }
+        }, 1000);
+
         // Handle if popup is closed manually
         const pollClosed = setInterval(() => {
           if (authWindow?.closed) {
             clearInterval(pollClosed);
+            clearInterval(pollLocalStorage);
             window.removeEventListener('message', messageHandler);
             setConnectionStatus(prev => ({ 
               ...prev, 

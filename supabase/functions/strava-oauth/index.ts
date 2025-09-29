@@ -47,17 +47,31 @@ serve(async (req) => {
           <body>
             <p>Authorization cancelled or failed: ${error}</p>
             <script>
+              // Store result in localStorage as fallback
+              try {
+                localStorage.setItem('strava_auth_result', JSON.stringify({
+                  type: 'error', 
+                  error: '${error}',
+                  timestamp: Date.now()
+                }));
+              } catch (e) {
+                console.error('Failed to store in localStorage:', e);
+              }
+
+              // Try postMessage
               try {
                 if (window.opener && !window.opener.closed) {
                   window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
                 }
+              } catch (e) {
+                console.error('Failed to send postMessage:', e);
+              }
+
+              // Close window
+              try {
                 window.close();
               } catch (e) {
-                console.error('Failed to communicate with parent window:', e);
-                // Fallback: try to close after a short delay
-                setTimeout(() => {
-                  try { window.close(); } catch (e) {}
-                }, 1000);
+                console.error('Failed to close window:', e);
               }
             </script>
           </body>
@@ -78,17 +92,32 @@ serve(async (req) => {
           <body>
             <p>Authorization successful! This window will close automatically.</p>
             <script>
+              // Store result in localStorage as fallback
+              try {
+                localStorage.setItem('strava_auth_result', JSON.stringify({
+                  type: 'success', 
+                  code: '${code}', 
+                  state: '${state}',
+                  timestamp: Date.now()
+                }));
+              } catch (e) {
+                console.error('Failed to store in localStorage:', e);
+              }
+
+              // Try postMessage
               try {
                 if (window.opener && !window.opener.closed) {
                   window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
                 }
+              } catch (e) {
+                console.error('Failed to send postMessage:', e);
+              }
+
+              // Close window
+              try {
                 window.close();
               } catch (e) {
-                console.error('Failed to communicate with parent window:', e);
-                // Fallback: try to close after a short delay
-                setTimeout(() => {
-                  try { window.close(); } catch (e) {}
-                }, 1000);
+                console.error('Failed to close window:', e);
               }
             </script>
           </body>
@@ -107,17 +136,31 @@ serve(async (req) => {
         <body>
           <p>Authorization failed - missing code or state</p>
           <script>
+            // Store result in localStorage as fallback
+            try {
+              localStorage.setItem('strava_auth_result', JSON.stringify({
+                type: 'error', 
+                error: 'Missing authorization code',
+                timestamp: Date.now()
+              }));
+            } catch (e) {
+              console.error('Failed to store in localStorage:', e);
+            }
+
+            // Try postMessage
             try {
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
               }
+            } catch (e) {
+              console.error('Failed to send postMessage:', e);
+            }
+
+            // Close window
+            try {
               window.close();
             } catch (e) {
-              console.error('Failed to communicate with parent window:', e);
-              // Fallback: try to close after a short delay
-              setTimeout(() => {
-                try { window.close(); } catch (e) {}
-              }, 1000);
+              console.error('Failed to close window:', e);
             }
           </script>
         </body>
