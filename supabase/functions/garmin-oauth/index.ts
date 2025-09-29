@@ -174,6 +174,15 @@ async function handleCallback(req: Request, supabaseClient: any) {
     console.log('Retrieved code verifier for user:', userId);
 
     // Exchange code for tokens
+    console.log('Exchanging authorization code for tokens...');
+    console.log('Token request params:', {
+      grant_type: 'authorization_code',
+      client_id: Deno.env.get('GARMIN_CLIENT_ID'),
+      redirect_uri: Deno.env.get('GARMIN_REDIRECT_URI'),
+      code_verifier_length: tokenData.code_verifier?.length,
+      code_length: code.length
+    });
+
     const tokenResponse = await fetch(GARMIN_TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -191,8 +200,13 @@ async function handleCallback(req: Request, supabaseClient: any) {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Token exchange failed:', tokenResponse.status, errorText);
-      throw new Error('Failed to exchange authorization code');
+      console.error('Token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        headers: Object.fromEntries(tokenResponse.headers.entries()),
+        body: errorText
+      });
+      throw new Error(`Token exchange failed: ${tokenResponse.status} - ${errorText}`);
     }
 
     const tokens = await tokenResponse.json();
