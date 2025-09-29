@@ -1,5 +1,5 @@
 import { GarminConnection } from "@/components/GarminConnection";
-
+import { StravaConnection } from "@/components/StravaConnection";
 
 export function IntegrationsSettings() {
   return (
@@ -13,7 +13,7 @@ export function IntegrationsSettings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GarminConnection />
-        {/* Strava integration will be rebuilt from scratch */}
+        <StravaConnection />
       </div>
     </div>
   );
