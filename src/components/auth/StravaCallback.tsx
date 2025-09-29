@@ -15,43 +15,31 @@ export function StravaCallback() {
       const state = urlParams.get('state');
       const error = urlParams.get('error');
 
-      const success = urlParams.get('success');
-
       if (error) {
         toast({
           title: "Authorization Failed",
           description: `Strava authorization failed: ${error}`,
           variant: "destructive"
         });
-        navigate('/?tab=settings&subtab=integrations', { replace: true });
+        navigate('/');
         return;
       }
 
-      if (success === 'true') {
-        toast({
-          title: "Success!",
-          description: "Your Strava account has been connected successfully.",
-        });
-        navigate('/?tab=settings&subtab=integrations', { replace: true });
-        return;
-      }
-
-      // Legacy callback handling for direct code/state params
       if (code && state) {
         try {
           await handleStravaCallback(code, state);
-          navigate('/?tab=settings&subtab=integrations', { replace: true });
+          navigate('/', { replace: true });
         } catch (err) {
           console.error('Strava callback error:', err);
-          navigate('/?tab=settings&subtab=integrations', { replace: true });
+          navigate('/');
         }
       } else {
         toast({
           title: "Authorization Failed",
-          description: "Missing authorization parameters from Strava",
+          description: "Missing authorization code from Strava",
           variant: "destructive"
         });
-        navigate('/?tab=settings&subtab=integrations', { replace: true });
+        navigate('/');
       }
     };
 

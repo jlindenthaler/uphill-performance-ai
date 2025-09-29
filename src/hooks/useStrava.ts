@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,15 +38,13 @@ export function useStrava() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage, loading: false }));
       
       toast({
         title: "Connection Failed",
         description: errorMessage,
         variant: "destructive"
       });
-    } finally {
-      setConnectionStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -198,6 +196,44 @@ export function useStrava() {
       }));
     }
   };
+
+  // Handle URL parameters for OAuth callback
+  useEffect(() => {
+    const handleUrlCallback = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const stravaResult = urlParams.get('strava');
+      
+      if (stravaResult === 'success') {
+        setConnectionStatus(prev => ({ ...prev, isConnected: true }));
+        toast({
+          title: "Success!",
+          description: "Your Strava account has been connected successfully."
+        });
+        // Clean up URL
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Automatically sync recent activities
+        syncStravaActivities();
+      } else if (stravaResult === 'error') {
+        setConnectionStatus(prev => ({ 
+          ...prev, 
+          error: 'Strava authorization failed',
+          loading: false 
+        }));
+        toast({
+          title: "Authorization Failed",
+          description: "Strava authorization failed. Please try again.",
+          variant: "destructive"
+        });
+        // Clean up URL
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    };
+
+    handleUrlCallback();
+  }, [toast]);
 
   return {
     connectionStatus,
