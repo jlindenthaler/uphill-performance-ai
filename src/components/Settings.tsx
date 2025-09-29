@@ -6,7 +6,11 @@ import { SimpleTimeSettings } from "@/components/SimpleTimeSettings";
 
 import { User, Settings as SettingsIcon, Plug } from "lucide-react";
 
-export function Settings() {
+interface SettingsProps {
+  defaultTab?: string;
+}
+
+export function Settings({ defaultTab }: SettingsProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -16,7 +20,7 @@ export function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="user" className="space-y-6">
+      <Tabs defaultValue={defaultTab || "user"} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="user" className="flex items-center gap-2">
             <User className="w-4 h-4" />

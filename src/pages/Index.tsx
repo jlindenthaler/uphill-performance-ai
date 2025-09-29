@@ -21,7 +21,20 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openLabDialog, setOpenLabDialog] = useState(false);
+  const [defaultSettingsTab, setDefaultSettingsTab] = useState<string | undefined>(undefined);
   const isMobile = useIsMobile();
+
+  // Check for tab parameter on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'integrations') {
+      setActiveSection('settings');
+      setDefaultSettingsTab('integrations');
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -46,7 +59,7 @@ const Index = () => {
       case 'export':
         return <div className="p-8 text-center text-muted-foreground">Export to Devices - Coming Soon</div>;
       case 'settings':
-        return <Settings />;
+        return <Settings defaultTab={defaultSettingsTab} />;
       default:
         return <Dashboard onNavigate={handleSectionChange} />;
     }

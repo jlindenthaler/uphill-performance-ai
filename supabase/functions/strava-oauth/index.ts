@@ -38,138 +38,25 @@ serve(async (req) => {
 
       console.log('OAuth callback received - Code:', !!code, 'State:', state, 'Error:', error);
 
+      // Get the app origin from the request
+      const appOrigin = url.origin.replace('.supabase.co', '').replace('https://srwuprrcbfuzvkehvgyt', 'https://srwuprrcbfuzvkehvgyt.lovable.app');
+      const callbackUrl = `${appOrigin}/auth/strava/callback`;
+
       if (error) {
         console.error('Strava OAuth error:', error);
-        return new Response(
-          `<!DOCTYPE html>
-          <html>
-          <head><title>Strava Authorization</title></head>
-          <body>
-            <p>Authorization cancelled or failed: ${error}</p>
-            <script>
-              // Store result in localStorage as fallback
-              try {
-                localStorage.setItem('strava_auth_result', JSON.stringify({
-                  type: 'error', 
-                  error: '${error}',
-                  timestamp: Date.now()
-                }));
-              } catch (e) {
-                console.error('Failed to store in localStorage:', e);
-              }
-
-              // Try postMessage
-              try {
-                if (window.opener && !window.opener.closed) {
-                  window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
-                }
-              } catch (e) {
-                console.error('Failed to send postMessage:', e);
-              }
-
-              // Close window
-              try {
-                window.close();
-              } catch (e) {
-                console.error('Failed to close window:', e);
-              }
-            </script>
-          </body>
-          </html>`,
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-          }
-        );
+        const redirectUrl = `${callbackUrl}?error=${encodeURIComponent(error)}`;
+        return Response.redirect(redirectUrl, 302);
       }
 
       if (code && state) {
-        console.log('OAuth callback successful, sending message to opener');
-        return new Response(
-          `<!DOCTYPE html>
-          <html>
-          <head><title>Strava Authorization</title></head>
-          <body>
-            <p>Authorization successful! This window will close automatically.</p>
-            <script>
-              // Store result in localStorage as fallback
-              try {
-                localStorage.setItem('strava_auth_result', JSON.stringify({
-                  type: 'success', 
-                  code: '${code}', 
-                  state: '${state}',
-                  timestamp: Date.now()
-                }));
-              } catch (e) {
-                console.error('Failed to store in localStorage:', e);
-              }
-
-              // Try postMessage
-              try {
-                if (window.opener && !window.opener.closed) {
-                  window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
-                }
-              } catch (e) {
-                console.error('Failed to send postMessage:', e);
-              }
-
-              // Close window
-              try {
-                window.close();
-              } catch (e) {
-                console.error('Failed to close window:', e);
-              }
-            </script>
-          </body>
-          </html>`,
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-          }
-        );
+        console.log('OAuth callback successful, redirecting to app callback');
+        const redirectUrl = `${callbackUrl}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+        return Response.redirect(redirectUrl, 302);
       }
 
-      return new Response(
-        `<!DOCTYPE html>
-        <html>
-        <head><title>Strava Authorization</title></head>
-        <body>
-          <p>Authorization failed - missing code or state</p>
-          <script>
-            // Store result in localStorage as fallback
-            try {
-              localStorage.setItem('strava_auth_result', JSON.stringify({
-                type: 'error', 
-                error: 'Missing authorization code',
-                timestamp: Date.now()
-              }));
-            } catch (e) {
-              console.error('Failed to store in localStorage:', e);
-            }
-
-            // Try postMessage
-            try {
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
-              }
-            } catch (e) {
-              console.error('Failed to send postMessage:', e);
-            }
-
-            // Close window
-            try {
-              window.close();
-            } catch (e) {
-              console.error('Failed to close window:', e);
-            }
-          </script>
-        </body>
-        </html>`,
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-        }
-      );
+      console.error('Missing code or state in OAuth callback');
+      const redirectUrl = `${callbackUrl}?error=${encodeURIComponent('Missing authorization code')}`;
+      return Response.redirect(redirectUrl, 302);
     }
 
     // Handle POST requests (from frontend - auth required)

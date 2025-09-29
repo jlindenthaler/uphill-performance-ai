@@ -28,7 +28,8 @@ export function StravaCallback() {
       if (code && state) {
         try {
           await handleStravaCallback(code, state);
-          navigate('/', { replace: true });
+          // Navigate to home with integrations tab active
+          navigate('/?tab=integrations', { replace: true });
         } catch (err) {
           console.error('Strava callback error:', err);
           navigate('/');
