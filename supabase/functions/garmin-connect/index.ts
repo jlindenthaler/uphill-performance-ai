@@ -120,10 +120,10 @@ async function getGarminAuthUrl(origin: string, userId: string, supabaseClient: 
   const codeVerifier = generateCodeVerifier()
   const codeChallenge = await generateCodeChallenge(codeVerifier)
   
-  // Use userId as state (same pattern as Strava)
-  const state = userId
+  // Use userId and origin as state - format: userId|origin
+  const state = `${userId}|${origin}`
 
-  // Store code verifier temporarily in profiles for retrieval in callback
+  // Store code verifier and state temporarily in profiles for retrieval in callback
   const { error: storeError } = await supabaseClient
     .from('profiles')
     .update({ 
@@ -140,8 +140,8 @@ async function getGarminAuthUrl(origin: string, userId: string, supabaseClient: 
     })
   }
 
-  // Build redirect URI with origin parameter
-  const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-auth?action=callback&origin=${encodeURIComponent(origin)}`
+  // Use static redirect URI - must match exactly what's registered in Garmin portal
+  const redirectUri = Deno.env.get('GARMIN_REDIRECT_URI') || `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-auth`
 
   // Build authorization URL
   const authUrl = new URL('https://connect.garmin.com/oauthConfirm')
