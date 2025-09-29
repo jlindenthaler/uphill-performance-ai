@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     if (action === 'authorize') {
       // Step 1: Redirect to Strava authorization
       const clientId = Deno.env.get('STRAVA_CLIENT_ID')
-      const redirectUri = `${url.origin}/supabase/functions/strava-auth?action=callback`
+      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/strava-auth?action=callback`
       
       const authUrl = `https://www.strava.com/oauth/authorize?` +
         `client_id=${clientId}&` +
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
       if (error) {
         console.error('Strava OAuth error:', error)
-        return Response.redirect(`${Deno.env.get('SUPABASE_URL')?.replace('/supabase', '')}/?strava_error=denied`)
+        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/?strava_error=denied`)
       }
 
       if (!code || !state) {
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
         .eq('user_id', user.id)
 
       // Redirect back to app with success
-      return Response.redirect(`${Deno.env.get('SUPABASE_URL')?.replace('/supabase', '')}/?strava_connected=true`)
+      return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/?strava_connected=true`)
 
     } else if (action === 'disconnect') {
       // Disconnect Strava account
