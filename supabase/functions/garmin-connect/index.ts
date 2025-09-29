@@ -78,17 +78,17 @@ serve(async (req) => {
       })
     }
 
-    const { action, code, state, codeVerifier } = await req.json()
+    const body = await req.json()
+    const { action, code, state, codeVerifier, origin, activityId } = body
 
     switch (action) {
       case 'get_auth_url':
-        return await getGarminAuthUrl()
+        return await getGarminAuthUrl(origin || 'https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com', user.id, supabaseClient)
       case 'handle_callback':
         return await handleGarminCallback(supabaseClient, user.id, code, state, codeVerifier)
       case 'sync_activities':
         return await syncGarminActivities(supabaseClient, user.id)
       case 'get_activity_details':
-        const { activityId } = await req.json()
         return await getActivityDetails(supabaseClient, user.id, activityId)
       default:
         return new Response(JSON.stringify({ error: 'Invalid action' }), {
@@ -106,39 +106,57 @@ serve(async (req) => {
   }
 })
 
-async function getGarminAuthUrl() {
+async function getGarminAuthUrl(origin: string, userId: string, supabaseClient: any) {
   const clientId = Deno.env.get('GARMIN_CLIENT_ID')
-  const redirectUri = Deno.env.get('GARMIN_REDIRECT_URI')
   
-  if (!clientId || !redirectUri) {
+  if (!clientId) {
     return new Response(JSON.stringify({ error: 'Garmin API configuration missing' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  // Generate PKCE code verifier and challenge for OAuth 2.0 with PKCE
+  // Generate PKCE code verifier and challenge
   const codeVerifier = generateCodeVerifier()
   const codeChallenge = await generateCodeChallenge(codeVerifier)
-  const state = crypto.randomUUID()
+  
+  // Use userId as state (same pattern as Strava)
+  const state = userId
 
-  // OAuth 2.0 authorization URL for Garmin Connect (with PKCE)
-  // Using the correct Garmin OAuth2 PKCE endpoint as per documentation
-  const authUrl = new URL('https://connect.garmin.com/oauth2Confirm')
+  // Store code verifier temporarily in profiles for retrieval in callback
+  const { error: storeError } = await supabaseClient
+    .from('profiles')
+    .update({ 
+      garmin_code_verifier: codeVerifier,
+      garmin_oauth_state: state 
+    })
+    .eq('user_id', userId)
+
+  if (storeError) {
+    console.error('Failed to store code verifier:', storeError)
+    return new Response(JSON.stringify({ error: 'Failed to initiate OAuth flow' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Build redirect URI with origin parameter
+  const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-auth?action=callback&origin=${encodeURIComponent(origin)}`
+
+  // Build authorization URL
+  const authUrl = new URL('https://connect.garmin.com/oauthConfirm')
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', clientId)
-  authUrl.searchParams.set('redirect_uri', `https://${redirectUri}/functions/v1/garmin-auth?action=callback`)
   authUrl.searchParams.set('code_challenge', codeChallenge)
   authUrl.searchParams.set('code_challenge_method', 'S256')
   authUrl.searchParams.set('state', state)
-  // Note: No scope parameter needed for Garmin OAuth2 PKCE
+  authUrl.searchParams.set('redirect_uri', redirectUri)
 
-  console.log('Generated Garmin OAuth 2.0 PKCE auth URL:', authUrl.toString())
+  console.log('Generated Garmin OAuth URL:', authUrl.toString())
+  console.log('Origin for redirect:', origin)
 
   return new Response(JSON.stringify({ 
-    authUrl: authUrl.toString(),
-    state,
-    codeVerifier // We'll need this for the token exchange
+    authUrl: authUrl.toString()
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })

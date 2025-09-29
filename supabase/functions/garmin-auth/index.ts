@@ -14,74 +14,121 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
+    const origin = url.searchParams.get('origin') || 'https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com';
 
-    console.log('Garmin auth request:', req.method, url.pathname + url.search);
+    console.log('Garmin auth request:', { action, origin });
 
-    // Handle OAuth callback from Garmin
     if (action === 'callback') {
+      // Handle OAuth callback from Garmin
       const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state');
+      const state = url.searchParams.get('state'); // This is the user_id
       const error = url.searchParams.get('error');
 
-      console.log('Garmin OAuth callback params:', {
-        code: code ? 'present' : 'missing',
-        state: state || 'missing',
-        error: error
+      console.log('Garmin OAuth callback:', { 
+        hasCode: !!code, 
+        hasState: !!state, 
+        error,
+        origin
       });
 
       if (error) {
         console.error('Garmin OAuth error:', error);
-        return Response.redirect(`https://uphill-ai.uphill.com.au/?tab=integrations&garmin_error=${encodeURIComponent(error)}`);
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=${encodeURIComponent(error)}`);
       }
 
       if (!code || !state) {
-        console.error('Missing required OAuth parameters');
-        return Response.redirect(`https://uphill-ai.uphill.com.au/?tab=integrations&garmin_error=missing_parameters`);
+        console.error('Missing code or state');
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=missing_parameters`);
       }
 
-      // Create a simple success page that will communicate with the parent window
-      const successPage = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Garmin Authorization</title>
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .success { color: #22c55e; }
-            .error { color: #ef4444; }
-          </style>
-        </head>
-        <body>
-          <div class="success">
-            <h2>Garmin Authorization Successful!</h2>
-            <p>You can close this window now.</p>
-          </div>
-          <script>
-            // Send success message to parent window
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'garmin_auth_success',
-                code: '${code}',
-                state: '${state}'
-              }, '*');
-              window.close();
-            } else {
-              // Fallback: redirect to main app
-              setTimeout(() => {
-                window.location.href = 'https://uphill-ai.uphill.com.au/?tab=integrations&garmin_connected=true';
-              }, 2000);
-            }
-          </script>
-        </body>
-        </html>
-      `;
+      // Use service role client to retrieve code verifier and exchange tokens
+      const supabaseServiceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
 
-      return new Response(successPage, {
-        headers: { 'Content-Type': 'text/html' }
+      // Retrieve code verifier from profiles
+      const { data: profile, error: profileError } = await supabaseServiceClient
+        .from('profiles')
+        .select('garmin_code_verifier, garmin_oauth_state')
+        .eq('user_id', state)
+        .single();
+
+      if (profileError || !profile?.garmin_code_verifier) {
+        console.error('Failed to retrieve code verifier:', profileError);
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=code_verifier_missing`);
+      }
+
+      // Verify state matches
+      if (profile.garmin_oauth_state !== state) {
+        console.error('State mismatch');
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=state_mismatch`);
+      }
+
+      const codeVerifier = profile.garmin_code_verifier;
+      const clientId = Deno.env.get('GARMIN_CLIENT_ID');
+      const clientSecret = Deno.env.get('GARMIN_CLIENT_SECRET');
+      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-auth?action=callback&origin=${encodeURIComponent(origin)}`;
+
+      console.log('Exchanging code for tokens...');
+
+      // Exchange code for tokens
+      const tokenResponse = await fetch('https://connectapi.garmin.com/oauth-service/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId!,
+          client_secret: clientSecret!,
+          code: code,
+          code_verifier: codeVerifier,
+          redirect_uri: redirectUri
+        }).toString()
       });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Token exchange failed:', tokenResponse.status, errorText);
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=token_exchange_failed`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      console.log('Token exchange successful');
+
+      // Store tokens securely using RPC
+      const { error: storeError } = await supabaseServiceClient.rpc('store_garmin_tokens_secure', {
+        p_user_id: state,
+        p_access_token: tokenData.access_token,
+        p_token_secret: tokenData.refresh_token || ''
+      });
+
+      if (storeError) {
+        console.error('Failed to store tokens:', storeError);
+        return Response.redirect(`${origin}/?tab=integrations&garmin_error=token_storage_failed`);
+      }
+
+      // Update profile to mark Garmin as connected and clear temporary OAuth data
+      const { error: updateError } = await supabaseServiceClient
+        .from('profiles')
+        .update({ 
+          garmin_connected: true,
+          garmin_code_verifier: null,
+          garmin_oauth_state: null
+        })
+        .eq('user_id', state);
+
+      if (updateError) {
+        console.error('Failed to update profile:', updateError);
+      }
+
+      console.log('Garmin integration successful, redirecting to:', origin);
+
+      // Redirect back to origin with success
+      return Response.redirect(`${origin}/?tab=integrations&garmin_connected=true`);
     }
 
-    // For other requests, return 404
     return new Response('Not Found', { status: 404 });
 
   } catch (error) {
