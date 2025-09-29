@@ -152,8 +152,13 @@ Deno.serve(async (req) => {
       })
 
     } else if (action === 'disconnect') {
-      // Disconnect Strava account
-      const { error: deleteError } = await supabaseClient
+      // Disconnect Strava account - use service role for profile updates
+      const supabaseServiceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+
+      const { error: deleteError } = await supabaseServiceClient
         .from('strava_tokens')
         .delete()
         .eq('user_id', user.id)
@@ -164,14 +169,14 @@ Deno.serve(async (req) => {
       }
 
       // Update profile to mark Strava as disconnected
-      const { error: profileError } = await supabaseClient
+      const { error: profileError } = await supabaseServiceClient
         .from('profiles')
         .update({ strava_connected: false })
         .eq('user_id', user.id)
 
       if (profileError) {
         console.error('Profile update error:', profileError)
-        // Don't fail the whole flow for this
+        throw new Error('Failed to update profile')
       }
 
       console.log('Strava disconnection successful for user:', user.id)
