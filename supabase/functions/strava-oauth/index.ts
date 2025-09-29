@@ -41,10 +41,27 @@ serve(async (req) => {
       if (error) {
         console.error('Strava OAuth error:', error);
         return new Response(
-          `<html><body><script>
-            window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
-            window.close();
-          </script><p>Authorization cancelled or failed: ${error}</p></body></html>`,
+          `<!DOCTYPE html>
+          <html>
+          <head><title>Strava Authorization</title></head>
+          <body>
+            <p>Authorization cancelled or failed: ${error}</p>
+            <script>
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
+                }
+                window.close();
+              } catch (e) {
+                console.error('Failed to communicate with parent window:', e);
+                // Fallback: try to close after a short delay
+                setTimeout(() => {
+                  try { window.close(); } catch (e) {}
+                }, 1000);
+              }
+            </script>
+          </body>
+          </html>`,
           {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'text/html' },
@@ -55,10 +72,27 @@ serve(async (req) => {
       if (code && state) {
         console.log('OAuth callback successful, sending message to opener');
         return new Response(
-          `<html><body><script>
-            window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
-            window.close();
-          </script><p>Authorization successful! This window will close automatically.</p></body></html>`,
+          `<!DOCTYPE html>
+          <html>
+          <head><title>Strava Authorization</title></head>
+          <body>
+            <p>Authorization successful! This window will close automatically.</p>
+            <script>
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
+                }
+                window.close();
+              } catch (e) {
+                console.error('Failed to communicate with parent window:', e);
+                // Fallback: try to close after a short delay
+                setTimeout(() => {
+                  try { window.close(); } catch (e) {}
+                }, 1000);
+              }
+            </script>
+          </body>
+          </html>`,
           {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'text/html' },
@@ -67,10 +101,27 @@ serve(async (req) => {
       }
 
       return new Response(
-        `<html><body><script>
-          window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
-          window.close();
-        </script><p>Authorization failed - missing code or state</p></body></html>`,
+        `<!DOCTYPE html>
+        <html>
+        <head><title>Strava Authorization</title></head>
+        <body>
+          <p>Authorization failed - missing code or state</p>
+          <script>
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
+              }
+              window.close();
+            } catch (e) {
+              console.error('Failed to communicate with parent window:', e);
+              // Fallback: try to close after a short delay
+              setTimeout(() => {
+                try { window.close(); } catch (e) {}
+              }, 1000);
+            }
+          </script>
+        </body>
+        </html>`,
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'text/html' },
