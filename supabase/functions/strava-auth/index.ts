@@ -159,14 +159,22 @@ Deno.serve(async (req) => {
         .eq('user_id', user.id)
 
       if (deleteError) {
+        console.error('Delete tokens error:', deleteError)
         throw new Error('Failed to delete tokens')
       }
 
-      // Update profile
-      await supabaseClient
+      // Update profile to mark Strava as disconnected
+      const { error: profileError } = await supabaseClient
         .from('profiles')
         .update({ strava_connected: false })
         .eq('user_id', user.id)
+
+      if (profileError) {
+        console.error('Profile update error:', profileError)
+        // Don't fail the whole flow for this
+      }
+
+      console.log('Strava disconnection successful for user:', user.id)
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
