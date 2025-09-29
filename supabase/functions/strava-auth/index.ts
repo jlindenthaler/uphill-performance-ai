@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
 
       console.log('Strava integration successful, redirecting to app')
       
-      // Redirect back to app with success - use proper URL format for BrowserRouter
-      return Response.redirect(`https://srwuprrcbfuzvkehvgyt.supabase.co/?tab=integrations&strava_connected=true`)
+      // Redirect back to app with success - use custom domain
+      return Response.redirect(`https://uphill-ai.uphill.com.au/?tab=integrations&strava_connected=true`)
     }
 
     // For other actions, require authentication
