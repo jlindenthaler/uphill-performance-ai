@@ -37,6 +37,18 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    
+    // Handle OAuth callback FIRST (no auth required - this is Garmin redirecting back)
+    if (url.searchParams.has('code') || url.searchParams.has('error')) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // Use service role for callback
+      );
+      return await handleCallback(req, supabaseClient);
+    }
+
+    // For all other actions, require authentication
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -52,13 +64,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const url = new URL(req.url);
     const action = url.searchParams.get('action');
-
-    // Handle OAuth callback (no auth required)
-    if (url.pathname.includes('/callback') || url.searchParams.has('code')) {
-      return await handleCallback(req, supabaseClient);
-    }
 
     // Handle other actions
     const { action: bodyAction } = await req.json().catch(() => ({ action: null }));
