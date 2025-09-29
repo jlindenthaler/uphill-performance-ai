@@ -20,27 +20,43 @@ export const useStrava = () => {
     queryFn: async (): Promise<StravaConnection> => {
       if (!user) return { connected: false };
       
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('strava_connected')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (profile?.strava_connected) {
-        const { data: tokens } = await supabase
-          .from('strava_tokens')
-          .select('athlete_id, expires_at')
+      try {
+        // Check if user has strava_connected flag in profiles
+        const { data: profile, error: profileError } = await (supabase as any)
+          .from('profiles')
+          .select('strava_connected')
           .eq('user_id', user.id)
           .maybeSingle();
         
-        return {
-          connected: true,
-          athlete_id: tokens?.athlete_id || undefined,
-          expires_at: tokens?.expires_at || undefined,
-        };
+        if (profileError) {
+          console.warn('Profile query error:', profileError);
+          return { connected: false };
+        }
+        
+        if ((profile as any)?.strava_connected) {
+          const { data: tokens, error: tokensError } = await (supabase as any)
+            .from('strava_tokens')
+            .select('athlete_id, expires_at')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (tokensError) {
+            console.warn('Tokens query error:', tokensError);
+            return { connected: true }; // Connected but can't get details
+          }
+          
+          return {
+            connected: true,
+            athlete_id: (tokens as any)?.athlete_id || undefined,
+            expires_at: (tokens as any)?.expires_at || undefined,
+          };
+        }
+        
+        return { connected: false };
+      } catch (error) {
+        console.error('Connection check error:', error);
+        return { connected: false };
       }
-      
-      return { connected: false };
     },
     enabled: !!user,
   });
