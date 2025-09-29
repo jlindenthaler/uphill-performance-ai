@@ -97,14 +97,16 @@ async function getGarminAuthUrl() {
     })
   }
 
+  // OAuth 2.0 authorization URL for Garmin Connect IQ
   const state = crypto.randomUUID()
-  const authUrl = new URL('https://connect.garmin.com/oauthConfirm')
-  authUrl.searchParams.set('oauth_consumer_key', clientId)
-  authUrl.searchParams.set('oauth_signature_method', 'HMAC-SHA1')
-  authUrl.searchParams.set('oauth_timestamp', Math.floor(Date.now() / 1000).toString())
-  authUrl.searchParams.set('oauth_nonce', crypto.randomUUID())
-  authUrl.searchParams.set('oauth_version', '1.0')
-  authUrl.searchParams.set('oauth_callback', redirectUri)
+  const authUrl = new URL('https://connect.garmin.com/oauth-service/oauth/preauthorized')
+  authUrl.searchParams.set('client_id', clientId)
+  authUrl.searchParams.set('redirect_uri', `${redirectUri}/garmin-auth?action=callback`)
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('state', state)
+  authUrl.searchParams.set('scope', 'read')
+
+  console.log('Generated Garmin OAuth 2.0 auth URL:', authUrl.toString())
 
   return new Response(JSON.stringify({ 
     authUrl: authUrl.toString(),
@@ -114,38 +116,48 @@ async function getGarminAuthUrl() {
   })
 }
 
-async function handleGarminCallback(supabaseClient: any, userId: string, oauthToken: string, oauthVerifier: string) {
+async function handleGarminCallback(supabaseClient: any, userId: string, code: string, state: string) {
   try {
     const clientId = Deno.env.get('GARMIN_CLIENT_ID')
     const clientSecret = Deno.env.get('GARMIN_CLIENT_SECRET')
+    const redirectUri = Deno.env.get('GARMIN_REDIRECT_URI')
     
-    if (!clientId || !clientSecret) {
+    if (!clientId || !clientSecret || !redirectUri) {
       throw new Error('Garmin API credentials not configured')
     }
 
-    // Exchange the temporary token for an access token
-    const tokenResponse = await fetch('https://connectapi.garmin.com/oauth-service/oauth/access_token', {
+    console.log('Exchanging authorization code for access token...')
+
+    // Exchange authorization code for access token (OAuth 2.0)
+    const tokenResponse = await fetch('https://connect.garmin.com/oauth-service/oauth/access_token', {
       method: 'POST',
       headers: {
-        'Authorization': `OAuth oauth_consumer_key="${clientId}", oauth_token="${oauthToken}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="${Math.floor(Date.now() / 1000)}", oauth_nonce="${crypto.randomUUID()}", oauth_version="1.0", oauth_verifier="${oauthVerifier}"`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        redirect_uri: `${redirectUri}/garmin-auth?action=callback`
+      })
     })
 
-    const tokenData = await tokenResponse.text()
-    const params = new URLSearchParams(tokenData)
-    const accessToken = params.get('oauth_token')
-    const accessTokenSecret = params.get('oauth_token_secret')
-
-    if (!accessToken || !accessTokenSecret) {
-      throw new Error('Failed to obtain access token from Garmin')
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error('Garmin token exchange failed:', errorText)
+      throw new Error(`Token exchange failed: ${tokenResponse.status}`)
     }
+
+    const tokenData = await tokenResponse.json()
+    console.log('Garmin token exchange successful for user:', userId)
 
     // Store tokens using secure encrypted storage
     const { error: functionError } = await supabaseClient.rpc('store_garmin_tokens_secure', {
       p_user_id: userId,
-      p_access_token: accessToken,
-      p_token_secret: accessTokenSecret
+      p_access_token: tokenData.access_token,
+      p_token_secret: tokenData.refresh_token || ''
     })
 
     if (functionError) {
@@ -158,7 +170,7 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
       .insert({
         user_id: userId,
         access_type: 'token_stored',
-        ip_address: null, // Could extract from headers if needed
+        ip_address: null,
         user_agent: null
       })
 
@@ -169,7 +181,6 @@ async function handleGarminCallback(supabaseClient: any, userId: string, oauthTo
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    // Only log errors, not sensitive data
     console.error('Error handling Garmin callback:', error)
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     return new Response(JSON.stringify({ error: errorMessage }), {

@@ -30,7 +30,18 @@ export function useGarmin() {
 
       if (data?.authUrl) {
         // Open Garmin authorization in new window
-        window.open(data.authUrl, 'garmin_auth', 'width=600,height=600');
+        const authWindow = window.open(data.authUrl, 'garmin_auth', 'width=600,height=600');
+        
+        // Listen for OAuth callback
+        const messageHandler = (event: MessageEvent) => {
+          if (event.data?.type === 'garmin_auth_success') {
+            window.removeEventListener('message', messageHandler);
+            handleGarminCallback(event.data.code, event.data.state);
+            authWindow?.close();
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
         
         toast({
           title: "Garmin Authorization",
