@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Garmin OAuth 2.0 endpoints (official)
-const GARMIN_AUTH_URL = 'https://connect.garmin.com/oauthConfirm';
-const GARMIN_TOKEN_URL = 'https://connectauth.garmin.com/oauth/token';
+const GARMIN_AUTH_URL = 'https://connect.garmin.com/oauth2Confirm';
+const GARMIN_TOKEN_URL = 'https://diauth.garmin.com/di-oauth2-service/oauth/token';
 const GARMIN_API_BASE = 'https://apis.garmin.com';
 
 // PKCE helpers
