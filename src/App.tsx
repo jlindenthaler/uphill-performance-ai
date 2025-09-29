@@ -7,7 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useSupabase";
 import { SportModeProvider } from "@/contexts/SportModeContext";
 import { LandingPage } from "@/components/LandingPage";
-import { StravaCallback } from "@/components/auth/StravaCallback";
+
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -53,7 +53,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Index />} />
-          <Route path="/auth/strava/callback" element={<StravaCallback />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
