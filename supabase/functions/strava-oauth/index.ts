@@ -13,29 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    // Verify the user is authenticated
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser();
-
-    if (!user) {
-      throw new Error('Unauthorized');
-    }
-
     const STRAVA_CLIENT_ID = Deno.env.get('STRAVA_CLIENT_ID');
     const STRAVA_CLIENT_SECRET = Deno.env.get('STRAVA_CLIENT_SECRET');
-
-    console.log('Strava OAuth request received for user:', user.id);
 
     if (!STRAVA_CLIENT_ID || !STRAVA_CLIENT_SECRET) {
       console.log('Strava credentials not configured - integration pending approval');
@@ -50,8 +29,78 @@ serve(async (req) => {
       );
     }
 
-    // Handle POST requests (from frontend)
+    // Handle GET requests (OAuth callback from Strava - no auth required)
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state');
+      const error = url.searchParams.get('error');
+
+      console.log('OAuth callback received - Code:', !!code, 'State:', state, 'Error:', error);
+
+      if (error) {
+        console.error('Strava OAuth error:', error);
+        return new Response(
+          `<html><body><script>
+            window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
+            window.close();
+          </script><p>Authorization cancelled or failed: ${error}</p></body></html>`,
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+          }
+        );
+      }
+
+      if (code && state) {
+        console.log('OAuth callback successful, sending message to opener');
+        return new Response(
+          `<html><body><script>
+            window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
+            window.close();
+          </script><p>Authorization successful! This window will close automatically.</p></body></html>`,
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+          }
+        );
+      }
+
+      return new Response(
+        `<html><body><script>
+          window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
+          window.close();
+        </script><p>Authorization failed - missing code or state</p></body></html>`,
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+        }
+      );
+    }
+
+    // Handle POST requests (from frontend - auth required)
     if (req.method === 'POST') {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: req.headers.get('Authorization')! },
+          },
+        }
+      );
+
+      // Verify the user is authenticated
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (!user) {
+        throw new Error('Unauthorized');
+      }
+
+      console.log('Strava OAuth request received for user:', user.id);
+
       const { action, code, state } = await req.json();
 
       if (action === 'get_auth_url') {
@@ -176,56 +225,6 @@ serve(async (req) => {
 
       throw new Error('Invalid action specified');
     }
-
-    // Handle GET requests (OAuth callback from Strava for popup)
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state');
-      const error = url.searchParams.get('error');
-
-      console.log('OAuth callback received - Code:', !!code, 'State:', state, 'Error:', error);
-
-      if (error) {
-        console.error('Strava OAuth error:', error);
-        return new Response(
-          `<html><body><script>
-            window.opener.postMessage({type: 'strava_auth_error', error: '${error}'}, '*');
-            window.close();
-          </script><p>Authorization cancelled or failed: ${error}</p></body></html>`,
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-          }
-        );
-      }
-
-      if (code && state) {
-        console.log('OAuth callback successful, sending message to opener');
-        return new Response(
-          `<html><body><script>
-            window.opener.postMessage({type: 'strava_auth_success', code: '${code}', state: '${state}'}, '*');
-            window.close();
-          </script><p>Authorization successful! This window will close automatically.</p></body></html>`,
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-          }
-        );
-      }
-
-      return new Response(
-        `<html><body><script>
-          window.opener.postMessage({type: 'strava_auth_error', error: 'Missing authorization code'}, '*');
-          window.close();
-        </script><p>Authorization failed - missing code or state</p></body></html>`,
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'text/html' },
-        }
-      );
-    }
-
 
     throw new Error('Invalid request method');
 
