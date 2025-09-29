@@ -21,6 +21,11 @@ Deno.serve(async (req) => {
       action = body.action
     }
 
+    // Check for valid action
+    if (!action || !['authorize', 'callback', 'disconnect'].includes(action)) {
+      throw new Error('Invalid or missing action parameter')
+    }
+
     // For callback, we don't have user session - Strava calls this directly
     if (action === 'callback') {
       // Handle OAuth callback without requiring auth header
@@ -30,7 +35,7 @@ Deno.serve(async (req) => {
 
       if (error) {
         console.error('Strava OAuth error:', error)
-        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/?strava_error=denied`)
+        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_error=denied`)
       }
 
       if (!code || !state) {
@@ -88,7 +93,7 @@ Deno.serve(async (req) => {
         .eq('user_id', state)
 
       // Redirect back to app with success
-      return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/?strava_connected=true`)
+      return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_connected=true`)
     }
 
     // For other actions, require authentication

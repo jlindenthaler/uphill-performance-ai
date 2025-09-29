@@ -120,18 +120,24 @@ export const useStrava = () => {
   // Handle OAuth callback result
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const connected = urlParams.get('strava_connected');
-    const error = urlParams.get('strava_error');
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    // Check both URL search params and hash params for the callback parameters
+    const connected = urlParams.get('strava_connected') || hashParams.get('strava_connected');
+    const error = urlParams.get('strava_error') || hashParams.get('strava_error');
     
     if (connected === 'true') {
       toast.success('Successfully connected to Strava!');
       queryClient.invalidateQueries({ queryKey: ['strava-connection'] });
       // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
     } else if (error) {
-      toast.error('Strava connection was denied or failed');
+      const errorMessage = error === 'denied' 
+        ? 'Strava connection was denied' 
+        : 'Failed to connect to Strava';
+      toast.error(errorMessage);
       // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
     }
   }, [queryClient]);
 
