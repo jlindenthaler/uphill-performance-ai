@@ -1,85 +1,168 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from "@/hooks/useSupabase";
-import { toast } from "sonner";
+import { useToast } from '@/hooks/use-toast';
 
-export interface GarminConnection {
-  connected: boolean;
+interface GarminConnectionStatus {
+  isConnected: boolean;
+  loading: boolean;
+  error: string | null;
 }
 
-export const useGarmin = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  
-  // Check connection status
-  const { data: connection, isLoading } = useQuery({
-    queryKey: ['garmin-connection', user?.id],
-    queryFn: async (): Promise<GarminConnection> => {
-      if (!user) return { connected: false };
-      
-      try {
-        // Check if user has garmin_connected flag in profiles
-        const { data: profile, error: profileError } = await (supabase as any)
-          .from('profiles')
-          .select('garmin_connected')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (profileError) {
-          console.warn('Profile query error:', profileError);
-          return { connected: false };
-        }
-        
-        return {
-          connected: (profile as any)?.garmin_connected || false
-        };
-      } catch (error) {
-        console.error('Connection check error:', error);
-        return { connected: false };
-      }
-    },
-    enabled: !!user,
+export function useGarmin() {
+  const [connectionStatus, setConnectionStatus] = useState<GarminConnectionStatus>({
+    isConnected: false,
+    loading: false,
+    error: null
   });
+  const { toast } = useToast();
 
-  // Connect to Garmin
-  const connectMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) throw new Error('No session found');
-      
+  const initiateGarminConnection = async () => {
+    try {
+      console.log('Initiating Garmin connection...');
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+
+      console.log('Calling garmin-connect function...');
       const { data, error } = await supabase.functions.invoke('garmin-connect', {
-        body: { action: 'get_auth_url' },
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`,
-        },
+        body: { action: 'get_auth_url' }
       });
-      
-      if (error) throw error;
-      if (data?.authUrl) {
+
+      console.log('Garmin function response:', { data, error });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to initiate Garmin connection');
+      }
+
+      if (data?.authUrl && data?.codeVerifier) {
         // Store code verifier for the callback
         sessionStorage.setItem('garmin_code_verifier', data.codeVerifier);
         sessionStorage.setItem('garmin_state', data.state);
         
-        // Navigate to Garmin authorization in same window
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error('No authorization URL received');
+        // Open Garmin authorization in new window
+        const authWindow = window.open(data.authUrl, 'garmin_auth', 'width=600,height=600');
+        
+        // Listen for OAuth callback
+        const messageHandler = (event: MessageEvent) => {
+          if (event.data?.type === 'garmin_auth_success') {
+            window.removeEventListener('message', messageHandler);
+            const codeVerifier = sessionStorage.getItem('garmin_code_verifier');
+            const storedState = sessionStorage.getItem('garmin_state');
+            
+            if (codeVerifier && storedState === event.data.state) {
+              handleGarminCallback(event.data.code, event.data.state, codeVerifier);
+            } else {
+              toast({
+                title: "Connection Failed",
+                description: "OAuth state mismatch or missing code verifier",
+                variant: "destructive"
+              });
+            }
+            
+            // Clean up
+            sessionStorage.removeItem('garmin_code_verifier');
+            sessionStorage.removeItem('garmin_state');
+            authWindow?.close();
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        
+        toast({
+          title: "Garmin Authorization",
+          description: "Please complete the authorization process in the popup window."
+        });
       }
-    },
-    onError: (error) => {
-      console.error('Garmin connection error:', error);
-      toast.error('Failed to connect to Garmin. Please try again.');
-    },
-  });
-
-  // Disconnect from Garmin  
-  const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
       
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setConnectionStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleGarminCallback = async (code: string, state: string, codeVerifier: string) => {
+    try {
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+
+      const { data, error } = await supabase.functions.invoke('garmin-connect', {
+        body: { 
+          action: 'handle_callback',
+          code: code,
+          state: state,
+          codeVerifier: codeVerifier
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to complete Garmin connection');
+      }
+
+      if (data?.success) {
+        setConnectionStatus(prev => ({ ...prev, isConnected: true }));
+        
+        toast({
+          title: "Success!",
+          description: "Your Garmin Connect account has been connected successfully."
+        });
+
+        // Automatically sync recent activities
+        await syncGarminActivities();
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
+      
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setConnectionStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const syncGarminActivities = async () => {
+    try {
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+
+      const { data, error } = await supabase.functions.invoke('garmin-connect', {
+        body: { action: 'sync_activities' }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to sync Garmin activities');
+      }
+
+      if (data?.success) {
+        toast({
+          title: "Sync Complete",
+          description: `Successfully synced ${data.synced || 0} activities from Garmin Connect.`
+        });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
+      
+      toast({
+        title: "Sync Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setConnectionStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const disconnectGarmin = async () => {
+    try {
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+
       // Update user profile to remove Garmin connection
       const { error } = await supabase
         .from('profiles')
@@ -88,132 +171,58 @@ export const useGarmin = () => {
           garmin_access_token: null,
           garmin_token_secret: null
         })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      return { success: true };
-    },
-    onSuccess: () => {
-      toast.success('Disconnected from Garmin');
-      queryClient.invalidateQueries({ queryKey: ['garmin-connection'] });
-    },
-    onError: (error) => {
-      console.error('Garmin disconnect error:', error);
-      toast.error('Failed to disconnect from Garmin');
-    },
-  });
-
-  // Handle OAuth callback result
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
-    // Check both URL search params and hash params for the callback parameters
-    const connected = urlParams.get('garmin_connected') || hashParams.get('garmin_connected');
-    const error = urlParams.get('garmin_error') || hashParams.get('garmin_error');
-    const code = urlParams.get('code') || hashParams.get('code');
-    const state = urlParams.get('state') || hashParams.get('state');
-    
-    if (code && state) {
-      // Handle OAuth callback
-      const codeVerifier = sessionStorage.getItem('garmin_code_verifier');
-      const storedState = sessionStorage.getItem('garmin_state');
-      
-      if (codeVerifier && storedState === state) {
-        handleGarminCallback(code, state, codeVerifier);
-      } else {
-        toast.error('OAuth state mismatch or missing code verifier');
-      }
-      
-      // Clean up
-      sessionStorage.removeItem('garmin_code_verifier');
-      sessionStorage.removeItem('garmin_state');
-    } else if (connected === 'true') {
-      toast.success('Successfully connected to Garmin!');
-      queryClient.invalidateQueries({ queryKey: ['garmin-connection'] });
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
-    } else if (error) {
-      const errorMessage = error === 'denied' 
-        ? 'Garmin connection was denied' 
-        : 'Failed to connect to Garmin';
-      toast.error(errorMessage);
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
-    }
-  }, [queryClient]);
-
-  const handleGarminCallback = async (code: string, state: string, codeVerifier: string) => {
-    try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) throw new Error('No session found');
-
-      const { data, error } = await supabase.functions.invoke('garmin-connect', {
-        body: { 
-          action: 'handle_callback',
-          code: code,
-          state: state,
-          codeVerifier: codeVerifier
-        },
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`,
-        },
-      });
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
 
       if (error) {
-        throw new Error(error.message || 'Failed to complete Garmin connection');
+        throw new Error('Failed to disconnect Garmin account');
       }
 
-      if (data?.success) {
-        toast.success('Successfully connected to Garmin!');
-        queryClient.invalidateQueries({ queryKey: ['garmin-connection'] });
-        
-        // Automatically sync recent activities
-        await syncActivities();
-      }
+      setConnectionStatus(prev => ({ ...prev, isConnected: false }));
       
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      toast({
+        title: "Disconnected",
+        description: "Your Garmin Connect account has been disconnected."
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      toast.error(`Connection failed: ${errorMessage}`);
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
       
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      toast({
+        title: "Disconnection Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setConnectionStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const syncActivities = async () => {
+  const checkGarminConnection = async () => {
     try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) throw new Error('No session found');
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
 
-      const { data, error } = await supabase.functions.invoke('garmin-connect', {
-        body: { action: 'sync_activities' },
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`,
-        },
-      });
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('garmin_connected')
+        .eq('user_id', user.user.id)
+        .single();
 
-      if (error) {
-        throw new Error(error.message || 'Failed to sync Garmin activities');
-      }
-
-      if (data?.success) {
-        toast.success(`Successfully synced ${data.synced || 0} activities from Garmin.`);
-      }
+      setConnectionStatus(prev => ({ 
+        ...prev, 
+        isConnected: profile?.garmin_connected || false 
+      }));
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      toast.error(`Sync failed: ${errorMessage}`);
+      console.error('Error checking Garmin connection:', err);
     }
   };
 
   return {
-    connection,
-    isLoading,
-    connect: connectMutation.mutate,
-    disconnect: disconnectMutation.mutate,
-    isConnecting: connectMutation.isPending,
-    isDisconnecting: disconnectMutation.isPending,
+    connectionStatus,
+    initiateGarminConnection,
+    handleGarminCallback,
+    syncGarminActivities,
+    disconnectGarmin,
+    checkGarminConnection
   };
-};
+}

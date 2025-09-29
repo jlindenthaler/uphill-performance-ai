@@ -127,7 +127,7 @@ async function getGarminAuthUrl() {
   const authUrl = new URL('https://connect.garmin.com/oauth2Confirm')
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', clientId)
-  authUrl.searchParams.set('redirect_uri', `https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com`)
+  authUrl.searchParams.set('redirect_uri', `https://${redirectUri}/functions/v1/garmin-auth?action=callback`)
   authUrl.searchParams.set('code_challenge', codeChallenge)
   authUrl.searchParams.set('code_challenge_method', 'S256')
   authUrl.searchParams.set('state', state)
@@ -173,7 +173,7 @@ async function handleGarminCallback(supabaseClient: any, userId: string, code: s
         client_secret: clientSecret,
         code: code,
         code_verifier: codeVerifier,
-        redirect_uri: `https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com`
+        redirect_uri: `https://${redirectUri}/functions/v1/garmin-auth?action=callback`
       })
     })
 
