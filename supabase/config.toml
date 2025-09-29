@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.garmin-oauth]
-verify_jwt = true
+verify_jwt = false
 
 [functions.strava-auth]
 verify_jwt = false

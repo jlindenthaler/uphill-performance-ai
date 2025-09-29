@@ -16,6 +16,7 @@ export function useGarmin() {
   });
   const { toast } = useToast();
 
+  // Check connection status on mount
   useEffect(() => {
     checkGarminConnection();
   }, []);
@@ -33,23 +34,20 @@ export function useGarmin() {
       });
       setConnectionStatus(prev => ({ ...prev, isConnected: true }));
       
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
       
-      // Auto-sync
+      // Automatically sync recent activities
       syncGarminActivities();
     } else if (garminError) {
-      const errorMessage = garminError === 'denied'
-        ? 'Garmin connection was denied'
-        : 'Failed to connect to Garmin';
       toast({
         title: "Connection Failed",
-        description: errorMessage,
+        description: decodeURIComponent(garminError),
         variant: "destructive"
       });
       
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [toast]);
 
@@ -62,13 +60,18 @@ export function useGarmin() {
         body: { action: 'authorize' }
       });
 
+      console.log('Garmin OAuth response:', { data, error });
+
       if (error) {
         throw new Error(error.message || 'Failed to initiate Garmin connection');
       }
 
       if (data?.authUrl) {
         // Redirect to Garmin authorization
+        console.log('Redirecting to Garmin:', data.authUrl);
         window.location.href = data.authUrl;
+      } else {
+        throw new Error('No authorization URL received');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
