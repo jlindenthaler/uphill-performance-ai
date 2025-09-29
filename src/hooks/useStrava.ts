@@ -46,18 +46,23 @@ export function useStrava() {
 
         // Listen for auth success/error messages
         const messageHandler = async (event: MessageEvent) => {
-          // Verify origin for security
-          if (event.origin !== window.location.origin && !event.origin.includes('supabase.co')) {
+          console.log('Received message from popup:', event.origin, event.data);
+          
+          // Verify origin for security - allow messages from Supabase domain
+          if (!event.origin.includes('supabase.co') && event.origin !== window.location.origin) {
+            console.log('Message origin rejected:', event.origin);
             return;
           }
 
           if (event.data.type === 'strava_auth_success') {
+            console.log('Processing Strava auth success');
             window.removeEventListener('message', messageHandler);
             authWindow?.close();
             
             // Handle the OAuth callback
             await handleStravaCallback(event.data.code, event.data.state);
           } else if (event.data.type === 'strava_auth_error') {
+            console.log('Processing Strava auth error');
             window.removeEventListener('message', messageHandler);
             authWindow?.close();
             
