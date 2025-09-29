@@ -12,45 +12,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header')
-    }
-
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
     const url = new URL(req.url)
-    const action = url.searchParams.get('action')
+    let action = url.searchParams.get('action')
 
-    if (action === 'authorize') {
-      // Step 1: Redirect to Strava authorization
-      const clientId = Deno.env.get('STRAVA_CLIENT_ID')
-      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/strava-auth?action=callback`
-      
-      const authUrl = `https://www.strava.com/oauth/authorize?` +
-        `client_id=${clientId}&` +
-        `response_type=code&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `approval_prompt=force&` +
-        `scope=read,activity:read_all&` +
-        `state=${user.id}` // Pass user ID as state for security
+    // For POST requests, get action from body
+    if (req.method === 'POST') {
+      const body = await req.json()
+      action = body.action
+    }
 
-      return new Response(JSON.stringify({ authUrl }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-
-    } else if (action === 'callback') {
-      // Step 2: Handle OAuth callback
+    // For callback, we don't have user session - Strava calls this directly
+    if (action === 'callback') {
+      // Handle OAuth callback without requiring auth header
       const code = url.searchParams.get('code')
-      const state = url.searchParams.get('state')
+      const state = url.searchParams.get('state') // This contains the user ID
       const error = url.searchParams.get('error')
 
       if (error) {
@@ -62,10 +37,11 @@ Deno.serve(async (req) => {
         throw new Error('Missing code or state parameter')
       }
 
-      // Verify state matches user ID (basic security check)
-      if (state !== user.id) {
-        throw new Error('Invalid state parameter')
-      }
+      // Use service role client for database operations during callback
+      const supabaseServiceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
 
       // Exchange code for tokens
       const clientId = Deno.env.get('STRAVA_CLIENT_ID')
@@ -87,13 +63,13 @@ Deno.serve(async (req) => {
       }
 
       const tokenData = await tokenResponse.json()
-      console.log('Strava token exchange successful for user:', user.id)
+      console.log('Strava token exchange successful for user:', state)
 
-      // Store tokens in database
-      const { error: dbError } = await supabaseClient
+      // Store tokens in database using the user ID from state
+      const { error: dbError } = await supabaseServiceClient
         .from('strava_tokens')
         .upsert({
-          user_id: user.id,
+          user_id: state, // Use state as user_id
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
@@ -106,13 +82,47 @@ Deno.serve(async (req) => {
       }
 
       // Update profile to mark Strava as connected
-      await supabaseClient
+      await supabaseServiceClient
         .from('profiles')
         .update({ strava_connected: true })
-        .eq('user_id', user.id)
+        .eq('user_id', state)
 
       // Redirect back to app with success
       return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/?strava_connected=true`)
+    }
+
+    // For other actions, require authentication
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    if (action === 'authorize') {
+      // Step 1: Redirect to Strava authorization
+      const clientId = Deno.env.get('STRAVA_CLIENT_ID')
+      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/strava-auth?action=callback`
+      
+      const authUrl = `https://www.strava.com/oauth/authorize?` +
+        `client_id=${clientId}&` +
+        `response_type=code&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `approval_prompt=force&` +
+        `scope=read,activity:read_all&` +
+        `state=${user.id}` // Pass user ID as state for security
+
+      return new Response(JSON.stringify({ authUrl }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
 
     } else if (action === 'disconnect') {
       // Disconnect Strava account
