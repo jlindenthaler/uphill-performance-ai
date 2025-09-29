@@ -227,33 +227,6 @@ export type Database = {
         }
         Relationships: []
       }
-      encrypted_garmin_tokens: {
-        Row: {
-          access_token_hash: string
-          created_at: string
-          id: string
-          token_secret_hash: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token_hash: string
-          created_at?: string
-          id?: string
-          token_secret_hash: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token_hash?: string
-          created_at?: string
-          id?: string
-          token_secret_hash?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       enhanced_time_availability: {
         Row: {
           activity_type: string
@@ -287,32 +260,35 @@ export type Database = {
         }
         Relationships: []
       }
-      garmin_token_access_log: {
+      garmin_tokens: {
         Row: {
-          access_type: string
+          access_token: string
+          code_verifier: string | null
+          created_at: string | null
+          expires_at: string | null
           id: string
-          ip_address: unknown | null
-          success: boolean | null
-          timestamp: string
-          user_agent: string | null
+          refresh_token: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          access_type: string
+          access_token: string
+          code_verifier?: string | null
+          created_at?: string | null
+          expires_at?: string | null
           id?: string
-          ip_address?: unknown | null
-          success?: boolean | null
-          timestamp?: string
-          user_agent?: string | null
+          refresh_token?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          access_type?: string
+          access_token?: string
+          code_verifier?: string | null
+          created_at?: string | null
+          expires_at?: string | null
           id?: string
-          ip_address?: unknown | null
-          success?: boolean | null
-          timestamp?: string
-          user_agent?: string | null
+          refresh_token?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -621,11 +597,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string | null
-          garmin_access_token: string | null
-          garmin_code_verifier: string | null
           garmin_connected: boolean | null
-          garmin_oauth_state: string | null
-          garmin_token_secret: string | null
           id: string
           strava_connected: boolean | null
           timezone: string | null
@@ -637,11 +609,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
-          garmin_access_token?: string | null
-          garmin_code_verifier?: string | null
           garmin_connected?: boolean | null
-          garmin_oauth_state?: string | null
-          garmin_token_secret?: string | null
           id?: string
           strava_connected?: boolean | null
           timezone?: string | null
@@ -653,11 +621,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
-          garmin_access_token?: string | null
-          garmin_code_verifier?: string | null
           garmin_connected?: boolean | null
-          garmin_oauth_state?: string | null
-          garmin_token_secret?: string | null
           id?: string
           strava_connected?: boolean | null
           timezone?: string | null
@@ -751,36 +715,6 @@ export type Database = {
         }
         Relationships: []
       }
-      secure_garmin_tokens: {
-        Row: {
-          created_at: string
-          encrypted_access_token: string | null
-          encrypted_token_secret: string | null
-          id: string
-          token_hash: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          encrypted_access_token?: string | null
-          encrypted_token_secret?: string | null
-          id?: string
-          token_hash?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          encrypted_access_token?: string | null
-          encrypted_token_secret?: string | null
-          id?: string
-          token_hash?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       strava_tokens: {
         Row: {
           access_token: string
@@ -837,33 +771,6 @@ export type Database = {
           recovery_hours_per_day?: number
           training_hours_per_day?: number
           updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      token_access_audit: {
-        Row: {
-          access_type: string
-          id: string
-          ip_address: unknown | null
-          timestamp: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          access_type: string
-          id?: string
-          ip_address?: unknown | null
-          timestamp?: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          access_type?: string
-          id?: string
-          ip_address?: unknown | null
-          timestamp?: string
-          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -990,24 +897,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_garmin_tokens_secure: {
-        Args: { p_user_id: string }
-        Returns: {
-          access_token: string
-          token_secret: string
-        }[]
-      }
       get_mapbox_elevation_profile: {
         Args: { coordinates: Json }
         Returns: Json
-      }
-      store_garmin_tokens_secure: {
-        Args: {
-          p_access_token: string
-          p_token_secret: string
-          p_user_id: string
-        }
-        Returns: boolean
       }
     }
     Enums: {

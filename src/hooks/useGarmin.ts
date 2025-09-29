@@ -16,48 +16,11 @@ export function useGarmin() {
   });
   const { toast } = useToast();
 
-  const initiateGarminConnection = async () => {
-    try {
-      console.log('Initiating Garmin connection...');
-      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+  useEffect(() => {
+    checkGarminConnection();
+  }, []);
 
-      // Pass current origin so we can redirect back here after OAuth
-      const currentOrigin = window.location.origin;
-      console.log('Current origin:', currentOrigin);
-
-      console.log('Calling garmin-connect function...');
-      const { data, error } = await supabase.functions.invoke('garmin-connect', {
-        body: { 
-          action: 'get_auth_url',
-          origin: currentOrigin
-        }
-      });
-
-      console.log('Garmin function response:', { data, error });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to initiate Garmin connection');
-      }
-
-      if (data?.authUrl) {
-        // Redirect to Garmin authorization (same window like Strava)
-        window.location.href = data.authUrl;
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setConnectionStatus(prev => ({ ...prev, error: errorMessage }));
-      
-      toast({
-        title: "Connection Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setConnectionStatus(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  // Handle OAuth callback on page load (like Strava)
+  // Handle OAuth callback
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const garminConnected = urlParams.get('garmin_connected');
@@ -70,10 +33,10 @@ export function useGarmin() {
       });
       setConnectionStatus(prev => ({ ...prev, isConnected: true }));
       
-      // Clean up URL
+      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
       
-      // Automatically sync recent activities
+      // Auto-sync
       syncGarminActivities();
     } else if (garminError) {
       const errorMessage = garminError === 'denied'
@@ -85,17 +48,46 @@ export function useGarmin() {
         variant: "destructive"
       });
       
-      // Clean up URL
+      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
     }
   }, [toast]);
+
+  const initiateGarminConnection = async () => {
+    try {
+      console.log('Initiating Garmin connection...');
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+
+      const { data, error } = await supabase.functions.invoke('garmin-oauth', {
+        body: { action: 'authorize' }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to initiate Garmin connection');
+      }
+
+      if (data?.authUrl) {
+        // Redirect to Garmin authorization
+        window.location.href = data.authUrl;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setConnectionStatus(prev => ({ ...prev, error: errorMessage, loading: false }));
+      
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
+  };
 
   const syncGarminActivities = async () => {
     try {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-      const { data, error } = await supabase.functions.invoke('garmin-connect', {
-        body: { action: 'sync_activities' }
+      const { data, error } = await supabase.functions.invoke('garmin-oauth', {
+        body: { action: 'sync' }
       });
 
       if (error) {
@@ -126,15 +118,9 @@ export function useGarmin() {
     try {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-      // Update user profile to remove Garmin connection
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          garmin_connected: false,
-          garmin_access_token: null,
-          garmin_token_secret: null
-        })
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      const { error } = await supabase.functions.invoke('garmin-oauth', {
+        body: { action: 'disconnect' }
+      });
 
       if (error) {
         throw new Error('Failed to disconnect Garmin account');
