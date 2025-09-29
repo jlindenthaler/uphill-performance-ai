@@ -47,17 +47,33 @@ serve(async (req) => {
       );
     }
 
-    // Get stored Strava tokens (placeholder - in production would decrypt properly)
+    // Check if user has Strava connected
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('strava_connected')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!profile?.strava_connected) {
+      throw new Error('Strava account not connected. Please connect your Strava account first.');
+    }
+
+    console.log('Getting Strava tokens for user:', user.id);
+
+    // Get stored Strava tokens
     const { data: tokenData, error: tokenError } = await supabaseClient.rpc('get_strava_tokens_secure', {
       p_user_id: user.id
     });
 
     if (tokenError || !tokenData || tokenData.length === 0) {
-      throw new Error('No Strava connection found. Please connect your Strava account first.');
+      console.error('No Strava tokens found for user:', user.id, tokenError);
+      throw new Error('No Strava connection found. Please reconnect your Strava account.');
     }
 
     const tokens = tokenData[0];
     let accessToken = tokens.access_token;
+
+    console.log('Found Strava tokens, expires at:', tokens.expires_at);
 
     // Check if token needs refresh (simplified - in production would use actual stored tokens)
     const now = new Date();

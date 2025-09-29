@@ -36,17 +36,36 @@ export function useStrava() {
         // Open Strava authorization in new window
         const authWindow = window.open(data.authUrl, 'strava_auth', 'width=600,height=600');
         
-        // Listen for auth success message
+        // Listen for auth success/error messages
         const messageHandler = async (event: MessageEvent) => {
           if (event.data.type === 'strava_auth_success') {
             window.removeEventListener('message', messageHandler);
+            authWindow?.close();
             
             // Handle the OAuth callback
             await handleStravaCallback(event.data.code, event.data.state);
+          } else if (event.data.type === 'strava_auth_error') {
+            window.removeEventListener('message', messageHandler);
+            authWindow?.close();
+            
+            throw new Error(`Strava authorization failed: ${event.data.error}`);
           }
         };
 
         window.addEventListener('message', messageHandler);
+
+        // Handle if popup is closed manually
+        const pollClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(pollClosed);
+            window.removeEventListener('message', messageHandler);
+            setConnectionStatus(prev => ({ 
+              ...prev, 
+              loading: false, 
+              error: 'Authorization cancelled by user' 
+            }));
+          }
+        }, 1000);
         
         toast({
           title: "Strava Authorization",
@@ -142,16 +161,31 @@ export function useStrava() {
     try {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) {
+        throw new Error('User not authenticated');
+      }
+
       // Update user profile to remove Strava connection
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           strava_connected: false
         })
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        .eq('user_id', user.user.id);
 
-      if (error) {
+      if (profileError) {
         throw new Error('Failed to disconnect Strava account');
+      }
+
+      // Clear encrypted tokens (they will remain encrypted but profile will show disconnected)
+      const { error: tokenError } = await supabase
+        .from('encrypted_strava_tokens')
+        .delete()
+        .eq('user_id', user.user.id);
+
+      if (tokenError) {
+        console.warn('Failed to clear Strava tokens, but profile updated:', tokenError);
       }
 
       setConnectionStatus(prev => ({ ...prev, isConnected: false }));
@@ -176,21 +210,28 @@ export function useStrava() {
 
   const checkStravaConnection = async () => {
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
+      
+      const { data, error } = await supabase.functions.invoke('strava-oauth', {
+        body: { action: 'check_connection' }
+      });
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('strava_connected')
-        .eq('user_id', user.user.id)
-        .single();
+      if (error) {
+        throw new Error(error.message || 'Failed to check Strava connection');
+      }
 
       setConnectionStatus(prev => ({ 
         ...prev, 
-        isConnected: profile?.strava_connected || false 
+        isConnected: data?.isConnected || false,
+        loading: false
       }));
     } catch (err) {
       console.error('Error checking Strava connection:', err);
+      setConnectionStatus(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: err instanceof Error ? err.message : 'Failed to check connection'
+      }));
     }
   };
 
