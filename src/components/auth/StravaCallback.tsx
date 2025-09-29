@@ -10,37 +10,52 @@ export function StravaCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
+      console.log('StravaCallback: Starting callback handling');
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const state = urlParams.get('state');
       const error = urlParams.get('error');
 
+      console.log('StravaCallback: URL params:', { code: !!code, state, error });
+
       if (error) {
+        console.error('StravaCallback: Authorization error:', error);
         toast({
           title: "Authorization Failed",
           description: `Strava authorization failed: ${error}`,
           variant: "destructive"
         });
-        navigate('/');
+        // Redirect to integrations tab on error
+        navigate('/?tab=integrations', { replace: true });
         return;
       }
 
       if (code && state) {
         try {
+          console.log('StravaCallback: Calling handleStravaCallback...');
           await handleStravaCallback(code, state);
+          console.log('StravaCallback: Success! Redirecting to integrations tab...');
           // Navigate to home with integrations tab active
           navigate('/?tab=integrations', { replace: true });
         } catch (err) {
-          console.error('Strava callback error:', err);
-          navigate('/');
+          console.error('StravaCallback: Error during callback:', err);
+          toast({
+            title: "Connection Failed",
+            description: "Failed to complete Strava connection. Please try again.",
+            variant: "destructive"
+          });
+          // Redirect to integrations tab on error
+          navigate('/?tab=integrations', { replace: true });
         }
       } else {
+        console.error('StravaCallback: Missing code or state');
         toast({
           title: "Authorization Failed",
           description: "Missing authorization code from Strava",
           variant: "destructive"
         });
-        navigate('/');
+        // Redirect to integrations tab on error
+        navigate('/?tab=integrations', { replace: true });
       }
     };
 
