@@ -94,16 +94,15 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
           );
 
-          // Store tokens in encrypted table (using service role)
+          // Store tokens securely using RPC function
           const { error: tokenError } = await supabaseClient
-            .from('encrypted_strava_tokens')
-            .upsert({
-              user_id: state,
-              access_token_hash: tokenData.access_token, // Will be hashed by RLS trigger
-              refresh_token_hash: tokenData.refresh_token, // Will be hashed by RLS trigger  
-              expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-              scope: tokenData.scope,
-              athlete_id: tokenData.athlete?.id || null,
+            .rpc('store_strava_tokens_secure', {
+              p_user_id: state,
+              p_access_token: tokenData.access_token,
+              p_refresh_token: tokenData.refresh_token,
+              p_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
+              p_scope: tokenData.scope,
+              p_athlete_id: tokenData.athlete?.id || null,
             });
 
           if (tokenError) {
@@ -112,19 +111,8 @@ serve(async (req) => {
             return Response.redirect(redirectUrl, 302);
           }
 
-          // Update profile to mark Strava as connected
-          const { error: profileError } = await supabaseClient
-            .from('profiles')
-            .upsert({
-              user_id: state,
-              strava_connected: true,
-            });
+          // Profile is already updated by the RPC function
 
-          if (profileError) {
-            console.error('Error updating profile:', profileError);
-            const redirectUrl = `${appOrigin}/?tab=integrations&error=${encodeURIComponent('Profile update failed')}`;
-            return Response.redirect(redirectUrl, 302);
-          }
 
           console.log('Successfully connected Strava for user:', state);
 
