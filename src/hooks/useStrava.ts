@@ -24,19 +24,19 @@ export const useStrava = () => {
         .from('profiles')
         .select('strava_connected')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (profile?.strava_connected) {
         const { data: tokens } = await supabase
           .from('strava_tokens')
           .select('athlete_id, expires_at')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         return {
           connected: true,
-          athlete_id: tokens?.athlete_id,
-          expires_at: tokens?.expires_at,
+          athlete_id: tokens?.athlete_id || undefined,
+          expires_at: tokens?.expires_at || undefined,
         };
       }
       
@@ -50,10 +50,13 @@ export const useStrava = () => {
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) throw new Error('No session found');
+      
       const { data, error } = await supabase.functions.invoke('strava-auth', {
-        body: {},
+        body: { action: 'authorize' },
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session.data.session.access_token}`,
         },
       });
       
@@ -75,10 +78,13 @@ export const useStrava = () => {
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) throw new Error('No session found');
+      
       const { data, error } = await supabase.functions.invoke('strava-auth', {
         body: { action: 'disconnect' },
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session.data.session.access_token}`,
         },
       });
       

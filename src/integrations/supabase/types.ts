@@ -625,6 +625,7 @@ export type Database = {
           garmin_connected: boolean | null
           garmin_token_secret: string | null
           id: string
+          strava_connected: boolean | null
           timezone: string | null
           units: string | null
           updated_at: string
@@ -638,6 +639,7 @@ export type Database = {
           garmin_connected?: boolean | null
           garmin_token_secret?: string | null
           id?: string
+          strava_connected?: boolean | null
           timezone?: string | null
           units?: string | null
           updated_at?: string
@@ -651,6 +653,7 @@ export type Database = {
           garmin_connected?: boolean | null
           garmin_token_secret?: string | null
           id?: string
+          strava_connected?: boolean | null
           timezone?: string | null
           units?: string | null
           updated_at?: string
@@ -767,6 +770,39 @@ export type Database = {
           encrypted_token_secret?: string | null
           id?: string
           token_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strava_tokens: {
+        Row: {
+          access_token: string
+          athlete_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          athlete_id?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          athlete_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
           updated_at?: string
           user_id?: string
         }
