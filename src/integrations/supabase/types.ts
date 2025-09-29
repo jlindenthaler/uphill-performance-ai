@@ -622,7 +622,9 @@ export type Database = {
           created_at: string
           full_name: string | null
           garmin_access_token: string | null
+          garmin_code_verifier: string | null
           garmin_connected: boolean | null
+          garmin_oauth_state: string | null
           garmin_token_secret: string | null
           id: string
           strava_connected: boolean | null
@@ -636,7 +638,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           garmin_access_token?: string | null
+          garmin_code_verifier?: string | null
           garmin_connected?: boolean | null
+          garmin_oauth_state?: string | null
           garmin_token_secret?: string | null
           id?: string
           strava_connected?: boolean | null
@@ -650,7 +654,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           garmin_access_token?: string | null
+          garmin_code_verifier?: string | null
           garmin_connected?: boolean | null
+          garmin_oauth_state?: string | null
           garmin_token_secret?: string | null
           id?: string
           strava_connected?: boolean | null
