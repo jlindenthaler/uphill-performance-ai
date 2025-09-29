@@ -15,6 +15,8 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     let action = url.searchParams.get('action')
 
+    console.log(`Strava auth request: ${req.method} ${url.pathname}?${url.searchParams.toString()}`)
+
     // For POST requests, get action from body
     if (req.method === 'POST') {
       const body = await req.json()
@@ -23,22 +25,28 @@ Deno.serve(async (req) => {
 
     // Check for valid action
     if (!action || !['authorize', 'callback', 'disconnect'].includes(action)) {
+      console.error('Invalid or missing action parameter:', action)
       throw new Error('Invalid or missing action parameter')
     }
 
     // For callback, we don't have user session - Strava calls this directly
     if (action === 'callback') {
+      console.log('Processing Strava OAuth callback')
+      
       // Handle OAuth callback without requiring auth header
       const code = url.searchParams.get('code')
       const state = url.searchParams.get('state') // This contains the user ID
       const error = url.searchParams.get('error')
 
+      console.log('Callback params:', { code: code ? 'present' : 'missing', state, error })
+
       if (error) {
         console.error('Strava OAuth error:', error)
-        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_error=denied`)
+        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_error=${error}`)
       }
 
       if (!code || !state) {
+        console.error('Missing required parameters:', { code: !!code, state: !!state })
         throw new Error('Missing code or state parameter')
       }
 
@@ -52,9 +60,14 @@ Deno.serve(async (req) => {
       const clientId = Deno.env.get('STRAVA_CLIENT_ID')
       const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET')
       
+      console.log('Exchanging code for tokens with Strava API')
+      
       const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Accept': 'application/json',
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({
           client_id: clientId,
           client_secret: clientSecret,
@@ -64,11 +77,13 @@ Deno.serve(async (req) => {
       })
 
       if (!tokenResponse.ok) {
-        throw new Error('Failed to exchange code for tokens')
+        const errorText = await tokenResponse.text()
+        console.error('Strava token exchange failed:', tokenResponse.status, errorText)
+        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_error=token_exchange_failed`)
       }
 
       const tokenData = await tokenResponse.json()
-      console.log('Strava token exchange successful for user:', state)
+      console.log('Strava token exchange successful for user:', state, 'athlete:', tokenData.athlete?.id)
 
       // Store tokens in database using the user ID from state
       const { error: dbError } = await supabaseServiceClient
@@ -82,16 +97,23 @@ Deno.serve(async (req) => {
         })
 
       if (dbError) {
-        console.error('Database error:', dbError)
-        throw new Error('Failed to store tokens')
+        console.error('Database error storing tokens:', dbError)
+        return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_error=database_error`)
       }
 
       // Update profile to mark Strava as connected
-      await supabaseServiceClient
+      const { error: profileError } = await supabaseServiceClient
         .from('profiles')
         .update({ strava_connected: true })
         .eq('user_id', state)
 
+      if (profileError) {
+        console.error('Profile update error:', profileError)
+        // Don't fail the whole flow for this
+      }
+
+      console.log('Strava integration successful, redirecting to app')
+      
       // Redirect back to app with success
       return Response.redirect(`https://d7238d46-6905-4cbe-9bf1-ade7278def5b.lovableproject.com/#/settings/integrations?strava_connected=true`)
     }
