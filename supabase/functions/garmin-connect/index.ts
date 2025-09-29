@@ -123,14 +123,15 @@ async function getGarminAuthUrl() {
   const state = crypto.randomUUID()
 
   // OAuth 2.0 authorization URL for Garmin Connect (with PKCE)
-  const authUrl = new URL('https://connect.garmin.com/oauth-service/oauth/authorize')
+  // Using the correct Garmin OAuth2 PKCE endpoint as per documentation
+  const authUrl = new URL('https://connect.garmin.com/oauth2Confirm')
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', clientId)
   authUrl.searchParams.set('redirect_uri', `${redirectUri}/garmin-auth?action=callback`)
   authUrl.searchParams.set('code_challenge', codeChallenge)
   authUrl.searchParams.set('code_challenge_method', 'S256')
   authUrl.searchParams.set('state', state)
-  authUrl.searchParams.set('scope', 'activity:read')
+  // Note: No scope parameter needed for Garmin OAuth2 PKCE
 
   console.log('Generated Garmin OAuth 2.0 PKCE auth URL:', authUrl.toString())
 
