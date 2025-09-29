@@ -18,11 +18,15 @@ export function useGarmin() {
 
   const initiateGarminConnection = async () => {
     try {
+      console.log('Initiating Garmin connection...');
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
+      console.log('Calling garmin-connect function...');
       const { data, error } = await supabase.functions.invoke('garmin-connect', {
         body: { action: 'get_auth_url' }
       });
+
+      console.log('Garmin function response:', { data, error });
 
       if (error) {
         throw new Error(error.message || 'Failed to initiate Garmin connection');

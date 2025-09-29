@@ -23,7 +23,12 @@ export function GarminConnection() {
   }, []);
 
   const handleConnect = async () => {
-    await initiateGarminConnection();
+    console.log('Connect button clicked');
+    try {
+      await initiateGarminConnection();
+    } catch (err) {
+      console.error('Error in handleConnect:', err);
+    }
   };
 
   const handleDisconnect = async () => {
