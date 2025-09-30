@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Info, Calendar as CalendarIcon, XCircle } from "lucide-react";
+import { Info, Calendar as CalendarIcon, XCircle, Download } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,9 +118,20 @@ export function GarminHistoryImport() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Garmin Historical Data Import</CardTitle>
+        <CardTitle>Import History</CardTitle>
+        <CardDescription>
+          Select a date range to import your Garmin activity history
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Importing more data helps create better AI training plans, but larger date ranges can take up to several days to complete. 
+            Only Running, Cycling, and Swimming activities will be imported.
+          </AlertDescription>
+        </Alert>
+
         {activeJob && (
           <Alert>
             <Info className="h-4 w-4" />
@@ -151,8 +162,7 @@ export function GarminHistoryImport() {
           </Alert>
         )}
 
-        <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Start Date</label>
               <Popover>
@@ -168,12 +178,13 @@ export function GarminHistoryImport() {
                     {startDate ? format(startDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
                     initialFocus
+                    disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
@@ -194,26 +205,27 @@ export function GarminHistoryImport() {
                     {endDate ? format(endDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
+                    disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
 
-          <Button
-            onClick={handleImport}
-            disabled={!startDate || !endDate || isLoading || !!activeJob}
-            className="w-full"
-          >
-            {isLoading ? "Starting import..." : "Import Activities"}
-          </Button>
-        </div>
+        <Button
+          onClick={handleImport}
+          disabled={!startDate || !endDate || isLoading || !!activeJob}
+          className="w-full bg-green-600 hover:bg-green-700"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {isLoading ? "Creating Import Job..." : "Import History"}
+        </Button>
       </CardContent>
     </Card>
   );
