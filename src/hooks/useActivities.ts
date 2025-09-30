@@ -605,6 +605,7 @@ export function useActivities() {
     }
   };
 
+
   return {
     activities,
     loading,
