@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.garmin-oauth]
 verify_jwt = false
 
+[functions.garmin-webhook]
+verify_jwt = false
+
 [functions.strava-auth]
 verify_jwt = false
 
