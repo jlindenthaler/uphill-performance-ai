@@ -50,7 +50,7 @@ interface Activity extends ActivitySummary {
   elevation_profile?: any;
 }
 
-export function useActivities() {
+export function useActivities(filterBySport: boolean = true) {
   const { user } = useAuth();
   const { sportMode } = useSportMode();
   const { timezone } = useUserTimezone();
@@ -79,7 +79,7 @@ export function useActivities() {
     }
     
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('activities')
         .select(`
           id,
@@ -97,7 +97,14 @@ export function useActivities() {
           created_at,
           updated_at
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
+
+      // Only filter by sport mode if requested
+      if (filterBySport) {
+        query = query.eq('sport_mode', sportMode);
+      }
+
+      const { data, error } = await query
         .order('date', { ascending: false })
         .range(currentPage * ACTIVITIES_PER_PAGE, (currentPage + 1) * ACTIVITIES_PER_PAGE - 1);
 
@@ -456,7 +463,7 @@ export function useActivities() {
     return () => {
       window.removeEventListener('activity-uploaded', handleActivityUploaded);
     };
-  }, [user, sportMode]);
+  }, [user, filterBySport ? sportMode : null]);
 
   const backfillPowerProfile = async () => {
     if (!user) return;

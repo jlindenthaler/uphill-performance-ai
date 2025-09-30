@@ -25,7 +25,7 @@ interface Workout {
   completed_date?: string;
 }
 
-export function useWorkouts() {
+export function useWorkouts(filterBySport: boolean = true) {
   const { user } = useAuth();
   const { sportMode } = useSportMode();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -36,12 +36,17 @@ export function useWorkouts() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('workouts')
         .select('*')
-        .eq('user_id', user.id)
-        .eq('sport_mode', sportMode)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
+
+      // Only filter by sport mode if requested
+      if (filterBySport) {
+        query = query.eq('sport_mode', sportMode);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setWorkouts(data as Workout[] || []);
@@ -112,7 +117,7 @@ export function useWorkouts() {
     if (user) {
       fetchWorkouts();
     }
-  }, [user, sportMode]);
+  }, [user, filterBySport ? sportMode : null]);
 
   return {
     workouts,
