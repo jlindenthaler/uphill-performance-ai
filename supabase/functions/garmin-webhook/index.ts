@@ -7,39 +7,38 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
   try {
-    // Only accept POST requests
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 })
+    // Handle Garmin handshake verification (GET/HEAD requests)
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      console.log('Garmin handshake verification request received')
+      return new Response('ok', { status: 200 })
     }
 
-    // Parse webhook notification from Garmin
-    const notification = await req.json()
-    console.log('Garmin webhook notification received:', JSON.stringify(notification, null, 2))
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders })
+    }
 
-    // Immediately respond with 200 (required within 30 seconds)
-    const response = new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    // Handle webhook notifications (POST requests)
+    if (req.method === 'POST') {
+      const notification = await req.json()
+      console.log('Garmin webhook notification received:', JSON.stringify(notification, null, 2))
 
-    // Process notification in background
-    processNotification(notification)
+      // Process notification in background (don't await)
+      processNotification(notification)
 
-    return response
+      // Immediately respond with 200 OK
+      return new Response('ok', { status: 200 })
+    }
+
+    // Unsupported method
+    console.log(`Unsupported method: ${req.method}`)
+    return new Response('ok', { status: 200 })
 
   } catch (error) {
     console.error('Garmin webhook error:', error)
     // Always return 200 to Garmin to avoid retry storms
-    return new Response(JSON.stringify({ received: true, error: 'Processing error' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    return new Response('ok', { status: 200 })
   }
 })
 
