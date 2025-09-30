@@ -437,12 +437,16 @@ export function ActivityAnalysisChart({
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={timelineData} margin={{
-              top: 20,
-              right: 80,
-              bottom: 20,
-              left: 20
-            }}>
+              <ComposedChart 
+                data={timelineData} 
+                margin={{
+                  top: 20,
+                  right: 80,
+                  bottom: 20,
+                  left: 20
+                }}
+                syncId="activityChart"
+              >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
                   dataKey="xValue" 
@@ -464,21 +468,21 @@ export function ActivityAnalysisChart({
               }} />
                 <Tooltip content={<TimelineTooltip />} />
                 
-                {/* Conditionally render Total Power */}
-                {visibleMetrics.includes('wl') && <Line yAxisId="power" type="monotone" dataKey="power" stroke="hsl(var(--zone-3))" strokeWidth={2} dot={false} name="Power" />}
+                {/* Conditionally render Total Power - render all data points */}
+                {visibleMetrics.includes('wl') && <Line yAxisId="power" type="monotone" dataKey="power" stroke="hsl(var(--zone-3))" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} name="Power" />}
                 
                 
-                {/* Conditionally render Heart Rate */}
-                {visibleMetrics.includes('hr') && <Line yAxisId="hr" type="monotone" dataKey="heartRate" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} name="Heart Rate" />}
+                {/* Conditionally render Heart Rate - render all data points */}
+                {visibleMetrics.includes('hr') && <Line yAxisId="hr" type="monotone" dataKey="heartRate" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} name="Heart Rate" />}
                 
-                {/* Conditionally render Cadence */}
-                {visibleMetrics.includes('cadence') && <Line yAxisId="power" type="monotone" dataKey="cadence" stroke="hsl(var(--zone-1))" strokeWidth={1} strokeDasharray="3 3" dot={false} name="Cadence" />}
+                {/* Conditionally render Cadence - render all data points */}
+                {visibleMetrics.includes('cadence') && <Line yAxisId="power" type="monotone" dataKey="cadence" stroke="hsl(var(--zone-1))" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} connectNulls={false} name="Cadence" />}
                 
-                {/* Conditionally render Speed */}
-                {visibleMetrics.includes('speed') && <Line yAxisId="power" type="monotone" dataKey="speed" stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="2 2" dot={false} name="Speed" />}
+                {/* Conditionally render Speed - render all data points */}
+                {visibleMetrics.includes('speed') && <Line yAxisId="power" type="monotone" dataKey="speed" stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="2 2" dot={false} isAnimationActive={false} connectNulls={false} name="Speed" />}
                 
-                {/* Conditionally render Elevation */}
-                {visibleMetrics.includes('elevation') && <Line yAxisId="hr" type="monotone" dataKey="elevation" stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="4 2" dot={false} name="Elevation" />}
+                {/* Conditionally render Elevation - render all data points */}
+                {visibleMetrics.includes('elevation') && <Line yAxisId="hr" type="monotone" dataKey="elevation" stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="4 2" dot={false} isAnimationActive={false} connectNulls={false} name="Elevation" />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
