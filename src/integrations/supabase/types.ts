@@ -17,17 +17,20 @@ export type Database = {
       activities: {
         Row: {
           activity_type: string | null
+          altitude_time_series: Json | null
           avg_cadence: number | null
           avg_heart_rate: number | null
           avg_pace_per_km: number | null
           avg_power: number | null
           avg_speed_kmh: number | null
+          cadence_time_series: Json | null
           calories: number | null
           cp_test_protocol: string | null
           cp_test_target_duration: number | null
           created_at: string
           date: string
           distance_meters: number | null
+          distance_time_series: Json | null
           duration_seconds: number
           elevation_gain_meters: number | null
           elevation_profile: Json | null
@@ -48,9 +51,12 @@ export type Database = {
           original_filename: string | null
           power_curve_cache: Json | null
           power_time_series: Json | null
+          speed_time_series: Json | null
           sport_mode: string
           strava_activity_id: string | null
           summary_metrics: Json | null
+          temperature_time_series: Json | null
+          time_time_series: Json | null
           tss: number | null
           updated_at: string
           user_id: string
@@ -59,17 +65,20 @@ export type Database = {
         }
         Insert: {
           activity_type?: string | null
+          altitude_time_series?: Json | null
           avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null
           avg_speed_kmh?: number | null
+          cadence_time_series?: Json | null
           calories?: number | null
           cp_test_protocol?: string | null
           cp_test_target_duration?: number | null
           created_at?: string
           date: string
           distance_meters?: number | null
+          distance_time_series?: Json | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
           elevation_profile?: Json | null
@@ -90,9 +99,12 @@ export type Database = {
           original_filename?: string | null
           power_curve_cache?: Json | null
           power_time_series?: Json | null
+          speed_time_series?: Json | null
           sport_mode?: string
           strava_activity_id?: string | null
           summary_metrics?: Json | null
+          temperature_time_series?: Json | null
+          time_time_series?: Json | null
           tss?: number | null
           updated_at?: string
           user_id: string
@@ -101,17 +113,20 @@ export type Database = {
         }
         Update: {
           activity_type?: string | null
+          altitude_time_series?: Json | null
           avg_cadence?: number | null
           avg_heart_rate?: number | null
           avg_pace_per_km?: number | null
           avg_power?: number | null
           avg_speed_kmh?: number | null
+          cadence_time_series?: Json | null
           calories?: number | null
           cp_test_protocol?: string | null
           cp_test_target_duration?: number | null
           created_at?: string
           date?: string
           distance_meters?: number | null
+          distance_time_series?: Json | null
           duration_seconds?: number
           elevation_gain_meters?: number | null
           elevation_profile?: Json | null
@@ -132,9 +147,12 @@ export type Database = {
           original_filename?: string | null
           power_curve_cache?: Json | null
           power_time_series?: Json | null
+          speed_time_series?: Json | null
           sport_mode?: string
           strava_activity_id?: string | null
           summary_metrics?: Json | null
+          temperature_time_series?: Json | null
+          time_time_series?: Json | null
           tss?: number | null
           updated_at?: string
           user_id?: string

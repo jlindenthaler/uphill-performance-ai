@@ -113,11 +113,12 @@ async function fetchStravaActivitiesPage(
 async function fetchStravaActivityStreams(
   accessToken: string,
   activityId: number
-): Promise<{ watts?: number[]; heartrate?: number[] } | null> {
-  const streamTypes = ['watts', 'heartrate'];
+): Promise<any | null> {
+  // Fetch ALL available stream types from Strava
+  const streamTypes = ['time', 'latlng', 'distance', 'altitude', 'velocity_smooth', 'heartrate', 'cadence', 'watts', 'temp', 'moving', 'grade_smooth'];
   const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=${streamTypes.join(',')}&key_by_type=true`;
 
-  console.log(`Fetching streams for activity ${activityId}`);
+  console.log(`Fetching all streams for activity ${activityId}`);
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -133,9 +134,19 @@ async function fetchStravaActivityStreams(
 
   const streams = await response.json();
   
+  // Return all available streams
   return {
-    watts: streams.watts?.data || null,
+    time: streams.time?.data || null,
+    latlng: streams.latlng?.data || null,
+    distance: streams.distance?.data || null,
+    altitude: streams.altitude?.data || null,
+    velocity_smooth: streams.velocity_smooth?.data || null,
     heartrate: streams.heartrate?.data || null,
+    cadence: streams.cadence?.data || null,
+    watts: streams.watts?.data || null,
+    temp: streams.temp?.data || null,
+    moving: streams.moving?.data || null,
+    grade_smooth: streams.grade_smooth?.data || null,
   };
 }
 
@@ -249,26 +260,62 @@ async function processBackfillJob(supabase: any, job: any) {
             throw insertError;
           }
 
-          // Fetch detailed streams for activities with power/HR data
+          // Fetch detailed streams for ALL activities
           for (const insertedActivity of insertedActivities || []) {
             const originalActivity = newActivities.find(a => a.id.toString() === insertedActivity.strava_activity_id);
             
-            // Only fetch streams if activity has power or HR data
-            if (originalActivity && (originalActivity.average_watts || originalActivity.average_heartrate)) {
+            if (originalActivity) {
               try {
                 await sleep(300); // Rate limit between stream requests
                 const streams = await fetchStravaActivityStreams(accessToken, originalActivity.id);
                 
                 if (streams) {
+                  // Build GPS data if we have latlng coordinates
+                  let gpsData = null;
+                  if (streams.latlng && Array.isArray(streams.latlng) && streams.latlng.length > 0) {
+                    // Convert Strava latlng format [lat, lng] to GeoJSON format [lng, lat]
+                    const coordinates = streams.latlng.map((point: [number, number]) => [point[1], point[0]]);
+                    
+                    gpsData = {
+                      type: 'LineString',
+                      coordinates: coordinates
+                    };
+                    
+                    // Also build trackPoints for compatibility with chart
+                    if (streams.time) {
+                      const trackPoints = streams.time.map((time: number, index: number) => ({
+                        timestamp: new Date((originalActivity.start_date ? new Date(originalActivity.start_date).getTime() : Date.now()) + time * 1000).toISOString(),
+                        latitude: streams.latlng[index]?.[0] || null,
+                        longitude: streams.latlng[index]?.[1] || null,
+                        altitude: streams.altitude?.[index] || null,
+                        speed: streams.velocity_smooth?.[index] || null,
+                        power: streams.watts?.[index] || null,
+                        heartRate: streams.heartrate?.[index] || null,
+                        cadence: streams.cadence?.[index] || null,
+                        temperature: streams.temp?.[index] || null,
+                      }));
+                      
+                      gpsData.trackPoints = trackPoints;
+                    }
+                  }
+                  
+                  // Update activity with all stream data
                   await supabase
                     .from('activities')
                     .update({
                       power_time_series: streams.watts || null,
                       heart_rate_time_series: streams.heartrate || null,
+                      cadence_time_series: streams.cadence || null,
+                      temperature_time_series: streams.temp || null,
+                      speed_time_series: streams.velocity_smooth || null,
+                      distance_time_series: streams.distance || null,
+                      altitude_time_series: streams.altitude || null,
+                      time_time_series: streams.time || null,
+                      gps_data: gpsData,
                     })
                     .eq('id', insertedActivity.id);
                   
-                  console.log(`Updated streams for activity ${originalActivity.id}`);
+                  console.log(`Updated all streams for activity ${originalActivity.id} (GPS: ${gpsData ? 'yes' : 'no'})`);
                 }
               } catch (streamError) {
                 console.error(`Failed to fetch streams for activity ${originalActivity.id}:`, streamError);

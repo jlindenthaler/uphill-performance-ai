@@ -23,15 +23,16 @@ export function ActivityAnalysisChart({
   } = useSportMode();
   const isRunning = sportMode === 'running';
 
-  // Use real activity trackPoints data for timeline
+  // Use real activity data for timeline - supports both GPS and time-series data
   const timelineData = useMemo(() => {
-    if (!activity?.gps_data?.trackPoints) return [];
-    const trackPoints = activity.gps_data.trackPoints;
-    const startTime = trackPoints[0]?.timestamp;
-    let cumulativeDistance = 0;
-    let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
+    // First try GPS data with trackPoints
+    if (activity?.gps_data?.trackPoints && Array.isArray(activity.gps_data.trackPoints) && activity.gps_data.trackPoints.length > 0) {
+      const trackPoints = activity.gps_data.trackPoints;
+      const startTime = trackPoints[0]?.timestamp;
+      let cumulativeDistance = 0;
+      let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
 
-    return trackPoints.map((point: any, index: number) => {
+      return trackPoints.map((point: any, index: number) => {
       let timeElapsed;
       if (index === 0) {
         timeElapsed = 0;
@@ -93,6 +94,107 @@ export function ActivityAnalysisChart({
         rPower: rPower
       };
     });
+    }
+    
+    // Fallback to time-series data if no GPS data available
+    if (activity) {
+      const timeArray = activity.time_time_series;
+      const powerArray = activity.power_time_series;
+      const hrArray = activity.heart_rate_time_series;
+      const cadenceArray = activity.cadence_time_series;
+      const speedArray = activity.speed_time_series;
+      const tempArray = activity.temperature_time_series;
+      const distanceArray = activity.distance_time_series;
+      const altitudeArray = activity.altitude_time_series;
+      
+      // Need at least time series or a way to calculate time
+      if (timeArray && Array.isArray(timeArray) && timeArray.length > 0) {
+        console.log('Using time-series data for timeline', {
+          timePoints: timeArray.length,
+          hasPower: !!powerArray,
+          hasHR: !!hrArray,
+          hasGPS: false
+        });
+        
+        return timeArray.map((timeSeconds: number, index: number) => {
+          const hours = Math.floor(timeSeconds / 3600);
+          const minutes = Math.floor((timeSeconds % 3600) / 60);
+          const seconds = Math.floor(timeSeconds % 60);
+          const timeFormatted = hours > 0 
+            ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` 
+            : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          
+          const distanceMeters = distanceArray?.[index] || 0;
+          const distanceKm = distanceMeters / 1000;
+          const distanceFormatted = distanceKm < 10 
+            ? `${distanceKm.toFixed(1)}km` 
+            : `${Math.round(distanceKm)}km`;
+          
+          const speedMs = speedArray?.[index] || 0;
+          const speedKmh = speedMs * 3.6;
+          
+          return {
+            time: timeFormatted,
+            distance: distanceFormatted,
+            xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
+            timeSeconds: timeSeconds,
+            distanceMeters: distanceMeters,
+            cadence: cadenceArray?.[index] || 0,
+            heartRate: hrArray?.[index] || 0,
+            wl: 0, // No L/R power split in basic time series
+            wr: 0,
+            speed: Math.round(speedKmh * 10) / 10,
+            temp: tempArray?.[index] || 20,
+            elevation: altitudeArray?.[index] ? Math.round(altitudeArray[index] * 10) / 10 : 0,
+            power: powerArray?.[index] || 0,
+            balance: 50, // No balance data in basic time series
+            rPower: 0
+          };
+        });
+      }
+      
+      // Last resort: generate synthetic timeline from duration
+      if (activity.duration_seconds && activity.duration_seconds > 0) {
+        console.log('Generating synthetic timeline from duration', {
+          duration: activity.duration_seconds,
+          hasPower: !!powerArray,
+          hasHR: !!hrArray
+        });
+        
+        // Generate one data point per second
+        const dataPoints = [];
+        for (let i = 0; i < activity.duration_seconds; i++) {
+          const hours = Math.floor(i / 3600);
+          const minutes = Math.floor((i % 3600) / 60);
+          const seconds = i % 60;
+          const timeFormatted = hours > 0 
+            ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` 
+            : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          
+          dataPoints.push({
+            time: timeFormatted,
+            distance: '0km',
+            xValue: timeFormatted,
+            timeSeconds: i,
+            distanceMeters: 0,
+            cadence: 0,
+            heartRate: 0,
+            wl: 0,
+            wr: 0,
+            speed: 0,
+            temp: 20,
+            elevation: 0,
+            power: 0,
+            balance: 50,
+            rPower: 0
+          });
+        }
+        
+        return dataPoints;
+      }
+    }
+    
+    return [];
   }, [activity, xAxisMode]);
 
   // Check if there's any R power data in the activity
