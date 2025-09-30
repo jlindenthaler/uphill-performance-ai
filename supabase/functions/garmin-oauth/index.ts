@@ -258,11 +258,15 @@ async function syncActivities(userId: string, supabaseClient: any) {
     throw new Error('No valid Garmin connection found');
   }
 
-  // Try multiple possible Garmin API endpoints
+  // Calculate time range (last 30 days)
+  const endTime = Math.floor(Date.now() / 1000);
+  const startTime = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+
+  // Try multiple possible Garmin API endpoints with time range parameters
   const possibleEndpoints = [
     `${GARMIN_API_BASE}/activitylist-service/activities/search/activities`,
     `${GARMIN_API_BASE}/activity-service/activity/list`,
-    `${GARMIN_API_BASE}/wellness-api/rest/activities`
+    `${GARMIN_API_BASE}/wellness-api/rest/activities?uploadStartTimeInSeconds=${startTime}&uploadEndTimeInSeconds=${endTime}`
   ];
 
   let activities = null;
@@ -270,30 +274,47 @@ async function syncActivities(userId: string, supabaseClient: any) {
 
   for (const endpoint of possibleEndpoints) {
     console.log('Trying Garmin endpoint:', endpoint);
-    try {
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`,
-          'Accept': 'application/json'
-        },
-      });
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Accept': 'application/json'
+          },
+        });
 
-      console.log('Garmin API response status:', response.status);
+        console.log('Garmin API response status:', response.status);
 
-      if (response.ok) {
-        activities = await response.json();
-        console.log('Successfully fetched activities from:', endpoint);
-        console.log('Activities count:', activities?.length || Array.isArray(activities) ? activities.length : 'Not an array');
+        if (response.ok) {
+          activities = await response.json();
+          console.log('Successfully fetched activities from:', endpoint);
+          console.log('Activities count:', activities?.length || Array.isArray(activities) ? activities.length : 'Not an array');
+          break;
+        } else if (response.status === 429 || response.status === 503) {
+          // Rate limit or service unavailable - retry with exponential backoff
+          retryCount++;
+          const waitTime = Math.pow(2, retryCount) * 1000;
+          console.log(`Rate limited or service unavailable. Waiting ${waitTime}ms before retry ${retryCount}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        } else {
+          const errorText = await response.text();
+          console.error(`Endpoint ${endpoint} failed:`, response.status, errorText);
+          lastError = `${response.status}: ${errorText}`;
+          break;
+        }
+      } catch (err) {
+        console.error(`Error fetching from ${endpoint}:`, err);
+        lastError = err instanceof Error ? err.message : 'Unknown error';
         break;
-      } else {
-        const errorText = await response.text();
-        console.error(`Endpoint ${endpoint} failed:`, response.status, errorText);
-        lastError = `${response.status}: ${errorText}`;
       }
-    } catch (err) {
-      console.error(`Error fetching from ${endpoint}:`, err);
-      lastError = err instanceof Error ? err.message : 'Unknown error';
     }
+    
+    if (activities) break;
   }
 
   if (!activities) {
@@ -302,6 +323,7 @@ async function syncActivities(userId: string, supabaseClient: any) {
   }
 
   let synced = 0;
+  let skipped = 0;
   const activitiesArray = Array.isArray(activities) ? activities : activities.activities || [];
 
   console.log('Processing', activitiesArray.length, 'activities');
@@ -324,6 +346,7 @@ async function syncActivities(userId: string, supabaseClient: any) {
 
       if (existing) {
         console.log(`Garmin activity ${garminId} already exists, skipping`);
+        skipped++;
         continue;
       }
 
@@ -349,20 +372,26 @@ async function syncActivities(userId: string, supabaseClient: any) {
         .insert(mappedActivity);
 
       if (insertError) {
-        console.error(`Failed to insert activity ${garminId}:`, insertError.message, insertError.details);
+        if (insertError.code === '23505') {
+          // Duplicate key - another sync may have added it
+          console.log(`Garmin activity ${garminId} duplicate detected during insert, skipping`);
+          skipped++;
+        } else {
+          console.error(`Failed to insert activity ${garminId}:`, insertError.message, insertError.details);
+        }
       } else {
         synced++;
-        console.log(`Synced Garmin activity: ${mappedActivity.name} (ID: ${garminId})`);
+        console.log(`✓ Synced: "${mappedActivity.name}" (ID: ${garminId})`);
       }
     } catch (activityError) {
       console.error('Error processing Garmin activity:', activityError);
     }
   }
 
-  console.log('Garmin sync completed. Synced activities:', synced);
+  console.log(`Garmin sync completed. Synced: ${synced}, Skipped (already exists): ${skipped}, Total processed: ${activitiesArray.length}`);
 
   return new Response(
-    JSON.stringify({ success: true, synced }),
+    JSON.stringify({ success: true, synced, skipped, total: activitiesArray.length }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }

@@ -159,10 +159,32 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
     
     let page = 1
     let totalSynced = 0
+    let totalSkipped = 0
     let hasMore = true
 
     while (hasMore && page <= 10) { // Limit to 10 pages to prevent runaway loops
-      const activities = await fetchStravaActivities(accessToken, after, page, 30)
+      let retryCount = 0;
+      const maxRetries = 3;
+      let activities: StravaActivity[] = [];
+      
+      // Retry logic for fetching activities
+      while (retryCount < maxRetries) {
+        try {
+          activities = await fetchStravaActivities(accessToken, after, page, 30);
+          break; // Success - exit retry loop
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          
+          if (errorMessage.includes('429') || errorMessage.includes('503')) {
+            retryCount++;
+            const waitTime = Math.pow(2, retryCount) * 1000;
+            console.log(`Rate limited or service unavailable. Waiting ${waitTime}ms before retry ${retryCount}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          } else {
+            throw error; // Non-retryable error
+          }
+        }
+      }
       
       if (activities.length === 0) {
         console.log('No more activities to sync')
@@ -174,7 +196,7 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
 
       for (const activity of activities) {
         try {
-          // Check if activity already exists
+          // Check if activity already exists by strava_activity_id
           const { data: existing } = await supabase
             .from('activities')
             .select('id')
@@ -184,6 +206,7 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
 
           if (existing) {
             console.log(`Activity ${activity.id} already exists, skipping`)
+            totalSkipped++
             continue
           }
 
@@ -194,10 +217,16 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
             .insert(activityData)
 
           if (error) {
-            console.error(`Failed to insert activity ${activity.id}:`, error.message, error.details)
+            // Handle duplicate constraint error gracefully
+            if (error.code === '23505') {
+              console.log(`Duplicate detected during insert for activity ${activity.id}, skipping`)
+              totalSkipped++
+            } else {
+              console.error(`Failed to insert activity ${activity.id}:`, error.message, error.details)
+            }
           } else {
             totalSynced++
-            console.log(`Synced activity: ${activity.name} (ID: ${activity.id})`)
+            console.log(`✓ Synced: "${activity.name}" (ID: ${activity.id})`)
           }
         } catch (activityError) {
           console.error(`Error processing activity ${activity.id}:`, activityError)
@@ -213,8 +242,8 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    console.log(`Sync completed for user ${userId}. Total activities synced: ${totalSynced}`)
-    return { success: true, activitiesSynced: totalSynced }
+    console.log(`Sync completed for user ${userId}. Synced: ${totalSynced}, Skipped: ${totalSkipped}`)
+    return { success: true, activitiesSynced: totalSynced, activitiesSkipped: totalSkipped }
 
   } catch (error) {
     console.error(`Sync failed for user ${userId}:`, error)
