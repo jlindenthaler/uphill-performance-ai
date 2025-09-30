@@ -267,6 +267,7 @@ export type Database = {
         Row: {
           activities_skipped: number | null
           activities_synced: number | null
+          activity_types: string[] | null
           created_at: string
           end_date: string
           garmin_user_id: string
@@ -277,10 +278,12 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          user_selected: boolean | null
         }
         Insert: {
           activities_skipped?: number | null
           activities_synced?: number | null
+          activity_types?: string[] | null
           created_at?: string
           end_date: string
           garmin_user_id: string
@@ -291,10 +294,12 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          user_selected?: boolean | null
         }
         Update: {
           activities_skipped?: number | null
           activities_synced?: number | null
+          activity_types?: string[] | null
           created_at?: string
           end_date?: string
           garmin_user_id?: string
@@ -305,6 +310,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          user_selected?: boolean | null
         }
         Relationships: []
       }
@@ -770,6 +776,7 @@ export type Database = {
         Row: {
           activities_skipped: number | null
           activities_synced: number | null
+          activity_types: string[] | null
           created_at: string
           current_page: number | null
           end_date: string
@@ -780,10 +787,12 @@ export type Database = {
           strava_athlete_id: string
           updated_at: string
           user_id: string
+          user_selected: boolean | null
         }
         Insert: {
           activities_skipped?: number | null
           activities_synced?: number | null
+          activity_types?: string[] | null
           created_at?: string
           current_page?: number | null
           end_date: string
@@ -794,10 +803,12 @@ export type Database = {
           strava_athlete_id: string
           updated_at?: string
           user_id: string
+          user_selected?: boolean | null
         }
         Update: {
           activities_skipped?: number | null
           activities_synced?: number | null
+          activity_types?: string[] | null
           created_at?: string
           current_page?: number | null
           end_date?: string
@@ -808,6 +819,7 @@ export type Database = {
           strava_athlete_id?: string
           updated_at?: string
           user_id?: string
+          user_selected?: boolean | null
         }
         Relationships: []
       }

@@ -170,6 +170,18 @@ async function fetchStravaActivities(accessToken: string, after?: number, page =
 }
 
 function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
+  // Map Strava activity types to our sport modes
+  const typeMap: Record<string, string> = {
+    'ride': 'cycling',
+    'virtualride': 'cycling',
+    'run': 'running',
+    'virtualrun': 'running',
+    'trailrun': 'running',
+    'swim': 'swimming'
+  }
+  
+  const sportMode = typeMap[activity.type.toLowerCase()] || null
+  
   return {
     user_id: userId,
     name: activity.name,
@@ -186,9 +198,7 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
     avg_cadence: activity.average_cadence,
     calories: activity.kilojoules ? Math.round(activity.kilojoules * 4.184) : null, // Convert kJ to calories
     tss: activity.suffer_score,
-    sport_mode: activity.type.toLowerCase() === 'ride' ? 'cycling' : 
-                activity.type.toLowerCase() === 'run' ? 'running' : 
-                activity.type.toLowerCase(),
+    sport_mode: sportMode,
     external_sync_source: 'strava',
     strava_activity_id: activity.id.toString(),
     activity_type: 'normal'
@@ -247,6 +257,16 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
 
       for (const activity of activities) {
         try {
+          // Map activity first to check sport mode
+          const activityData = mapStravaActivityToDatabase(activity, userId)
+          
+          // Skip if not a supported activity type
+          if (!activityData.sport_mode) {
+            console.log(`Skipping activity ${activity.id} - unsupported type: ${activity.type}`)
+            totalSkipped++
+            continue
+          }
+          
           // Check if activity already exists by strava_activity_id
           const { data: existing } = await supabase
             .from('activities')
@@ -262,7 +282,6 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
           }
 
           // Insert new activity
-          const activityData = mapStravaActivityToDatabase(activity, userId)
           const { error } = await supabase
             .from('activities')
             .insert(activityData)

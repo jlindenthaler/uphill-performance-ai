@@ -8,6 +8,7 @@ import { useGarmin } from "@/hooks/useGarmin";
 import { useGarminJobs } from "@/hooks/useGarminJobs";
 import { useToast } from "@/hooks/use-toast";
 import { Link, Unlink, Activity, Calendar, MapPin, Loader2 } from "lucide-react";
+import { GarminHistoryImport } from "@/components/GarminHistoryImport";
 
 export function GarminConnection() {
   const { 
@@ -38,14 +39,6 @@ export function GarminConnection() {
     await disconnectGarmin();
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      await syncGarminActivities();
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const getStatusBadge = () => {
     if (connectionStatus.loading) {
@@ -156,30 +149,25 @@ export function GarminConnection() {
               <div className="p-4 rounded-lg bg-muted/20">
                 <h5 className="font-medium mb-1">Auto Sync</h5>
                 <p className="text-sm text-muted-foreground">
-                  Enabled - New activities sync automatically
+                  New activities sync automatically
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleSync} 
-                disabled={syncing || !!activeJob}
-                variant="outline"
-                className="flex-1"
-              >
-                <Activity className="w-4 h-4 mr-2" />
-                {activeJob ? 'Sync in Progress' : syncing ? 'Starting Sync...' : 'Sync History'}
-              </Button>
-              <Button 
-                onClick={handleDisconnect} 
-                variant="outline"
-                className="flex-1"
-              >
-                <Unlink className="w-4 h-4 mr-2" />
-                Disconnect
-              </Button>
-            </div>
+            <Separator />
+
+            <GarminHistoryImport />
+
+            <Separator />
+
+            <Button 
+              onClick={handleDisconnect} 
+              variant="outline"
+              className="w-full"
+            >
+              <Unlink className="w-4 h-4 mr-2" />
+              Disconnect Garmin
+            </Button>
           </div>
         )}
 

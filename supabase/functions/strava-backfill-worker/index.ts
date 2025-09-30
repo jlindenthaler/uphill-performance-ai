@@ -111,12 +111,28 @@ async function fetchStravaActivitiesPage(
 }
 
 function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
+  // Map Strava activity types to our sport modes
+  const typeMap: Record<string, string> = {
+    'ride': 'cycling',
+    'virtualride': 'cycling',
+    'ebikeride': 'cycling',
+    'mountainbikeride': 'cycling',
+    'gravelride': 'cycling',
+    'run': 'running',
+    'virtualrun': 'running',
+    'trailrun': 'running',
+    'swim': 'swimming',
+  };
+  
+  const activityType = (activity.sport_type || activity.type || '').toLowerCase();
+  const sportMode = typeMap[activityType] || null;
+  
   return {
     user_id: userId,
     strava_activity_id: activity.id.toString(),
     external_sync_source: 'strava',
     name: activity.name,
-    sport_mode: activity.sport_type?.toLowerCase() || activity.type?.toLowerCase() || 'cycling',
+    sport_mode: sportMode,
     date: activity.start_date,
     duration_seconds: activity.moving_time || activity.elapsed_time,
     distance_meters: activity.distance,
@@ -186,23 +202,32 @@ async function processBackfillJob(supabase: any, job: any) {
       const newActivities = activities.filter(a => !existingIds.has(a.id.toString()));
       
       if (newActivities.length > 0) {
-        const mappedActivities = newActivities.map(a => 
-          mapStravaActivityToDatabase(a, job.user_id)
-        );
+        // Map and filter activities
+        const mappedActivities = newActivities
+          .map(a => mapStravaActivityToDatabase(a, job.user_id))
+          .filter(a => a.sport_mode !== null); // Only keep supported activity types
 
-        const { error: insertError } = await supabase
-          .from('activities')
-          .insert(mappedActivities);
+        console.log(`Filtered to ${mappedActivities.length} supported activities out of ${newActivities.length}`);
 
-        if (insertError) {
-          console.error('Error inserting activities:', insertError);
-          throw insertError;
+        if (mappedActivities.length > 0) {
+          const { error: insertError } = await supabase
+            .from('activities')
+            .insert(mappedActivities);
+
+          if (insertError) {
+            console.error('Error inserting activities:', insertError);
+            throw insertError;
+          }
         }
 
-        totalSynced += newActivities.length;
-        console.log(`Inserted ${newActivities.length} new activities`);
+        // Update counters
+        totalSynced += mappedActivities.length;
+        const skippedCount = newActivities.length - mappedActivities.length;
+        totalSkipped += skippedCount;
+        console.log(`Inserted ${mappedActivities.length} new activities, skipped ${skippedCount} unsupported types`);
       }
 
+      // Count already-existing activities as skipped
       totalSkipped += activities.length - newActivities.length;
 
       // Update job progress

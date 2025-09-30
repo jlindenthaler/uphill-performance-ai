@@ -139,7 +139,15 @@ async function processActivity(
       return
     }
 
-    // Map activity to our schema
+    // Map activity to our schema and filter by sport type
+    const sportMode = mapGarminSportType(activityData.activityType?.typeKey || activityData.activityType)
+    
+    // Skip if not a supported activity type
+    if (!sportMode) {
+      console.log(`Skipping activity ${garminId} - unsupported type: ${activityData.activityType?.typeKey || activityData.activityType}`)
+      return
+    }
+
     const mappedActivity = {
       user_id: userId,
       garmin_activity_id: garminId,
@@ -151,7 +159,7 @@ async function processActivity(
       avg_heart_rate: activityData.averageHR || activityData.avgHr || null,
       max_heart_rate: activityData.maxHR || activityData.maxHr || null,
       calories: activityData.calories || null,
-      sport_mode: mapGarminSportType(activityData.activityType?.typeKey || activityData.activityType),
+      sport_mode: sportMode,
       external_sync_source: 'garmin',
       activity_type: 'normal'
     }
@@ -213,18 +221,18 @@ async function handleDeregistration(garminUserId: string, supabase: any) {
   }
 }
 
-function mapGarminSportType(activityType: string | undefined): string {
-  if (!activityType) return 'other'
+function mapGarminSportType(activityType: string | undefined): string | null {
+  if (!activityType) return null
   
   const type = activityType.toLowerCase()
   
   // Cycling activities
-  if (type.includes('cycling') || type.includes('bike') || type.includes('gravel')) {
+  if (type.includes('cycling') || type.includes('bike') || type.includes('gravel') || type.includes('mountain')) {
     return 'cycling'
   }
   
-  // Running activities
-  if (type.includes('running') || type.includes('run') || type.includes('trail')) {
+  // Running activities (including trail and train)
+  if (type.includes('running') || type.includes('run') || type.includes('trail') || type.includes('train')) {
     return 'running'
   }
   
@@ -233,6 +241,6 @@ function mapGarminSportType(activityType: string | undefined): string {
     return 'swimming'
   }
   
-  // Default to other
-  return 'other'
+  // Return null for unsupported activity types (will be filtered out)
+  return null
 }

@@ -2,48 +2,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Activity, Download, Clock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Activity, Clock, Unlink } from "lucide-react";
 import { useStrava } from "@/hooks/useStrava";
 import { useStravaJobs } from "@/hooks/useStravaJobs";
-import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { StravaHistoryImport } from "@/components/StravaHistoryImport";
 
 export function StravaConnection() {
   const { connection, isLoading, connect, disconnect, isConnecting, isDisconnecting } = useStrava();
   const { activeJob, latestCompletedJob, calculateProgress } = useStravaJobs();
-
-  const syncActivities = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('strava-sync', {
-        body: {}
-      });
-      
-      console.log('Strava sync response:', { data, error });
-      
-      if (error) throw error;
-      
-      // Handle both direct object and stringified response
-      if (!data) {
-        throw new Error('No data returned from Strava sync');
-      }
-      
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log('Strava sync success data:', data);
-      
-      if (data?.success) {
-        toast.success('Sync job created! Activities will be synced in the background.');
-      } else {
-        toast.error(data?.error || 'Failed to create sync job');
-      }
-    },
-    onError: (error: any) => {
-      console.error('Sync error:', error);
-      toast.error(error.message || 'Failed to sync activities from Strava');
-    }
-  });
 
   if (isLoading) {
     return (
@@ -107,47 +75,47 @@ export function StravaConnection() {
               </div>
             )}
 
-            {latestCompletedJob && !activeJob && (
-              <div className="text-sm text-muted-foreground">
-                Last sync: {latestCompletedJob.activities_synced} activities
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-muted/20">
+                <h5 className="font-medium mb-1">Total Synced</h5>
+                <p className="text-sm text-muted-foreground">
+                  {latestCompletedJob ? 
+                    `${latestCompletedJob.activities_synced} activities` : 
+                    'No sync history yet'}
+                </p>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Button 
-                onClick={() => syncActivities.mutate()} 
-                disabled={syncActivities.isPending || !!activeJob}
-                className="w-full bg-orange-600 hover:bg-orange-700"
-              >
-                {syncActivities.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Sync Job...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Sync History
-                  </>
-                )}
-              </Button>
-              
-              <Button 
-                onClick={() => disconnect()} 
-                disabled={isDisconnecting}
-                variant="outline"
-                className="w-full"
-              >
-                {isDisconnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Disconnecting...
-                  </>
-                ) : (
-                  'Disconnect Strava'
-                )}
-              </Button>
+              <div className="p-4 rounded-lg bg-muted/20">
+                <h5 className="font-medium mb-1">Auto Sync</h5>
+                <p className="text-sm text-muted-foreground">
+                  New activities sync automatically
+                </p>
+              </div>
             </div>
+
+            <Separator />
+
+            <StravaHistoryImport />
+
+            <Separator />
+              
+            <Button 
+              onClick={() => disconnect()} 
+              disabled={isDisconnecting}
+              variant="outline"
+              className="w-full"
+            >
+              {isDisconnecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                <>
+                  <Unlink className="mr-2 h-4 w-4" />
+                  Disconnect Strava
+                </>
+              )}
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

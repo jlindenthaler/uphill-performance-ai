@@ -30,15 +30,12 @@ export function useGarmin() {
     if (garminConnected === 'true') {
       toast({
         title: "Success!",
-        description: "Your Garmin Connect account has been connected successfully."
+        description: "Your Garmin Connect account has been connected successfully. You can now import your activity history."
       });
       setConnectionStatus(prev => ({ ...prev, isConnected: true }));
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Automatically sync recent activities
-      syncGarminActivities();
     } else if (garminError) {
       toast({
         title: "Connection Failed",

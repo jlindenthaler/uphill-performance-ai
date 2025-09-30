@@ -99,6 +99,16 @@ Deno.serve(async (req) => {
 
       // Process each activity
       for (const activity of activities) {
+        // Map sport type first to check if supported
+        const sportMode = mapGarminSportType(activity.activityType);
+        
+        // Skip if not a supported activity type
+        if (!sportMode) {
+          console.log(`Skipping activity ${activity.activityId} - unsupported type: ${activity.activityType}`);
+          totalSkipped++;
+          continue;
+        }
+
         // Check if activity already exists
         const { data: existing } = await supabaseAdmin
           .from('activities')
@@ -126,7 +136,7 @@ Deno.serve(async (req) => {
           avg_heart_rate: activity.averageHeartRateInBeatsPerMinute,
           max_heart_rate: activity.maxHeartRateInBeatsPerMinute,
           calories: activity.activeKilocalories,
-          sport_mode: mapGarminSportType(activity.activityType),
+          sport_mode: sportMode,
           activity_type: 'normal',
         };
 
@@ -190,17 +200,23 @@ Deno.serve(async (req) => {
   }
 });
 
-function mapGarminSportType(garminType: string | undefined): string {
-  if (!garminType) return 'cycling';
+function mapGarminSportType(garminType: string | undefined): string | null {
+  if (!garminType) return null;
   
   const typeMap: Record<string, string> = {
     'CYCLING': 'cycling',
     'ROAD_BIKING': 'cycling',
     'MOUNTAIN_BIKING': 'cycling',
+    'GRAVEL_CYCLING': 'cycling',
+    'INDOOR_CYCLING': 'cycling',
     'RUNNING': 'running',
     'TRAIL_RUNNING': 'running',
+    'TREADMILL_RUNNING': 'running',
+    'TRACK_RUNNING': 'running',
     'SWIMMING': 'swimming',
+    'OPEN_WATER_SWIMMING': 'swimming',
+    'LAP_SWIMMING': 'swimming',
   };
   
-  return typeMap[garminType.toUpperCase()] || 'cycling';
+  return typeMap[garminType.toUpperCase()] || null;
 }
