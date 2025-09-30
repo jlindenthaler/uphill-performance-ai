@@ -76,7 +76,14 @@ serve(async (req) => {
       case 'authorize':
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
-        return await syncActivities(user.id, supabaseClient);
+        return new Response(JSON.stringify({ 
+          error: 'Manual sync is not available for Garmin. Activities sync automatically via webhooks when configured in Garmin API Tools.',
+          webhookUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-webhook`,
+          instructions: 'Configure this webhook URL at https://apis.garmin.com/tools/endpoints to enable automatic activity syncing.'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       case 'disconnect':
         return await handleDisconnect(user.id, supabaseClient);
       default:
