@@ -6,8 +6,11 @@ const corsHeaders = {
 };
 
 const GARMIN_API_BASE = 'https://apis.garmin.com/wellness-api/rest';
+const GARMIN_OAUTH_BASE = 'https://connectapi.garmin.com/oauth-service/oauth';
 const CHUNK_SIZE_SECONDS = 86400; // 1 day (Garmin API limit)
 const THROTTLE_MS = 200; // 200ms between requests
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // Initial retry delay
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -65,21 +68,85 @@ Deno.serve(async (req) => {
     }
 
     // Check if token is expired and try to refresh
+    let accessToken = tokenData.access_token;
     if (tokenData.expires_at) {
       const expiresAt = new Date(tokenData.expires_at);
       const now = new Date();
-      if (expiresAt <= now && tokenData.refresh_token) {
-        console.log('Token expired, attempting refresh...');
-        // Token refresh would go here - for now, error out
-        await supabaseAdmin
-          .from('garmin_backfill_jobs')
-          .update({ 
-            status: 'error',
-            last_error: 'Token expired - please reconnect Garmin',
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', job.id);
-        throw new Error('Token expired - please reconnect Garmin');
+      
+      // Refresh token if expired or expiring soon (within 5 minutes)
+      const expiringThreshold = new Date(now.getTime() + 5 * 60 * 1000);
+      if (expiresAt <= expiringThreshold) {
+        console.log('Token expired or expiring soon, attempting refresh...');
+        
+        if (!tokenData.refresh_token) {
+          await supabaseAdmin
+            .from('garmin_backfill_jobs')
+            .update({ 
+              status: 'error',
+              last_error: 'Token expired and no refresh token available - please reconnect Garmin',
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', job.id);
+          throw new Error('Token expired - please reconnect Garmin');
+        }
+
+        try {
+          // Refresh the token
+          const refreshResponse = await fetch(`${GARMIN_OAUTH_BASE}/access_token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              grant_type: 'refresh_token',
+              refresh_token: tokenData.refresh_token,
+              client_id: Deno.env.get('GARMIN_CLIENT_ID') ?? '',
+              client_secret: Deno.env.get('GARMIN_CLIENT_SECRET') ?? '',
+            }),
+          });
+
+          if (!refreshResponse.ok) {
+            const errorText = await refreshResponse.text();
+            console.error('Token refresh failed:', errorText);
+            await supabaseAdmin
+              .from('garmin_backfill_jobs')
+              .update({ 
+                status: 'error',
+                last_error: 'Failed to refresh token - please reconnect Garmin',
+                updated_at: new Date().toISOString() 
+              })
+              .eq('id', job.id);
+            throw new Error('Failed to refresh token - please reconnect Garmin');
+          }
+
+          const refreshData = await refreshResponse.json();
+          accessToken = refreshData.access_token;
+
+          // Update token in database
+          const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+          await supabaseAdmin
+            .from('garmin_tokens')
+            .update({
+              access_token: refreshData.access_token,
+              refresh_token: refreshData.refresh_token || tokenData.refresh_token,
+              expires_at: newExpiresAt.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', job.user_id);
+
+          console.log('Token refreshed successfully');
+        } catch (refreshError) {
+          console.error('Error during token refresh:', refreshError);
+          await supabaseAdmin
+            .from('garmin_backfill_jobs')
+            .update({ 
+              status: 'error',
+              last_error: 'Token refresh error - please reconnect Garmin',
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', job.id);
+          throw new Error('Token refresh error - please reconnect Garmin');
+        }
       }
     }
 
@@ -89,7 +156,7 @@ Deno.serve(async (req) => {
     const endDate = new Date(job.end_date);
 
     console.log(`Starting backfill from ${currentDate.toISOString()} to ${endDate.toISOString()}`);
-    console.log(`Token info: has_token=${!!tokenData.access_token}, garmin_user_id=${tokenData.garmin_user_id}`);
+    console.log(`Token info: has_token=${!!accessToken}, garmin_user_id=${tokenData.garmin_user_id}`);
 
     // Process day by day
     while (currentDate <= endDate) {
@@ -98,29 +165,59 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      // Use the correct Garmin Activity API format with token parameter
+      // Use Garmin Activity API with Bearer authentication
       const activitiesUrl = `${GARMIN_API_BASE}/activities`;
       const params = new URLSearchParams({
         uploadStartTimeInSeconds: dayStart.toString(),
         uploadEndTimeInSeconds: dayEnd.toString(),
-        token: tokenData.access_token // Garmin Activity API uses token parameter, not Bearer
       });
 
-      console.log(`Request URL: ${activitiesUrl}?${params.toString().replace(/token=[^&]+/, 'token=***')}`);
+      console.log(`Request URL: ${activitiesUrl}?${params.toString()}`);
 
-      const response = await fetch(`${activitiesUrl}?${params.toString()}`, {
-        headers: {
-          'Accept': 'application/json'
-        },
-      });
+      // Retry logic with exponential backoff
+      let response: Response | null = null;
+      let lastError: string | null = null;
+      
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) {
+            const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+            console.log(`Retry attempt ${attempt + 1}/${MAX_RETRIES} after ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Failed to fetch activities: ${response.status}`, errorBody);
-        console.error(`Response headers:`, Object.fromEntries(response.headers.entries()));
+          response = await fetch(`${activitiesUrl}?${params.toString()}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json',
+            },
+          });
+
+          // If successful or non-retryable error, break
+          if (response.ok || (response.status !== 429 && response.status !== 500 && response.status !== 503)) {
+            break;
+          }
+
+          lastError = `HTTP ${response.status}`;
+          console.log(`Retryable error: ${lastError}`);
+        } catch (fetchError) {
+          lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
+          console.error(`Fetch error on attempt ${attempt + 1}:`, lastError);
+          
+          // Don't retry on network errors that aren't timeouts
+          if (attempt === MAX_RETRIES - 1) {
+            break;
+          }
+        }
+      }
+
+      if (!response || !response.ok) {
+        const errorBody = response ? await response.text() : lastError || 'No response';
+        const statusCode = response?.status || 0;
+        console.error(`Failed to fetch activities after ${MAX_RETRIES} attempts: ${statusCode}`, errorBody);
         
-        // If we get 401/403, mark job as error (token issue)
-        if (response.status === 401 || response.status === 403) {
+        // If we get 401/403, it's likely an authentication issue
+        if (statusCode === 401 || statusCode === 403) {
           await supabaseAdmin
             .from('garmin_backfill_jobs')
             .update({ 
@@ -139,7 +236,7 @@ Deno.serve(async (req) => {
           .from('garmin_backfill_jobs')
           .update({ 
             progress_date: currentDate.toISOString(),
-            last_error: `HTTP ${response.status}: ${errorBody}`,
+            last_error: `HTTP ${statusCode}: ${errorBody}`,
             updated_at: new Date().toISOString() 
           })
           .eq('id', job.id);
