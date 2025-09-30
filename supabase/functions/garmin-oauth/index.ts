@@ -77,11 +77,12 @@ serve(async (req) => {
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
         return new Response(JSON.stringify({ 
-          error: 'Manual sync is not available for Garmin. Activities sync automatically via webhooks when configured in Garmin API Tools.',
+          success: true,
+          message: 'Garmin activities sync automatically via webhooks when configured in Garmin API Tools.',
           webhookUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-webhook`,
           instructions: 'Configure this webhook URL at https://apis.garmin.com/tools/endpoints to enable automatic activity syncing.'
         }), {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       case 'disconnect':
@@ -251,159 +252,6 @@ async function handleCallback(req: Request, supabaseClient: any) {
   }
 }
 
-async function syncActivities(userId: string, supabaseClient: any) {
-  console.log('Syncing activities for user:', userId);
-
-  // Get access token
-  const { data: tokenData, error: tokenError } = await supabaseClient
-    .from('garmin_tokens')
-    .select('access_token')
-    .eq('user_id', userId)
-    .single();
-
-  if (tokenError || !tokenData?.access_token) {
-    throw new Error('No valid Garmin connection found');
-  }
-
-  // Calculate time range - Garmin API has 24-hour maximum limit
-  const endTime = Math.floor(Date.now() / 1000);
-  const startTime = endTime - (24 * 60 * 60); // Last 24 hours only
-
-  console.log(`Syncing last 24 hours: ${new Date(startTime * 1000).toISOString()} to ${new Date(endTime * 1000).toISOString()}`);
-
-  // Use only the wellness-api endpoint (the only one that works)
-  const endpoint = `${GARMIN_API_BASE}/wellness-api/rest/activities?uploadStartTimeInSeconds=${startTime}&uploadEndTimeInSeconds=${endTime}`;
-  
-  let activities = null;
-  let retryCount = 0;
-  const maxRetries = 3;
-  
-  while (retryCount < maxRetries) {
-    try {
-      console.log(`Fetching from Garmin wellness API (attempt ${retryCount + 1}/${maxRetries})...`);
-      
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`,
-          'Accept': 'application/json'
-        },
-      });
-
-      console.log('Garmin API response status:', response.status);
-
-      if (response.ok) {
-        activities = await response.json();
-        console.log('Successfully fetched activities');
-        console.log('Activities count:', Array.isArray(activities) ? activities.length : 'Not an array');
-        break;
-      } else if (response.status === 429 || response.status === 503) {
-        // Rate limit or service unavailable - retry with exponential backoff
-        retryCount++;
-        if (retryCount < maxRetries) {
-          const waitTime = Math.pow(2, retryCount) * 1000;
-          console.log(`Rate limited or service unavailable. Waiting ${waitTime}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-      } else if (response.status === 400) {
-        const errorText = await response.text();
-        console.error('Bad request (400) - likely time range issue:', errorText);
-        throw new Error(`Garmin API returned 400: ${errorText}`);
-      }
-      
-      const errorText = await response.text();
-      console.error('Garmin API error:', response.status, errorText);
-      throw new Error(`Garmin API returned ${response.status}: ${errorText}`);
-      
-    } catch (err) {
-      console.error('Error fetching from Garmin API:', err);
-      if (retryCount >= maxRetries - 1) {
-        throw err;
-      }
-      retryCount++;
-      const waitTime = Math.pow(2, retryCount) * 1000;
-      console.log(`Retrying after ${waitTime}ms...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-  }
-
-  if (!activities) {
-    throw new Error('Failed to fetch activities from Garmin API after retries');
-  }
-
-  let synced = 0;
-  let skipped = 0;
-  const activitiesArray = Array.isArray(activities) ? activities : activities.activities || [];
-
-  console.log('Processing', activitiesArray.length, 'activities');
-
-  for (const activity of activitiesArray) {
-    try {
-      // Check if activity already exists
-      const garminId = activity.activityId?.toString() || activity.id?.toString();
-      if (!garminId) {
-        console.warn('Activity missing ID, skipping:', activity);
-        continue;
-      }
-
-      const { data: existing } = await supabaseClient
-        .from('activities')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('garmin_activity_id', garminId)
-        .maybeSingle();
-
-      if (existing) {
-        console.log(`Garmin activity ${garminId} already exists, skipping`);
-        skipped++;
-        continue;
-      }
-
-      // Map Garmin activity to our schema
-      const mappedActivity = {
-        user_id: userId,
-        garmin_activity_id: garminId,
-        name: activity.activityName || activity.name || 'Garmin Activity',
-        date: activity.startTimeGMT || activity.startTime || new Date().toISOString(),
-        duration_seconds: Math.round(activity.duration || activity.movingDuration || 0),
-        distance_meters: activity.distance || null,
-        elevation_gain_meters: activity.elevationGain || activity.totalAscent || null,
-        avg_heart_rate: activity.averageHR || activity.avgHr || null,
-        max_heart_rate: activity.maxHR || activity.maxHr || null,
-        calories: activity.calories || null,
-        sport_mode: mapGarminSportType(activity.activityType?.typeKey || activity.activityType),
-        external_sync_source: 'garmin',
-        activity_type: 'normal'
-      };
-
-      const { error: insertError } = await supabaseClient
-        .from('activities')
-        .insert(mappedActivity);
-
-      if (insertError) {
-        if (insertError.code === '23505') {
-          // Duplicate key - another sync may have added it
-          console.log(`Garmin activity ${garminId} duplicate detected during insert, skipping`);
-          skipped++;
-        } else {
-          console.error(`Failed to insert activity ${garminId}:`, insertError.message, insertError.details);
-        }
-      } else {
-        synced++;
-        console.log(`✓ Synced: "${mappedActivity.name}" (ID: ${garminId})`);
-      }
-    } catch (activityError) {
-      console.error('Error processing Garmin activity:', activityError);
-    }
-  }
-
-  console.log(`Garmin sync completed. Synced: ${synced}, Skipped (already exists): ${skipped}, Total processed: ${activitiesArray.length}`);
-
-  return new Response(
-    JSON.stringify({ success: true, synced, skipped, total: activitiesArray.length }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
 
 async function handleDisconnect(userId: string, supabaseClient: any) {
   console.log('Disconnecting Garmin for user:', userId);
