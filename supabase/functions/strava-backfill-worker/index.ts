@@ -110,6 +110,35 @@ async function fetchStravaActivitiesPage(
   return await response.json();
 }
 
+async function fetchStravaActivityStreams(
+  accessToken: string,
+  activityId: number
+): Promise<{ watts?: number[]; heartrate?: number[] } | null> {
+  const streamTypes = ['watts', 'heartrate'];
+  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=${streamTypes.join(',')}&key_by_type=true`;
+
+  console.log(`Fetching streams for activity ${activityId}`);
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      console.log(`No streams available for activity ${activityId}`);
+      return null;
+    }
+    throw new Error(`Failed to fetch streams: ${response.statusText}`);
+  }
+
+  const streams = await response.json();
+  
+  return {
+    watts: streams.watts?.data || null,
+    heartrate: streams.heartrate?.data || null,
+  };
+}
+
 function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
   // Map Strava activity types to our sport modes
   const typeMap: Record<string, string> = {
@@ -190,7 +219,7 @@ async function processBackfillJob(supabase: any, job: any) {
       const stravaIds = activities.map(a => a.id.toString());
       const { data: existingActivities } = await supabase
         .from('activities')
-        .select('strava_activity_id')
+        .select('strava_activity_id, id')
         .eq('user_id', job.user_id)
         .in('strava_activity_id', stravaIds);
 
@@ -210,13 +239,42 @@ async function processBackfillJob(supabase: any, job: any) {
         console.log(`Filtered to ${mappedActivities.length} supported activities out of ${newActivities.length}`);
 
         if (mappedActivities.length > 0) {
-          const { error: insertError } = await supabase
+          const { data: insertedActivities, error: insertError } = await supabase
             .from('activities')
-            .insert(mappedActivities);
+            .insert(mappedActivities)
+            .select('id, strava_activity_id');
 
           if (insertError) {
             console.error('Error inserting activities:', insertError);
             throw insertError;
+          }
+
+          // Fetch detailed streams for activities with power/HR data
+          for (const insertedActivity of insertedActivities || []) {
+            const originalActivity = newActivities.find(a => a.id.toString() === insertedActivity.strava_activity_id);
+            
+            // Only fetch streams if activity has power or HR data
+            if (originalActivity && (originalActivity.average_watts || originalActivity.average_heartrate)) {
+              try {
+                await sleep(300); // Rate limit between stream requests
+                const streams = await fetchStravaActivityStreams(accessToken, originalActivity.id);
+                
+                if (streams) {
+                  await supabase
+                    .from('activities')
+                    .update({
+                      power_time_series: streams.watts || null,
+                      heart_rate_time_series: streams.heartrate || null,
+                    })
+                    .eq('id', insertedActivity.id);
+                  
+                  console.log(`Updated streams for activity ${originalActivity.id}`);
+                }
+              } catch (streamError) {
+                console.error(`Failed to fetch streams for activity ${originalActivity.id}:`, streamError);
+                // Continue processing other activities
+              }
+            }
           }
         }
 

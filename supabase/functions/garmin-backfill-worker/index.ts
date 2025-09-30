@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GARMIN_API_BASE = 'https://apis.garmin.com/wellness-api/rest';
+const GARMIN_API_BASE = 'https://connectapi.garmin.com/modern/proxy';
 const GARMIN_OAUTH_BASE = 'https://connectapi.garmin.com/oauth-service/oauth';
 const CHUNK_SIZE_SECONDS = 86400; // 1 day (Garmin API limit)
 const THROTTLE_MS = 200; // 200ms between requests
@@ -165,11 +165,13 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      // Use Garmin Activity API with Bearer authentication
-      const activitiesUrl = `${GARMIN_API_BASE}/activities`;
+      // Use Garmin Connect Partner API with Bearer authentication
+      const activitiesUrl = `${GARMIN_API_BASE}/activitylist-service/activities/search/activities`;
       const params = new URLSearchParams({
-        uploadStartTimeInSeconds: dayStart.toString(),
-        uploadEndTimeInSeconds: dayEnd.toString(),
+        start: '0',
+        limit: '100',
+        startDate: currentDate.toISOString().split('T')[0],
+        endDate: currentDate.toISOString().split('T')[0],
       });
 
       console.log(`Request URL: ${activitiesUrl}?${params.toString()}`);
@@ -247,14 +249,16 @@ Deno.serve(async (req) => {
 
       const activities = await response.json();
 
-      // Process each activity
-      for (const activity of activities) {
+      // Process each activity (response is an array)
+      const activityList = Array.isArray(activities) ? activities : [];
+      
+      for (const activity of activityList) {
         // Map sport type first to check if supported
-        const sportMode = mapGarminSportType(activity.activityType);
+        const sportMode = mapGarminSportType(activity.activityType?.typeKey);
         
         // Skip if not a supported activity type
         if (!sportMode) {
-          console.log(`Skipping activity ${activity.activityId} - unsupported type: ${activity.activityType}`);
+          console.log(`Skipping activity ${activity.activityId} - unsupported type: ${activity.activityType?.typeKey}`);
           totalSkipped++;
           continue;
         }
@@ -264,7 +268,7 @@ Deno.serve(async (req) => {
           .from('activities')
           .select('id')
           .eq('user_id', job.user_id)
-          .eq('garmin_activity_id', activity.activityId)
+          .eq('garmin_activity_id', activity.activityId.toString())
           .maybeSingle();
 
         if (existing) {
@@ -273,19 +277,23 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Map and insert activity
+        // Map and insert activity (Connect API uses different field names)
         const activityData = {
           user_id: job.user_id,
-          garmin_activity_id: activity.activityId,
+          garmin_activity_id: activity.activityId.toString(),
           external_sync_source: 'garmin',
           name: activity.activityName || 'Garmin Activity',
-          date: new Date(activity.startTimeInSeconds * 1000).toISOString(),
-          duration_seconds: activity.durationInSeconds || 0,
-          distance_meters: activity.distanceInMeters,
-          elevation_gain_meters: activity.elevationGainInMeters,
-          avg_heart_rate: activity.averageHeartRateInBeatsPerMinute ? Math.round(activity.averageHeartRateInBeatsPerMinute) : null,
-          max_heart_rate: activity.maxHeartRateInBeatsPerMinute ? Math.round(activity.maxHeartRateInBeatsPerMinute) : null,
-          calories: activity.activeKilocalories ? Math.round(activity.activeKilocalories) : null,
+          date: activity.startTimeLocal || activity.startTimeGMT,
+          duration_seconds: activity.duration ? Math.round(activity.duration) : 0,
+          distance_meters: activity.distance,
+          elevation_gain_meters: activity.elevationGain,
+          avg_heart_rate: activity.averageHR ? Math.round(activity.averageHR) : null,
+          max_heart_rate: activity.maxHR ? Math.round(activity.maxHR) : null,
+          avg_power: activity.avgPower || null,
+          max_power: activity.maxPower || null,
+          normalized_power: activity.normPower || null,
+          avg_speed_kmh: activity.averageSpeed ? activity.averageSpeed * 3.6 : null,
+          calories: activity.calories ? Math.round(activity.calories) : null,
           sport_mode: sportMode,
           activity_type: 'normal',
         };
@@ -354,19 +362,23 @@ function mapGarminSportType(garminType: string | undefined): string | null {
   if (!garminType) return null;
   
   const typeMap: Record<string, string> = {
-    'CYCLING': 'cycling',
-    'ROAD_BIKING': 'cycling',
-    'MOUNTAIN_BIKING': 'cycling',
-    'GRAVEL_CYCLING': 'cycling',
-    'INDOOR_CYCLING': 'cycling',
-    'RUNNING': 'running',
-    'TRAIL_RUNNING': 'running',
-    'TREADMILL_RUNNING': 'running',
-    'TRACK_RUNNING': 'running',
-    'SWIMMING': 'swimming',
-    'OPEN_WATER_SWIMMING': 'swimming',
-    'LAP_SWIMMING': 'swimming',
+    'cycling': 'cycling',
+    'road_biking': 'cycling',
+    'mountain_biking': 'cycling',
+    'gravel_cycling': 'cycling',
+    'indoor_cycling': 'cycling',
+    'virtual_ride': 'cycling',
+    'running': 'running',
+    'street_running': 'running',
+    'trail_running': 'running',
+    'treadmill_running': 'running',
+    'track_running': 'running',
+    'virtual_run': 'running',
+    'swimming': 'swimming',
+    'open_water_swimming': 'swimming',
+    'lap_swimming': 'swimming',
+    'pool_swimming': 'swimming',
   };
   
-  return typeMap[garminType.toUpperCase()] || null;
+  return typeMap[garminType.toLowerCase()] || null;
 }
