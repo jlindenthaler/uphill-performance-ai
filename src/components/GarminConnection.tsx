@@ -110,24 +110,7 @@ export function GarminConnection() {
 
         {!connectionStatus.isConnected ? (
           <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-muted/20">
-              <h5 className="font-medium mb-2">What you'll get:</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  Automatic activity sync from your Garmin devices
-                </li>
-                <li className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  GPS routes and elevation data
-                </li>
-                <li className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Training metrics and performance data
-                </li>
-              </ul>
-            </div>
-            <Button 
+            <Button
               onClick={handleConnect} 
               className="w-full bg-green-600 hover:bg-green-700 text-white"
               disabled={connectionStatus.loading}
