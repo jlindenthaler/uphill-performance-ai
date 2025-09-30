@@ -605,6 +605,18 @@ export function useActivities() {
     }
   };
 
+  // Auto-recalculate TLI when activities are loaded
+  useEffect(() => {
+    if (user && activities.length > 0) {
+      // Check if any activities have null TSS
+      const hasNullTSS = activities.some(a => a.tss === null || a.tss === undefined);
+      if (hasNullTSS) {
+        console.log('Found activities with null TLI, triggering recalculation...');
+        recalculateTLIBasedOnLabResults();
+      }
+    }
+  }, [user, activities.length]);
+
   return {
     activities,
     loading,
