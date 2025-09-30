@@ -219,9 +219,10 @@ Deno.serve(async (req) => {
             console.log(`✓ Success with endpoint: ${endpoint.url}`);
             break;
           } else {
-            const errorBody = await response.text();
-            console.log(`✗ Failed (${response.status}): ${errorBody.substring(0, 200)}`);
-            lastError = `HTTP ${response.status}: ${errorBody}`;
+            // Clone response before reading body to avoid "Body already consumed" error
+            const errorText = await response.clone().text();
+            console.log(`✗ Failed (${response.status}): ${errorText.substring(0, 200)}`);
+            lastError = `HTTP ${response.status}: ${errorText}`;
           }
         } catch (fetchError) {
           lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
@@ -230,9 +231,9 @@ Deno.serve(async (req) => {
       }
 
       if (!response || !response.ok) {
-        const errorBody = response ? await response.text() : lastError || 'No response';
+        const errorBody = response ? lastError || 'Unknown error' : lastError || 'No response';
         const statusCode = response?.status || 0;
-        console.error(`Failed to fetch activities after ${MAX_RETRIES} attempts: ${statusCode}`, errorBody);
+        console.error(`Failed to fetch activities: ${statusCode}`, errorBody);
         
         // If we get 401/403, it's likely an authentication issue
         if (statusCode === 401 || statusCode === 403) {
