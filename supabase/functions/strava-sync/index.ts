@@ -321,17 +321,22 @@ Deno.serve(async (req) => {
   try {
     console.log(`Strava sync request: ${req.method}`)
 
-    // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
-    // Get user from auth header
+    // Get auth header first
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
+
+    // Create Supabase client with auth context for RLS
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader }
+        }
+      }
+    )
 
     const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
     if (!user) {
@@ -360,15 +365,17 @@ Deno.serve(async (req) => {
     console.log(`\n🔍 Checking for Strava tokens...`)
     const { data: stravaToken, error: tokenCheckError } = await supabaseClient
       .from('strava_tokens')
-      .select('user_id')
+      .select('user_id, access_token, expires_at')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (tokenCheckError) {
       console.error('❌ Token check error:', tokenCheckError)
+      throw new Error(`Failed to check Strava tokens: ${tokenCheckError.message}`)
     }
 
     console.log(`   Strava token found: ${!!stravaToken}`)
+    console.log(`   Token expires at: ${stravaToken?.expires_at || 'N/A'}`)
 
     if (!stravaToken) {
       console.log('❌ No Strava token found - user needs to connect Strava')
