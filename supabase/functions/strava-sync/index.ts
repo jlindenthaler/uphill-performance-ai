@@ -304,10 +304,12 @@ Deno.serve(async (req) => {
 
     console.log('Strava token check result:', { hasToken: !!stravaToken, error: tokenError })
 
-    if (!stravaToken) {
+    if (tokenError || !stravaToken) {
+      console.error('Token check failed:', tokenError)
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Strava not connected. Please connect your Strava account first.' 
+        error: 'Strava not connected. Please connect your Strava account first.',
+        debug: { tokenError: tokenError?.message, hasToken: !!stravaToken }
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
