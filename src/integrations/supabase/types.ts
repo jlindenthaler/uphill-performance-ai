@@ -766,6 +766,51 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_backfill_jobs: {
+        Row: {
+          activities_skipped: number | null
+          activities_synced: number | null
+          created_at: string
+          current_page: number | null
+          end_date: string
+          id: string
+          last_error: string | null
+          start_date: string
+          status: string
+          strava_athlete_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activities_skipped?: number | null
+          activities_synced?: number | null
+          created_at?: string
+          current_page?: number | null
+          end_date: string
+          id?: string
+          last_error?: string | null
+          start_date: string
+          status?: string
+          strava_athlete_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activities_skipped?: number | null
+          activities_synced?: number | null
+          created_at?: string
+          current_page?: number | null
+          end_date?: string
+          id?: string
+          last_error?: string | null
+          start_date?: string
+          status?: string
+          strava_athlete_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       strava_tokens: {
         Row: {
           access_token: string

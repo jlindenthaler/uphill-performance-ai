@@ -1,14 +1,17 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Loader2, Activity, Download, Clock } from "lucide-react";
 import { useStrava } from "@/hooks/useStrava";
+import { useStravaJobs } from "@/hooks/useStravaJobs";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function StravaConnection() {
   const { connection, isLoading, connect, disconnect, isConnecting, isDisconnecting } = useStrava();
+  const { activeJob, latestCompletedJob, calculateProgress } = useStravaJobs();
 
   const syncActivities = useMutation({
     mutationFn: async () => {
@@ -29,13 +32,11 @@ export function StravaConnection() {
     },
     onSuccess: (data) => {
       console.log('Strava sync success data:', data);
-      const count = data?.activitiesSynced ?? 0;
-      const skipped = data?.activitiesSkipped ?? 0;
       
-      if (count === 0 && skipped === 0) {
-        toast.info('No new activities to sync from Strava');
+      if (data?.success) {
+        toast.success('Sync job created! Activities will be synced in the background.');
       } else {
-        toast.success(`Successfully synced ${count} activities from Strava${skipped > 0 ? ` (${skipped} skipped)` : ''}!`);
+        toast.error(data?.error || 'Failed to create sync job');
       }
     },
     onError: (error: any) => {
@@ -91,22 +92,42 @@ export function StravaConnection() {
                 </p>
               )}
             </div>
+
+            {activeJob && (
+              <div className="space-y-2 p-3 bg-muted rounded-lg">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">
+                    {activeJob.status === 'pending' ? 'Queued' : 'Syncing history...'}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {activeJob.activities_synced} synced
+                  </span>
+                </div>
+                <Progress value={calculateProgress(activeJob)} className="h-2" />
+              </div>
+            )}
+
+            {latestCompletedJob && !activeJob && (
+              <div className="text-sm text-muted-foreground">
+                Last sync: {latestCompletedJob.activities_synced} activities
+              </div>
+            )}
             
             <div className="space-y-2">
               <Button 
                 onClick={() => syncActivities.mutate()} 
-                disabled={syncActivities.isPending}
+                disabled={syncActivities.isPending || !!activeJob}
                 className="w-full bg-orange-600 hover:bg-orange-700"
               >
                 {syncActivities.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Syncing Activities...
+                    Creating Sync Job...
                   </>
                 ) : (
                   <>
                     <Download className="mr-2 h-4 w-4" />
-                    Sync Activities
+                    Sync History
                   </>
                 )}
               </Button>
