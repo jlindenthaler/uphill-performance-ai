@@ -76,39 +76,13 @@ serve(async (req) => {
       case 'authorize':
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
-        // Create a background job to fetch historical activities
-        const { data: tokenData } = await supabaseClient
-          .from('garmin_tokens')
-          .select('garmin_user_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (!tokenData?.garmin_user_id) {
-          throw new Error('Garmin account not properly connected');
-        }
-
-        // Create backfill job for last 2 years
-        const now = new Date();
-        const twoYearsAgo = new Date();
-        twoYearsAgo.setFullYear(now.getFullYear() - 2);
-
-        const { error: jobError } = await supabaseClient
-          .from('garmin_backfill_jobs')
-          .insert({
-            user_id: user.id,
-            garmin_user_id: tokenData.garmin_user_id,
-            start_date: twoYearsAgo.toISOString(),
-            end_date: now.toISOString(),
-            status: 'pending'
-          });
-
-        if (jobError) {
-          throw new Error('Failed to create sync job');
-        }
-
+        // Garmin sync works via webhook push notifications
+        // Historical data backfill requires using Garmin Health API's backfill endpoint
         return new Response(JSON.stringify({ 
           success: true,
-          message: 'Sync job created. Your activities will be synced in the background.'
+          message: 'Garmin activities sync automatically via webhooks. Historical data will sync as Garmin pushes updates.',
+          webhookUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-webhook`,
+          note: 'After initial connection, Garmin may take 24-48 hours to backfill historical activities automatically.'
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -160,7 +134,7 @@ async function handleAuthorize(userId: string, supabaseClient: any) {
     throw new Error('Failed to initiate OAuth');
   }
 
-  // Build authorization URL with activity read scope
+  // Build authorization URL
   const authUrl = new URL(GARMIN_AUTH_URL);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', clientId);
@@ -168,7 +142,6 @@ async function handleAuthorize(userId: string, supabaseClient: any) {
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', userId); // Simple state = userId
-  authUrl.searchParams.set('scope', 'ACTIVITY_READ'); // Required for activity backfill
 
   console.log('Authorization URL generated:', authUrl.toString());
 
@@ -248,41 +221,14 @@ async function handleCallback(req: Request, supabaseClient: any) {
 
     const tokens = await tokenResponse.json();
     console.log('Tokens received successfully');
-    console.log('Token type:', tokens.token_type, 'Scopes:', tokens.scope);
 
-    // Fetch Garmin user profile to get their Garmin user ID
-    let garminUserId = null;
-    try {
-      console.log('Fetching Garmin user profile...');
-      const profileResponse = await fetch(`${GARMIN_API_BASE}/wellness-api/rest/user/id`, {
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-          'Accept': 'application/json'
-        },
-      });
-
-      console.log('Profile response status:', profileResponse.status);
-      
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        garminUserId = profileData.userId || profileData.id;
-        console.log('Garmin user ID obtained:', garminUserId);
-      } else {
-        const errorText = await profileResponse.text();
-        console.warn('Could not fetch Garmin user profile:', profileResponse.status, errorText);
-      }
-    } catch (profileError) {
-      console.warn('Error fetching Garmin user profile:', profileError);
-    }
-
-    // Store tokens and garmin_user_id
+    // Store tokens
     const { error: updateError } = await supabaseClient
       .from('garmin_tokens')
       .update({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
         expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
-        garmin_user_id: garminUserId,
         code_verifier: null, // Clear verifier
         updated_at: new Date().toISOString(),
       })
@@ -301,7 +247,7 @@ async function handleCallback(req: Request, supabaseClient: any) {
 
     console.log('Garmin connected successfully for user:', userId);
 
-    return Response.redirect(`${origin}?tab=integrations`);
+    return Response.redirect(`${origin}?garmin_connected=true`);
   } catch (error) {
     console.error('Callback error:', error);
     return Response.redirect(`${origin}?garmin_error=token_exchange_failed`);

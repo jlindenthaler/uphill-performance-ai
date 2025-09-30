@@ -25,8 +25,10 @@ export function usePMCPopulation() {
 
   useEffect(() => {
     if (user && !isPopulating) {
-      // Trigger PMC population immediately to ensure we have the latest calculations
-      populatePMCData();
+      // Always re-populate to ensure we have the latest PMC calculations with proper decay
+      setTimeout(() => {
+        populatePMCData();
+      }, 1000);
     }
   }, [user]);
 

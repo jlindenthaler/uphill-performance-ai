@@ -170,18 +170,6 @@ async function fetchStravaActivities(accessToken: string, after?: number, page =
 }
 
 function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
-  // Map Strava activity types to our sport modes
-  const typeMap: Record<string, string> = {
-    'ride': 'cycling',
-    'virtualride': 'cycling',
-    'run': 'running',
-    'virtualrun': 'running',
-    'trailrun': 'running',
-    'swim': 'swimming'
-  }
-  
-  const sportMode = typeMap[activity.type.toLowerCase()] || null
-  
   return {
     user_id: userId,
     name: activity.name,
@@ -198,7 +186,9 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
     avg_cadence: activity.average_cadence,
     calories: activity.kilojoules ? Math.round(activity.kilojoules * 4.184) : null, // Convert kJ to calories
     tss: activity.suffer_score,
-    sport_mode: sportMode,
+    sport_mode: activity.type.toLowerCase() === 'ride' ? 'cycling' : 
+                activity.type.toLowerCase() === 'run' ? 'running' : 
+                activity.type.toLowerCase(),
     external_sync_source: 'strava',
     strava_activity_id: activity.id.toString(),
     activity_type: 'normal'
@@ -257,16 +247,6 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
 
       for (const activity of activities) {
         try {
-          // Map activity first to check sport mode
-          const activityData = mapStravaActivityToDatabase(activity, userId)
-          
-          // Skip if not a supported activity type
-          if (!activityData.sport_mode) {
-            console.log(`Skipping activity ${activity.id} - unsupported type: ${activity.type}`)
-            totalSkipped++
-            continue
-          }
-          
           // Check if activity already exists by strava_activity_id
           const { data: existing } = await supabase
             .from('activities')
@@ -282,6 +262,7 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
           }
 
           // Insert new activity
+          const activityData = mapStravaActivityToDatabase(activity, userId)
           const { error } = await supabase
             .from('activities')
             .insert(activityData)
@@ -362,12 +343,29 @@ Deno.serve(async (req) => {
       throw new Error('User not authenticated')
     }
 
-    console.log(`\n🔐 Creating Strava backfill job for user: ${user.id}`)
+    console.log(`\n🔐 Processing sync request for user: ${user.id}`)
+    console.log(`   Request method: ${req.method}`)
+
+    let sinceDate: Date | undefined
+    
+    // For POST requests, check if there's a since date
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
+        if (body.since) {
+          sinceDate = new Date(body.since)
+          console.log(`   Since date provided: ${sinceDate.toISOString()}`)
+        }
+      } catch (e) {
+        console.log(`   No body or invalid JSON (OK for GET requests)`)
+      }
+    }
 
     // Check if user has Strava tokens
+    console.log(`\n🔍 Checking for Strava tokens...`)
     const { data: stravaToken, error: tokenCheckError } = await supabaseClient
       .from('strava_tokens')
-      .select('user_id, athlete_id, access_token, expires_at')
+      .select('user_id, access_token, expires_at')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -375,6 +373,9 @@ Deno.serve(async (req) => {
       console.error('❌ Token check error:', tokenCheckError)
       throw new Error(`Failed to check Strava tokens: ${tokenCheckError.message}`)
     }
+
+    console.log(`   Strava token found: ${!!stravaToken}`)
+    console.log(`   Token expires at: ${stravaToken?.expires_at || 'N/A'}`)
 
     if (!stravaToken) {
       console.log('❌ No Strava token found - user needs to connect Strava')
@@ -387,37 +388,14 @@ Deno.serve(async (req) => {
       })
     }
 
-    console.log('✅ Strava token exists - creating backfill job')
+    console.log('✅ Strava token exists - proceeding with sync\n')
 
-    // Create a backfill job for the last 2 years
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setFullYear(startDate.getFullYear() - 2)
+    // Perform the sync
+    const result = await syncActivitiesForUser(supabaseClient, user.id, sinceDate)
+    
+    console.log(`\n📤 Returning result:`, result)
 
-    const { data: job, error: jobError } = await supabaseClient
-      .from('strava_backfill_jobs')
-      .insert({
-        user_id: user.id,
-        strava_athlete_id: stravaToken.athlete_id,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        status: 'pending',
-      })
-      .select()
-      .single()
-
-    if (jobError) {
-      console.error('❌ Failed to create backfill job:', jobError)
-      throw jobError
-    }
-
-    console.log('✅ Created backfill job:', job.id)
-
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Backfill job created successfully. Activities will be synced in the background.',
-      jobId: job.id,
-    }), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 

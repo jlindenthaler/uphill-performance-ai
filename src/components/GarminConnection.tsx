@@ -3,12 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
 import { useGarmin } from "@/hooks/useGarmin";
-import { useGarminJobs } from "@/hooks/useGarminJobs";
 import { useToast } from "@/hooks/use-toast";
-import { Link, Unlink, Activity, Calendar, MapPin, Loader2 } from "lucide-react";
-import { GarminHistoryImport } from "@/components/GarminHistoryImport";
+import { Link, Unlink, Activity, Calendar, MapPin } from "lucide-react";
 
 export function GarminConnection() {
   const { 
@@ -18,10 +15,8 @@ export function GarminConnection() {
     disconnectGarmin,
     checkGarminConnection
   } = useGarmin();
-  const { activeJob, latestCompletedJob, calculateProgress, loading: jobsLoading } = useGarminJobs();
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     checkGarminConnection();
@@ -37,14 +32,17 @@ export function GarminConnection() {
   };
 
   const handleDisconnect = async () => {
-    setDisconnecting(true);
-    try {
-      await disconnectGarmin();
-    } finally {
-      setDisconnecting(false);
-    }
+    await disconnectGarmin();
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await syncGarminActivities();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const getStatusBadge = () => {
     if (connectionStatus.loading) {
@@ -58,26 +56,6 @@ export function GarminConnection() {
     }
     return <Badge variant="outline">Not Connected</Badge>;
   };
-
-  // Show loading state while checking connection
-  if (connectionStatus.loading && !connectionStatus.isConnected) {
-    return (
-      <Card className="card-gradient">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
-            Garmin Connect
-          </CardTitle>
-          <CardDescription>
-            Connect your Garmin device to automatically sync activities and training data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="card-gradient">
@@ -110,92 +88,68 @@ export function GarminConnection() {
 
         {!connectionStatus.isConnected ? (
           <div className="space-y-4">
-            <Button
+            <div className="p-4 rounded-lg bg-muted/20">
+              <h5 className="font-medium mb-2">What you'll get:</h5>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Automatic activity sync from your Garmin devices
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  GPS routes and elevation data
+                </li>
+                <li className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Training metrics and performance data
+                </li>
+              </ul>
+            </div>
+            <Button 
               onClick={handleConnect} 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full"
               disabled={connectionStatus.loading}
             >
-              {connectionStatus.loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Link className="w-4 h-4 mr-2" />
-                  Connect Garmin Account
-                </>
-              )}
+              <Link className="w-4 h-4 mr-2" />
+              {connectionStatus.loading ? 'Connecting...' : 'Connect Garmin Account'}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Active Job Status */}
-            {activeJob && (
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <h5 className="font-medium">Syncing History</h5>
-                  <Badge variant="secondary" className="ml-auto">
-                    {activeJob.status === 'pending' ? 'Queued' : 'In Progress'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  We're syncing your full training history in the background. This may take a few minutes.
-                </p>
-                {activeJob.status === 'running' && (
-                  <>
-                    <Progress value={calculateProgress(activeJob)} className="mb-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{activeJob.activities_synced} activities synced</span>
-                      <span>{Math.round(calculateProgress(activeJob))}% complete</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-muted/20">
-                <h5 className="font-medium mb-1">Total Synced</h5>
+                <h5 className="font-medium mb-1">Last Sync</h5>
                 <p className="text-sm text-muted-foreground">
-                  {latestCompletedJob ? 
-                    `${latestCompletedJob.activities_synced} activities` : 
-                    'No sync history yet'}
+                  Recently synced activities
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/20">
                 <h5 className="font-medium mb-1">Auto Sync</h5>
                 <p className="text-sm text-muted-foreground">
-                  New activities sync automatically
+                  Enabled - New activities sync automatically
                 </p>
               </div>
             </div>
 
-            <Separator />
-
-            <GarminHistoryImport />
-
-            <Separator />
-
-            <Button 
-              onClick={handleDisconnect} 
-              variant="outline"
-              className="w-full"
-              disabled={disconnecting}
-            >
-              {disconnecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Disconnecting...
-                </>
-              ) : (
-                <>
-                  <Unlink className="w-4 h-4 mr-2" />
-                  Disconnect Garmin
-                </>
-              )}
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleSync} 
+                disabled={syncing}
+                variant="outline"
+                className="flex-1"
+              >
+                <Activity className="w-4 h-4 mr-2" />
+                {syncing ? 'Syncing...' : 'Sync Now'}
+              </Button>
+              <Button 
+                onClick={handleDisconnect} 
+                variant="outline"
+                className="flex-1"
+              >
+                <Unlink className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+            </div>
           </div>
         )}
 

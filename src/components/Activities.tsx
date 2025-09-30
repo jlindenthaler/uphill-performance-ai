@@ -39,9 +39,6 @@ export function Activities() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editActivityData, setEditActivityData] = useState<any>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [batchDeleteMode, setBatchDeleteMode] = useState(false);
-  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -127,61 +124,16 @@ export function Activities() {
 
   const handleUploadSuccess = (activityId?: string) => {
     console.log('handleUploadSuccess called with activityId:', activityId);
+    // Close the modal immediately
     setUploadModalOpen(false);
     
     if (activityId) {
+      // Expand the newly uploaded activity after a brief delay to ensure data is loaded
       setTimeout(() => {
         console.log('Expanding activity:', activityId);
         setExpandedActivity(activityId);
       }, 1000);
     }
-  };
-
-  const toggleBatchDeleteMode = () => {
-    setBatchDeleteMode(!batchDeleteMode);
-    setSelectedActivities(new Set());
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedActivities.size === filteredActivities.length) {
-      setSelectedActivities(new Set());
-    } else {
-      setSelectedActivities(new Set(filteredActivities.map(a => a.id)));
-    }
-  };
-
-  const toggleActivitySelection = (activityId: string) => {
-    const newSelected = new Set(selectedActivities);
-    if (newSelected.has(activityId)) {
-      newSelected.delete(activityId);
-    } else {
-      newSelected.add(activityId);
-    }
-    setSelectedActivities(newSelected);
-  };
-
-  const handleBatchDelete = async () => {
-    if (selectedActivities.size === 0) return;
-    
-    setIsDeleting(true);
-    const idsToDelete = Array.from(selectedActivities);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const id of idsToDelete) {
-      try {
-        await deleteActivity(id);
-        successCount++;
-      } catch (error) {
-        console.error(`Failed to delete activity ${id}:`, error);
-        failCount++;
-      }
-    }
-
-    console.log(`Batch delete completed: ${successCount} deleted, ${failCount} failed`);
-    setIsDeleting(false);
-    setSelectedActivities(new Set());
-    setBatchDeleteMode(false);
   };
 
   const renderExpandedActivity = (activityId: string) => {
@@ -411,67 +363,18 @@ export function Activities() {
             Review activities and upload new training data • Timezone: {timezone}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant={batchDeleteMode ? "destructive" : "outline"}
-            onClick={toggleBatchDeleteMode} 
-            className="flex items-center gap-2"
-          >
-            {batchDeleteMode ? <><Trash2 className="w-4 h-4" />Cancel</> : 'Bulk Actions'}
-          </Button>
-          <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Upload Activity
-          </Button>
-        </div>
+        <Button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Upload Activity
+        </Button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold">Recent Activities</h2>
-            <p className="text-muted-foreground">
-              {activities.length} activities • {filterSport !== 'all' ? filterSport : 'all sports'}
-            </p>
-          </div>
-          {batchDeleteMode && (
-            <div className="flex items-center gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={toggleSelectAll}
-                className="whitespace-nowrap"
-              >
-                {selectedActivities.size === filteredActivities.length ? 'Deselect All' : 'Select All'}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="destructive" 
-                    disabled={selectedActivities.size === 0 || isDeleting}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete {selectedActivities.size > 0 ? `(${selectedActivities.size})` : ''}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {selectedActivities.size} activities?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the selected activities and all associated data.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Delete Activities
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
+        <div>
+          <h2 className="text-2xl font-bold">Recent Activities</h2>
+          <p className="text-muted-foreground">
+            {activities.length} activities • {filterSport !== 'all' ? filterSport : 'all sports'}
+          </p>
         </div>
         
         {/* Filters */}
@@ -531,23 +434,7 @@ export function Activities() {
               <Card className="overflow-hidden">
                 <CollapsibleTrigger asChild>
                   <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-start gap-4">
-                      {batchDeleteMode && (
-                        <div 
-                          className="flex items-center pt-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleActivitySelection(activity.id);
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedActivities.has(activity.id)}
-                            onChange={() => toggleActivitySelection(activity.id)}
-                            className="w-4 h-4 cursor-pointer"
-                          />
-                        </div>
-                      )}
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start space-x-4 flex-1" onClick={(e) => e.stopPropagation()}>
                         <div className="relative">
                           <div className="text-2xl transition-transform duration-300">{getSportIcon(activity.sport_mode)}</div>

@@ -263,64 +263,12 @@ export type Database = {
         }
         Relationships: []
       }
-      garmin_backfill_jobs: {
-        Row: {
-          activities_skipped: number | null
-          activities_synced: number | null
-          activity_types: string[] | null
-          created_at: string
-          end_date: string
-          garmin_user_id: string
-          id: string
-          last_error: string | null
-          progress_date: string | null
-          start_date: string
-          status: string
-          updated_at: string
-          user_id: string
-          user_selected: boolean | null
-        }
-        Insert: {
-          activities_skipped?: number | null
-          activities_synced?: number | null
-          activity_types?: string[] | null
-          created_at?: string
-          end_date: string
-          garmin_user_id: string
-          id?: string
-          last_error?: string | null
-          progress_date?: string | null
-          start_date: string
-          status?: string
-          updated_at?: string
-          user_id: string
-          user_selected?: boolean | null
-        }
-        Update: {
-          activities_skipped?: number | null
-          activities_synced?: number | null
-          activity_types?: string[] | null
-          created_at?: string
-          end_date?: string
-          garmin_user_id?: string
-          id?: string
-          last_error?: string | null
-          progress_date?: string | null
-          start_date?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-          user_selected?: boolean | null
-        }
-        Relationships: []
-      }
       garmin_tokens: {
         Row: {
           access_token: string
           code_verifier: string | null
           created_at: string | null
           expires_at: string | null
-          garmin_user_id: string | null
           id: string
           refresh_token: string | null
           updated_at: string | null
@@ -331,7 +279,6 @@ export type Database = {
           code_verifier?: string | null
           created_at?: string | null
           expires_at?: string | null
-          garmin_user_id?: string | null
           id?: string
           refresh_token?: string | null
           updated_at?: string | null
@@ -342,7 +289,6 @@ export type Database = {
           code_verifier?: string | null
           created_at?: string | null
           expires_at?: string | null
-          garmin_user_id?: string | null
           id?: string
           refresh_token?: string | null
           updated_at?: string | null
@@ -769,57 +715,6 @@ export type Database = {
           tool_name?: string
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      strava_backfill_jobs: {
-        Row: {
-          activities_skipped: number | null
-          activities_synced: number | null
-          activity_types: string[] | null
-          created_at: string
-          current_page: number | null
-          end_date: string
-          id: string
-          last_error: string | null
-          start_date: string
-          status: string
-          strava_athlete_id: string
-          updated_at: string
-          user_id: string
-          user_selected: boolean | null
-        }
-        Insert: {
-          activities_skipped?: number | null
-          activities_synced?: number | null
-          activity_types?: string[] | null
-          created_at?: string
-          current_page?: number | null
-          end_date: string
-          id?: string
-          last_error?: string | null
-          start_date: string
-          status?: string
-          strava_athlete_id: string
-          updated_at?: string
-          user_id: string
-          user_selected?: boolean | null
-        }
-        Update: {
-          activities_skipped?: number | null
-          activities_synced?: number | null
-          activity_types?: string[] | null
-          created_at?: string
-          current_page?: number | null
-          end_date?: string
-          id?: string
-          last_error?: string | null
-          start_date?: string
-          status?: string
-          strava_athlete_id?: string
-          updated_at?: string
-          user_id?: string
-          user_selected?: boolean | null
         }
         Relationships: []
       }

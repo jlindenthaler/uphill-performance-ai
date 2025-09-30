@@ -175,29 +175,15 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       return;
     }
 
-    // Aggregate activities by date and sport (sum TSS for multiple activities on same day)
-    const aggregatedMap = new Map<string, TrainingData>();
-    
-    activities.forEach(activity => {
-      const dateStr = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateStr}-${activity.sport_mode}`;
-      
-      if (aggregatedMap.has(key)) {
-        const existing = aggregatedMap.get(key)!;
-        existing.tss += (activity.tss || 0);
-        existing.duration_minutes += Math.round((activity.duration_seconds || 0) / 60);
-      } else {
-        aggregatedMap.set(key, {
-          date: dateStr,
-          tss: activity.tss || 0,
-          duration_minutes: Math.round((activity.duration_seconds || 0) / 60),
-          sport: activity.sport_mode
-        });
-      }
-    });
+    // Convert activities to training data format
+    const trainingData: TrainingData[] = activities.map(activity => ({
+      date: typeof activity.date === 'string' ? activity.date.split('T')[0] : activity.date,
+      tss: activity.tss || 0,
+      duration_minutes: Math.round(activity.duration_seconds / 60),
+      sport: activity.sport_mode
+    }));
 
-    const trainingData: TrainingData[] = Array.from(aggregatedMap.values());
-    console.log('Aggregated training data sample:', trainingData.slice(0, 3));
+    console.log('Training data sample:', trainingData.slice(0, 3));
 
     // Calculate PMC metrics with extended timeline to today for proper decay
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
@@ -253,28 +239,13 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
 
     if (!activities || activities.length === 0) return;
 
-    // Aggregate activities by date and sport
-    const aggregatedMap = new Map<string, TrainingData>();
-    
-    activities.forEach(activity => {
-      const dateStr = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateStr}-${activity.sport_mode}`;
-      
-      if (aggregatedMap.has(key)) {
-        const existing = aggregatedMap.get(key)!;
-        existing.tss += (activity.tss || 0);
-        existing.duration_minutes += Math.round((activity.duration_seconds || 0) / 60);
-      } else {
-        aggregatedMap.set(key, {
-          date: dateStr,
-          tss: activity.tss || 0,
-          duration_minutes: Math.round((activity.duration_seconds || 0) / 60),
-          sport: activity.sport_mode
-        });
-      }
-    });
-
-    const trainingData: TrainingData[] = Array.from(aggregatedMap.values());
+    // Convert to training data format
+    const trainingData: TrainingData[] = activities.map(activity => ({
+      date: typeof activity.date === 'string' ? activity.date.split('T')[0] : activity.date,
+      tss: activity.tss || 0,
+      duration_minutes: Math.round(activity.duration_seconds / 60),
+      sport: activity.sport_mode
+    }));
 
     // Calculate PMC metrics from the beginning with extended timeline
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);

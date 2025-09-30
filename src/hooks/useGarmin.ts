@@ -30,12 +30,15 @@ export function useGarmin() {
     if (garminConnected === 'true') {
       toast({
         title: "Success!",
-        description: "Your Garmin Connect account has been connected successfully. You can now import your activity history."
+        description: "Your Garmin Connect account has been connected successfully."
       });
       setConnectionStatus(prev => ({ ...prev, isConnected: true }));
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Automatically sync recent activities
+      syncGarminActivities();
     } else if (garminError) {
       toast({
         title: "Connection Failed",
@@ -95,16 +98,10 @@ export function useGarmin() {
       }
 
       if (data?.success) {
-        const synced = data.synced || 0;
-        const skipped = data.skipped || 0;
-        const errors = data.errors || 0;
-        
         toast({
           title: "Sync Complete",
-          description: `Synced ${synced} new activities, ${skipped} already existed${errors > 0 ? `, ${errors} errors` : ''}.`
+          description: `Successfully synced ${data.synced || 0} activities from Garmin Connect.`
         });
-      } else if (data?.error) {
-        throw new Error(data.error);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';

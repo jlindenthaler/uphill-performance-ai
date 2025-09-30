@@ -1,33 +1,55 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Activity, Link, Unlink, MapPin, Calendar } from "lucide-react";
+import { Loader2, Activity, Download, Clock } from "lucide-react";
 import { useStrava } from "@/hooks/useStrava";
-import { useStravaJobs } from "@/hooks/useStravaJobs";
-import { StravaHistoryImport } from "@/components/StravaHistoryImport";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export function StravaConnection() {
   const { connection, isLoading, connect, disconnect, isConnecting, isDisconnecting } = useStrava();
-  const { activeJob, latestCompletedJob, calculateProgress } = useStravaJobs();
 
-  const getStatusBadge = () => {
-    if (isConnecting) {
-      return <Badge variant="secondary">Connecting...</Badge>;
+  const syncActivities = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('strava-sync', {
+        body: {}
+      });
+      
+      console.log('Strava sync response:', { data, error });
+      
+      if (error) throw error;
+      
+      // Handle both direct object and stringified response
+      if (!data) {
+        throw new Error('No data returned from Strava sync');
+      }
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log('Strava sync success data:', data);
+      const count = data?.activitiesSynced ?? 0;
+      const skipped = data?.activitiesSkipped ?? 0;
+      
+      if (count === 0 && skipped === 0) {
+        toast.info('No new activities to sync from Strava');
+      } else {
+        toast.success(`Successfully synced ${count} activities from Strava${skipped > 0 ? ` (${skipped} skipped)` : ''}!`);
+      }
+    },
+    onError: (error: any) => {
+      console.error('Sync error:', error);
+      toast.error(error.message || 'Failed to sync activities from Strava');
     }
-    if (connection?.connected) {
-      return <Badge variant="default" className="bg-green-500">Connected</Badge>;
-    }
-    return <Badge variant="outline">Not Connected</Badge>;
-  };
+  });
 
   if (isLoading) {
     return (
-      <Card className="card-gradient">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
+            <Activity className="h-5 w-5 text-orange-500" />
             Strava
           </CardTitle>
           <CardDescription>Sync activities from Strava</CardDescription>
@@ -40,139 +62,93 @@ export function StravaConnection() {
   }
 
   return (
-    <Card className="card-gradient">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-primary" />
+          <Activity className="h-5 w-5 text-orange-500" />
           Strava
+          {connection?.connected && (
+            <Badge variant="secondary" className="ml-2">
+              Connected
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
-          Connect your Strava account to automatically sync activities and training data
+          Automatically sync your activities and training data from Strava
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Activity className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-medium">Connection Status</h4>
-              <p className="text-sm text-muted-foreground">
-                {connection?.connected ? 'Your Strava account is connected' : 'Connect to sync activities automatically'}
-              </p>
-            </div>
-          </div>
-          {getStatusBadge()}
-        </div>
-
-        <Separator />
-
-        {!connection?.connected ? (
+      <CardContent className="space-y-4">
+        {connection?.connected ? (
           <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-muted/20">
-              <h5 className="font-medium mb-2">What you'll get:</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  Automatic activity sync from Strava
-                </li>
-                <li className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  GPS routes and elevation data
-                </li>
-                <li className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Training metrics and performance data
-                </li>
-              </ul>
+            <div className="text-sm text-muted-foreground space-y-1">
+              {connection.athlete_id && (
+                <p>Athlete ID: {connection.athlete_id}</p>
+              )}
+              {connection.expires_at && (
+                <p className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Token expires: {new Date(connection.expires_at).toLocaleDateString()}
+                </p>
+              )}
             </div>
-            <Button 
-              onClick={() => connect()} 
-              className="w-full bg-orange-600 hover:bg-orange-700"
-              disabled={isConnecting}
-            >
-              <Link className="w-4 h-4 mr-2" />
-              {isConnecting ? 'Connecting...' : 'Connect Strava Account'}
-            </Button>
+            
+            <div className="space-y-2">
+              <Button 
+                onClick={() => syncActivities.mutate()} 
+                disabled={syncActivities.isPending}
+                className="w-full bg-orange-600 hover:bg-orange-700"
+              >
+                {syncActivities.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Syncing Activities...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Sync Activities
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => disconnect()} 
+                disabled={isDisconnecting}
+                variant="outline"
+                className="w-full"
+              >
+                {isDisconnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Disconnecting...
+                  </>
+                ) : (
+                  'Disconnect Strava'
+                )}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Active Job Status */}
-            {activeJob && (
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <h5 className="font-medium">Syncing History</h5>
-                  <Badge variant="secondary" className="ml-auto">
-                    {activeJob.status === 'pending' ? 'Queued' : 'In Progress'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  We're syncing your full training history in the background. This may take a few minutes.
-                </p>
-                {activeJob.status === 'running' && (
-                  <>
-                    <Progress value={calculateProgress(activeJob)} className="mb-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{activeJob.activities_synced} activities synced</span>
-                      <span>{Math.round(calculateProgress(activeJob))}% complete</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-muted/20">
-                <h5 className="font-medium mb-1">Total Synced</h5>
-                <p className="text-sm text-muted-foreground">
-                  {latestCompletedJob ? 
-                    `${latestCompletedJob.activities_synced} activities` : 
-                    'No sync history yet'}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/20">
-                <h5 className="font-medium mb-1">Auto Sync</h5>
-                <p className="text-sm text-muted-foreground">
-                  New activities sync automatically
-                </p>
-              </div>
-            </div>
-
-            <Separator />
-
-            <StravaHistoryImport />
-
-            <Separator />
-              
+            <p className="text-sm text-muted-foreground">
+              Connect your Strava account to automatically import activities and sync training data.
+            </p>
             <Button 
-              onClick={() => disconnect()} 
-              disabled={isDisconnecting}
-              variant="outline"
-              className="w-full"
+              onClick={() => connect()} 
+              disabled={isConnecting}
+              className="w-full bg-orange-600 hover:bg-orange-700"
             >
-              {isDisconnecting ? (
+              {isConnecting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2" />
-                  Disconnecting...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
                 </>
               ) : (
-                <>
-                  <Unlink className="w-4 h-4 mr-2" />
-                  Disconnect Strava
-                </>
+                'Connect to Strava'
               )}
             </Button>
           </div>
         )}
-
-        <div className="text-xs text-muted-foreground">
-          <p>
-            By connecting your Strava account, you agree to share your activity data with this application. 
-            We only access the data necessary for training analysis and never share it with third parties.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
