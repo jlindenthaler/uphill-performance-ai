@@ -30,68 +30,100 @@ async function refreshStravaTokens(supabase: any, userId: string, refreshToken: 
   const clientId = Deno.env.get('STRAVA_CLIENT_ID')
   const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET')
 
-  console.log('Refreshing Strava tokens for user:', userId)
+  console.log('🔄 Refreshing Strava tokens for user:', userId)
+  console.log('   Client ID exists:', !!clientId)
+  console.log('   Client Secret exists:', !!clientSecret)
+  console.log('   Refresh token exists:', !!refreshToken)
 
-  const response = await fetch('https://www.strava.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token'
+  try {
+    const response = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      })
     })
-  })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('Token refresh failed:', response.status, errorText)
-    throw new Error(`Token refresh failed: ${response.status}`)
+    console.log('   Strava token refresh response status:', response.status)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Token refresh failed:', response.status, errorText)
+      throw new Error(`Token refresh failed: ${response.status} - ${errorText}`)
+    }
+
+    const tokenData = await response.json()
+    console.log('   New token expires at:', new Date(tokenData.expires_at * 1000).toISOString())
+    
+    // Update tokens in database
+    const { error } = await supabase
+      .from('strava_tokens')
+      .update({
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_at: new Date(tokenData.expires_at * 1000).toISOString()
+      })
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('❌ Failed to update refreshed tokens in DB:', error)
+      throw new Error('Failed to update refreshed tokens')
+    }
+
+    console.log('✅ Tokens refreshed successfully')
+    return tokenData.access_token
+  } catch (error) {
+    console.error('❌ Exception in refreshStravaTokens:', error)
+    throw error
   }
-
-  const tokenData = await response.json()
-  
-  // Update tokens in database
-  const { error } = await supabase
-    .from('strava_tokens')
-    .update({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: new Date(tokenData.expires_at * 1000).toISOString()
-    })
-    .eq('user_id', userId)
-
-  if (error) {
-    console.error('Failed to update refreshed tokens:', error)
-    throw new Error('Failed to update refreshed tokens')
-  }
-
-  console.log('Tokens refreshed successfully')
-  return tokenData.access_token
 }
 
 async function getValidAccessToken(supabase: any, userId: string) {
-  const { data: tokenData, error } = await supabase
-    .from('strava_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('user_id', userId)
-    .single()
+  console.log('🔑 Getting valid access token for user:', userId)
+  
+  try {
+    const { data: tokenData, error } = await supabase
+      .from('strava_tokens')
+      .select('access_token, refresh_token, expires_at')
+      .eq('user_id', userId)
+      .single()
 
-  if (error || !tokenData) {
-    throw new Error('No Strava tokens found for user')
+    if (error) {
+      console.error('❌ Error fetching Strava tokens:', error)
+      throw new Error(`No Strava tokens found: ${error.message}`)
+    }
+
+    if (!tokenData) {
+      console.error('❌ No token data returned')
+      throw new Error('No Strava tokens found for user')
+    }
+
+    console.log('   Token data retrieved from DB')
+    console.log('   Expires at:', tokenData.expires_at)
+
+    // Check if token is expired (refresh 5 minutes before expiry)
+    const expiresAt = new Date(tokenData.expires_at)
+    const now = new Date()
+    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000)
+
+    console.log('   Current time:', now.toISOString())
+    console.log('   Token expires:', expiresAt.toISOString())
+    console.log('   Needs refresh:', expiresAt <= fiveMinutesFromNow)
+
+    if (expiresAt <= fiveMinutesFromNow) {
+      console.log('⚠️  Token expired or expiring soon, refreshing...')
+      return await refreshStravaTokens(supabase, userId, tokenData.refresh_token)
+    }
+
+    console.log('✅ Token is valid, using existing token')
+    return tokenData.access_token
+  } catch (error) {
+    console.error('❌ Exception in getValidAccessToken:', error)
+    throw error
   }
-
-  // Check if token is expired (refresh 5 minutes before expiry)
-  const expiresAt = new Date(tokenData.expires_at)
-  const now = new Date()
-  const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000)
-
-  if (expiresAt <= fiveMinutesFromNow) {
-    console.log('Token expired or expiring soon, refreshing...')
-    return await refreshStravaTokens(supabase, userId, tokenData.refresh_token)
-  }
-
-  return tokenData.access_token
 }
 
 async function fetchStravaActivities(accessToken: string, after?: number, page = 1, perPage = 30) {
@@ -104,22 +136,37 @@ async function fetchStravaActivities(accessToken: string, after?: number, page =
     params.append('after', after.toString())
   }
 
-  console.log(`Fetching Strava activities: page=${page}, per_page=${perPage}, after=${after}`)
+  const url = `https://www.strava.com/api/v3/athlete/activities?${params}`
+  console.log(`📥 Fetching Strava activities:`)
+  console.log(`   URL: ${url}`)
+  console.log(`   Page: ${page}, Per page: ${perPage}, After: ${after || 'none (all history)'}`)
+  console.log(`   Token prefix: ${accessToken.substring(0, 10)}...`)
 
-  const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?${params}`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json'
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    })
+
+    console.log(`   Response status: ${response.status} ${response.statusText}`)
+    console.log(`   Rate limit remaining: ${response.headers.get('X-RateLimit-Limit')}`)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Failed to fetch activities:', response.status, errorText)
+      throw new Error(`Failed to fetch activities: ${response.status} - ${errorText}`)
     }
-  })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('Failed to fetch activities:', response.status, errorText)
-    throw new Error(`Failed to fetch activities: ${response.status}`)
+    const activities = await response.json() as StravaActivity[]
+    console.log(`✅ Fetched ${activities.length} activities from Strava API`)
+    
+    return activities
+  } catch (error) {
+    console.error('❌ Exception in fetchStravaActivities:', error)
+    throw error
   }
-
-  return await response.json() as StravaActivity[]
 }
 
 function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
@@ -150,9 +197,13 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
 
 async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: Date) {
   try {
-    console.log(`Starting activity sync for user: ${userId}`)
+    console.log(`\n🚀 ========== STARTING ACTIVITY SYNC ==========`)
+    console.log(`   User ID: ${userId}`)
+    console.log(`   Since date: ${sinceDate ? sinceDate.toISOString() : 'all history'}`)
     
+    console.log(`\n📋 Step 1: Getting valid access token...`)
     const accessToken = await getValidAccessToken(supabase, userId)
+    console.log(`✅ Access token obtained`)
     
     // Get the timestamp for filtering activities (if provided)
     const after = sinceDate ? Math.floor(sinceDate.getTime() / 1000) : undefined
@@ -242,11 +293,21 @@ async function syncActivitiesForUser(supabase: any, userId: string, sinceDate?: 
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    console.log(`Sync completed for user ${userId}. Synced: ${totalSynced}, Skipped: ${totalSkipped}`)
+    console.log(`\n✅ ========== SYNC COMPLETED ==========`)
+    console.log(`   User: ${userId}`)
+    console.log(`   Synced: ${totalSynced}`)
+    console.log(`   Skipped: ${totalSkipped}`)
+    console.log(`   Total processed: ${totalSynced + totalSkipped}`)
+    console.log(`========================================\n`)
+    
     return { success: true, activitiesSynced: totalSynced, activitiesSkipped: totalSkipped }
 
   } catch (error) {
-    console.error(`Sync failed for user ${userId}:`, error)
+    console.error(`\n❌ ========== SYNC FAILED ==========`)
+    console.error(`   User: ${userId}`)
+    console.error(`   Error:`, error)
+    console.error(`   Stack:`, error instanceof Error ? error.stack : 'No stack trace')
+    console.error(`====================================\n`)
     throw error
   }
 }
@@ -277,7 +338,8 @@ Deno.serve(async (req) => {
       throw new Error('User not authenticated')
     }
 
-    console.log(`Processing sync request for user: ${user.id}`)
+    console.log(`\n🔐 Processing sync request for user: ${user.id}`)
+    console.log(`   Request method: ${req.method}`)
 
     let sinceDate: Date | undefined
     
@@ -287,20 +349,29 @@ Deno.serve(async (req) => {
         const body = await req.json()
         if (body.since) {
           sinceDate = new Date(body.since)
+          console.log(`   Since date provided: ${sinceDate.toISOString()}`)
         }
-      } catch {
-        // Ignore JSON parsing errors
+      } catch (e) {
+        console.log(`   No body or invalid JSON (OK for GET requests)`)
       }
     }
 
     // Check if user has Strava tokens
-    const { data: stravaToken } = await supabaseClient
+    console.log(`\n🔍 Checking for Strava tokens...`)
+    const { data: stravaToken, error: tokenCheckError } = await supabaseClient
       .from('strava_tokens')
       .select('user_id')
       .eq('user_id', user.id)
       .single()
 
+    if (tokenCheckError) {
+      console.error('❌ Token check error:', tokenCheckError)
+    }
+
+    console.log(`   Strava token found: ${!!stravaToken}`)
+
     if (!stravaToken) {
+      console.log('❌ No Strava token found - user needs to connect Strava')
       return new Response(JSON.stringify({ 
         success: false,
         error: 'Strava not connected. Please connect your Strava account first.' 
@@ -310,8 +381,12 @@ Deno.serve(async (req) => {
       })
     }
 
+    console.log('✅ Strava token exists - proceeding with sync\n')
+
     // Perform the sync
     const result = await syncActivitiesForUser(supabaseClient, user.id, sinceDate)
+    
+    console.log(`\n📤 Returning result:`, result)
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
