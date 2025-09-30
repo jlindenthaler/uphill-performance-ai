@@ -48,18 +48,48 @@ Deno.serve(async (req) => {
     // Get Garmin token
     const { data: tokenData } = await supabaseAdmin
       .from('garmin_tokens')
-      .select('access_token')
+      .select('access_token, refresh_token, expires_at, garmin_user_id')
       .eq('user_id', job.user_id)
       .single();
 
     if (!tokenData?.access_token) {
+      await supabaseAdmin
+        .from('garmin_backfill_jobs')
+        .update({ 
+          status: 'error',
+          last_error: 'Garmin token not found',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', job.id);
       throw new Error('Garmin token not found');
+    }
+
+    // Check if token is expired and try to refresh
+    if (tokenData.expires_at) {
+      const expiresAt = new Date(tokenData.expires_at);
+      const now = new Date();
+      if (expiresAt <= now && tokenData.refresh_token) {
+        console.log('Token expired, attempting refresh...');
+        // Token refresh would go here - for now, error out
+        await supabaseAdmin
+          .from('garmin_backfill_jobs')
+          .update({ 
+            status: 'error',
+            last_error: 'Token expired - please reconnect Garmin',
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', job.id);
+        throw new Error('Token expired - please reconnect Garmin');
+      }
     }
 
     let totalSynced = job.activities_synced || 0;
     let totalSkipped = job.activities_skipped || 0;
     let currentDate = job.progress_date ? new Date(job.progress_date) : new Date(job.start_date);
     const endDate = new Date(job.end_date);
+
+    console.log(`Starting backfill from ${currentDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`Token info: has_token=${!!tokenData.access_token}, garmin_user_id=${tokenData.garmin_user_id}`);
 
     // Process day by day
     while (currentDate <= endDate) {
@@ -68,25 +98,48 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      const activitiesUrl = `${GARMIN_API_BASE}/activities?uploadStartTimeInSeconds=${dayStart}&uploadEndTimeInSeconds=${dayEnd}`;
+      // Use the correct Garmin API endpoint format
+      const activitiesUrl = `${GARMIN_API_BASE}/activities`;
+      const params = new URLSearchParams({
+        uploadStartTimeInSeconds: dayStart.toString(),
+        uploadEndTimeInSeconds: dayEnd.toString()
+      });
 
-      const response = await fetch(activitiesUrl, {
+      console.log(`Request URL: ${activitiesUrl}?${params.toString()}`);
+
+      const response = await fetch(`${activitiesUrl}?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
+          'Accept': 'application/json'
         },
       });
 
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`Failed to fetch activities: ${response.status}`, errorBody);
+        console.error(`Response headers:`, Object.fromEntries(response.headers.entries()));
         
-        // Move to next day even on error to avoid getting stuck
+        // If we get 401/403, mark job as error (token issue)
+        if (response.status === 401 || response.status === 403) {
+          await supabaseAdmin
+            .from('garmin_backfill_jobs')
+            .update({ 
+              status: 'error',
+              last_error: `Authentication failed: ${errorBody}. Please reconnect Garmin.`,
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', job.id);
+          throw new Error('Authentication failed - please reconnect Garmin');
+        }
+        
+        // Move to next day on other errors to avoid getting stuck
         currentDate.setDate(currentDate.getDate() + 1);
         
         await supabaseAdmin
           .from('garmin_backfill_jobs')
           .update({ 
             progress_date: currentDate.toISOString(),
+            last_error: `HTTP ${response.status}: ${errorBody}`,
             updated_at: new Date().toISOString() 
           })
           .eq('id', job.id);

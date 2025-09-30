@@ -248,6 +248,7 @@ async function handleCallback(req: Request, supabaseClient: any) {
 
     const tokens = await tokenResponse.json();
     console.log('Tokens received successfully');
+    console.log('Token type:', tokens.token_type, 'Scopes:', tokens.scope);
 
     // Fetch Garmin user profile to get their Garmin user ID
     let garminUserId = null;
@@ -256,15 +257,19 @@ async function handleCallback(req: Request, supabaseClient: any) {
       const profileResponse = await fetch(`${GARMIN_API_BASE}/wellness-api/rest/user/id`, {
         headers: {
           'Authorization': `Bearer ${tokens.access_token}`,
+          'Accept': 'application/json'
         },
       });
 
+      console.log('Profile response status:', profileResponse.status);
+      
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
         garminUserId = profileData.userId || profileData.id;
         console.log('Garmin user ID obtained:', garminUserId);
       } else {
-        console.warn('Could not fetch Garmin user profile:', profileResponse.status);
+        const errorText = await profileResponse.text();
+        console.warn('Could not fetch Garmin user profile:', profileResponse.status, errorText);
       }
     } catch (profileError) {
       console.warn('Error fetching Garmin user profile:', profileError);
@@ -296,7 +301,7 @@ async function handleCallback(req: Request, supabaseClient: any) {
 
     console.log('Garmin connected successfully for user:', userId);
 
-    return Response.redirect(`${origin}?garmin_connected=true`);
+    return Response.redirect(`${origin}?tab=integrations`);
   } catch (error) {
     console.error('Callback error:', error);
     return Response.redirect(`${origin}?garmin_error=token_exchange_failed`);
