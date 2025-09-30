@@ -23,10 +23,13 @@ import { EditActivityModal } from './EditActivityModal';
 export function Activities() {
   const { 
     activities, 
-    loading, 
+    loading,
+    loadingMore,
+    hasMore,
     detailedActivities, 
     loadingDetails, 
-    fetchActivityDetails, 
+    fetchActivityDetails,
+    fetchMoreActivities,
     deleteActivity, 
     reprocessActivityTimestamps 
   } = useActivities();
@@ -714,6 +717,37 @@ export function Activities() {
               </Card>
             </Collapsible>
           ))}
+        </div>
+      )}
+
+      {/* Load More Button / Infinite Scroll Trigger */}
+      {!loading && hasMore && (
+        <div className="flex justify-center py-8">
+          <Button 
+            variant="outline" 
+            onClick={fetchMoreActivities}
+            disabled={loadingMore}
+            className="min-w-[200px]"
+          >
+            {loadingMore ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Loading more...
+              </>
+            ) : (
+              <>
+                Load More Activities
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* No More Activities Message */}
+      {!loading && !hasMore && activities.length > 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No more activities to load</p>
         </div>
       )}
 

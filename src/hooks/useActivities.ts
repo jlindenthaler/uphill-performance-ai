@@ -57,17 +57,29 @@ export function useActivities() {
   const { toast } = useToast();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   const [detailedActivities, setDetailedActivities] = useState<Map<string, Activity>>(new Map());
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
+  const ACTIVITIES_PER_PAGE = 10;
+
   // Fetch lightweight activity summaries for list view
-  const fetchActivities = async (limit?: number) => {
+  const fetchActivities = async (reset: boolean = true) => {
     if (!user) return;
     
-    console.log('Fetching activity summaries for user:', user.id);
-    setLoading(true);
+    const currentPage = reset ? 0 : page;
+    console.log(`Fetching activity summaries for user: ${user.id}, page: ${currentPage}, reset: ${reset}`);
+    
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('activities')
         .select(`
           id,
@@ -86,22 +98,36 @@ export function useActivities() {
           updated_at
         `)
         .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (limit) {
-        query = query.limit(limit);
-      }
-
-      const { data, error } = await query;
+        .order('date', { ascending: false })
+        .range(currentPage * ACTIVITIES_PER_PAGE, (currentPage + 1) * ACTIVITIES_PER_PAGE - 1);
 
       if (error) throw error;
-      console.log('Fetched activity summaries:', data?.length || 0, 'activities');
-      setActivities(data || []);
+      
+      const fetchedActivities = data || [];
+      console.log(`Fetched ${fetchedActivities.length} activity summaries (page ${currentPage})`);
+      
+      if (reset) {
+        setActivities(fetchedActivities);
+      } else {
+        setActivities(prev => [...prev, ...fetchedActivities]);
+      }
+      
+      // Check if there are more activities to load
+      setHasMore(fetchedActivities.length === ACTIVITIES_PER_PAGE);
+      setPage(currentPage + 1);
+      
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  // Load more activities (for infinite scroll)
+  const fetchMoreActivities = async () => {
+    if (!hasMore || loadingMore) return;
+    await fetchActivities(false);
   };
 
   // Fetch full activity details for expanded view
@@ -379,7 +405,9 @@ export function useActivities() {
       }
 
       // Refresh activities list
-      await fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      await fetchActivities(true);
     } catch (error) {
       console.error('Error deleting activity:', error);
       throw error;
@@ -399,7 +427,9 @@ export function useActivities() {
       if (error) throw error;
 
       // Refresh activities list
-      await fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      await fetchActivities(true);
     } catch (error) {
       console.error('Error updating activity:', error);
       throw error;
@@ -408,13 +438,17 @@ export function useActivities() {
 
   useEffect(() => {
     if (user) {
-      fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      fetchActivities(true);
     }
     
     // Listen for activity upload events
     const handleActivityUploaded = () => {
       console.log('Activity uploaded event received, refreshing activities...');
-      fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      fetchActivities(true);
     };
     
     window.addEventListener('activity-uploaded', handleActivityUploaded);
@@ -494,7 +528,9 @@ export function useActivities() {
       }
       
       // Refresh the activities list
-      await fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      await fetchActivities(true);
       console.log('Activity timestamp reprocessing completed');
       
     } catch (error) {
@@ -582,7 +618,9 @@ export function useActivities() {
       }
 
       // Refresh activities data
-      await fetchActivities();
+      setPage(0);
+      setHasMore(true);
+      await fetchActivities(true);
 
       // Trigger PMC recalculation since TSS values changed
       const { populateTrainingHistory } = await import('@/utils/pmcCalculator');
@@ -609,10 +647,13 @@ export function useActivities() {
   return {
     activities,
     loading,
+    loadingMore,
+    hasMore,
     detailedActivities,
     loadingDetails,
     fetchActivities,
     fetchActivityDetails,
+    fetchMoreActivities,
     uploadActivity,
     deleteActivity,
     updateActivity,
