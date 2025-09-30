@@ -21,6 +21,7 @@ export function GarminConnection() {
   const { activeJob, latestCompletedJob, calculateProgress, loading: jobsLoading } = useGarminJobs();
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     checkGarminConnection();
@@ -36,7 +37,12 @@ export function GarminConnection() {
   };
 
   const handleDisconnect = async () => {
-    await disconnectGarmin();
+    setDisconnecting(true);
+    try {
+      await disconnectGarmin();
+    } finally {
+      setDisconnecting(false);
+    }
   };
 
 
@@ -52,6 +58,26 @@ export function GarminConnection() {
     }
     return <Badge variant="outline">Not Connected</Badge>;
   };
+
+  // Show loading state while checking connection
+  if (connectionStatus.loading && !connectionStatus.isConnected) {
+    return (
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Garmin Connect
+          </CardTitle>
+          <CardDescription>
+            Connect your Garmin device to automatically sync activities and training data
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="card-gradient">
@@ -103,11 +129,20 @@ export function GarminConnection() {
             </div>
             <Button 
               onClick={handleConnect} 
-              className="w-full"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
               disabled={connectionStatus.loading}
             >
-              <Link className="w-4 h-4 mr-2" />
-              {connectionStatus.loading ? 'Connecting...' : 'Connect Garmin Account'}
+              {connectionStatus.loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Link className="w-4 h-4 mr-2" />
+                  Connect Garmin Account
+                </>
+              )}
             </Button>
           </div>
         ) : (
@@ -164,9 +199,19 @@ export function GarminConnection() {
               onClick={handleDisconnect} 
               variant="outline"
               className="w-full"
+              disabled={disconnecting}
             >
-              <Unlink className="w-4 h-4 mr-2" />
-              Disconnect Garmin
+              {disconnecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                <>
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Disconnect Garmin
+                </>
+              )}
             </Button>
           </div>
         )}
