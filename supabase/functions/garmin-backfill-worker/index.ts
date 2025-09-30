@@ -165,51 +165,67 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      // Use Garmin Connect Partner API with Bearer authentication
-      const activitiesUrl = `${GARMIN_API_BASE}/activitylist-service/activities/search/activities`;
-      const params = new URLSearchParams({
-        start: '0',
-        limit: '100',
-        startDate: currentDate.toISOString().split('T')[0],
-        endDate: currentDate.toISOString().split('T')[0],
-      });
+      // Try multiple Garmin API endpoints in order
+      const endpoints = [
+        {
+          url: `${GARMIN_API_BASE}/activitylist-service/activities`,
+          params: {
+            start: '0',
+            limit: '100',
+            startDate: currentDate.toISOString().split('T')[0],
+            endDate: currentDate.toISOString().split('T')[0],
+          }
+        },
+        {
+          url: 'https://connect.garmin.com/activitylist-service/activities/search/activities',
+          params: {
+            start: '0',
+            limit: '100',
+            startDate: currentDate.toISOString().split('T')[0],
+            endDate: currentDate.toISOString().split('T')[0],
+          }
+        },
+        {
+          url: `${GARMIN_API_BASE}/wellness-api/rest/dailies`,
+          params: {
+            uploadStartTimeInSeconds: dayStart.toString(),
+            uploadEndTimeInSeconds: dayEnd.toString(),
+          }
+        }
+      ];
 
-      console.log(`Request URL: ${activitiesUrl}?${params.toString()}`);
-
-      // Retry logic with exponential backoff
       let response: Response | null = null;
       let lastError: string | null = null;
+      let successfulEndpoint: string | null = null;
       
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        try {
-          if (attempt > 0) {
-            const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-            console.log(`Retry attempt ${attempt + 1}/${MAX_RETRIES} after ${delay}ms`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
+      // Try each endpoint
+      for (const endpoint of endpoints) {
+        const params = new URLSearchParams(endpoint.params);
+        const fullUrl = `${endpoint.url}?${params.toString()}`;
+        console.log(`Trying endpoint: ${fullUrl}`);
 
-          response = await fetch(`${activitiesUrl}?${params.toString()}`, {
+        try {
+          response = await fetch(fullUrl, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
               'Accept': 'application/json',
             },
           });
 
-          // If successful or non-retryable error, break
-          if (response.ok || (response.status !== 429 && response.status !== 500 && response.status !== 503)) {
-            break;
-          }
+          console.log(`Response status: ${response.status} ${response.statusText}`);
 
-          lastError = `HTTP ${response.status}`;
-          console.log(`Retryable error: ${lastError}`);
+          if (response.ok) {
+            successfulEndpoint = endpoint.url;
+            console.log(`✓ Success with endpoint: ${endpoint.url}`);
+            break;
+          } else {
+            const errorBody = await response.text();
+            console.log(`✗ Failed (${response.status}): ${errorBody.substring(0, 200)}`);
+            lastError = `HTTP ${response.status}: ${errorBody}`;
+          }
         } catch (fetchError) {
           lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
-          console.error(`Fetch error on attempt ${attempt + 1}:`, lastError);
-          
-          // Don't retry on network errors that aren't timeouts
-          if (attempt === MAX_RETRIES - 1) {
-            break;
-          }
+          console.error(`✗ Fetch error with ${endpoint.url}:`, lastError);
         }
       }
 
