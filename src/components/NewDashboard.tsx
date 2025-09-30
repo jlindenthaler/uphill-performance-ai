@@ -114,27 +114,16 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
     }
   };
 
-  // Calculate current week metrics
+  // Calculate current week metrics - responsive to both sport mode and combined sports toggle
   const currentWeekData = useMemo(() => {
     const trainingHistory = combinedSports ? combinedSportsHistory : singleSportHistory;
+    const currentWeek = trainingHistory.slice(-7);
     
-    if (combinedSports) {
-      // For combined sports, use the aggregated training history data
-      const currentWeek = trainingHistory.slice(-7);
-      const weeklyTSS = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
-      const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
-      const completedSessions = currentWeek.filter(day => day.tss > 0).length;
-      
-      return { weeklyTSS, weeklyHours, completedSessions };
-    } else {
-      // Original calculation for current sport mode only
-      const currentWeek = trainingHistory.slice(-7);
-      const weeklyTSS = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
-      const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
-      const completedSessions = currentWeek.filter(day => day.tss > 0).length;
-      
-      return { weeklyTSS, weeklyHours, completedSessions };
-    }
+    const weeklyTSS = currentWeek.reduce((sum, day) => sum + (day.tss || 0), 0);
+    const weeklyHours = currentWeek.reduce((sum, day) => sum + (day.tss / 100 || 0), 0);
+    const completedSessions = currentWeek.filter(day => day.tss > 0).length;
+    
+    return { weeklyTSS, weeklyHours, completedSessions };
   }, [combinedSports, combinedSportsHistory, singleSportHistory]);
   
   const weeklyTSS = currentWeekData.weeklyTSS;
