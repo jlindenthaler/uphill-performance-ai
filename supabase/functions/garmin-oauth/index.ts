@@ -258,68 +258,70 @@ async function syncActivities(userId: string, supabaseClient: any) {
     throw new Error('No valid Garmin connection found');
   }
 
-  // Calculate time range (last 30 days)
+  // Calculate time range - Garmin API has 24-hour maximum limit
   const endTime = Math.floor(Date.now() / 1000);
-  const startTime = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+  const startTime = endTime - (24 * 60 * 60); // Last 24 hours only
 
-  // Try multiple possible Garmin API endpoints with time range parameters
-  const possibleEndpoints = [
-    `${GARMIN_API_BASE}/activitylist-service/activities/search/activities`,
-    `${GARMIN_API_BASE}/activity-service/activity/list`,
-    `${GARMIN_API_BASE}/wellness-api/rest/activities?uploadStartTimeInSeconds=${startTime}&uploadEndTimeInSeconds=${endTime}`
-  ];
+  console.log(`Syncing last 24 hours: ${new Date(startTime * 1000).toISOString()} to ${new Date(endTime * 1000).toISOString()}`);
 
+  // Use only the wellness-api endpoint (the only one that works)
+  const endpoint = `${GARMIN_API_BASE}/wellness-api/rest/activities?uploadStartTimeInSeconds=${startTime}&uploadEndTimeInSeconds=${endTime}`;
+  
   let activities = null;
-  let lastError = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+  
+  while (retryCount < maxRetries) {
+    try {
+      console.log(`Fetching from Garmin wellness API (attempt ${retryCount + 1}/${maxRetries})...`);
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Accept': 'application/json'
+        },
+      });
 
-  for (const endpoint of possibleEndpoints) {
-    console.log('Trying Garmin endpoint:', endpoint);
-    
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    while (retryCount < maxRetries) {
-      try {
-        const response = await fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${tokenData.access_token}`,
-            'Accept': 'application/json'
-          },
-        });
+      console.log('Garmin API response status:', response.status);
 
-        console.log('Garmin API response status:', response.status);
-
-        if (response.ok) {
-          activities = await response.json();
-          console.log('Successfully fetched activities from:', endpoint);
-          console.log('Activities count:', activities?.length || Array.isArray(activities) ? activities.length : 'Not an array');
-          break;
-        } else if (response.status === 429 || response.status === 503) {
-          // Rate limit or service unavailable - retry with exponential backoff
-          retryCount++;
+      if (response.ok) {
+        activities = await response.json();
+        console.log('Successfully fetched activities');
+        console.log('Activities count:', Array.isArray(activities) ? activities.length : 'Not an array');
+        break;
+      } else if (response.status === 429 || response.status === 503) {
+        // Rate limit or service unavailable - retry with exponential backoff
+        retryCount++;
+        if (retryCount < maxRetries) {
           const waitTime = Math.pow(2, retryCount) * 1000;
-          console.log(`Rate limited or service unavailable. Waiting ${waitTime}ms before retry ${retryCount}/${maxRetries}`);
+          console.log(`Rate limited or service unavailable. Waiting ${waitTime}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
-        } else {
-          const errorText = await response.text();
-          console.error(`Endpoint ${endpoint} failed:`, response.status, errorText);
-          lastError = `${response.status}: ${errorText}`;
-          break;
         }
-      } catch (err) {
-        console.error(`Error fetching from ${endpoint}:`, err);
-        lastError = err instanceof Error ? err.message : 'Unknown error';
-        break;
+      } else if (response.status === 400) {
+        const errorText = await response.text();
+        console.error('Bad request (400) - likely time range issue:', errorText);
+        throw new Error(`Garmin API returned 400: ${errorText}`);
       }
+      
+      const errorText = await response.text();
+      console.error('Garmin API error:', response.status, errorText);
+      throw new Error(`Garmin API returned ${response.status}: ${errorText}`);
+      
+    } catch (err) {
+      console.error('Error fetching from Garmin API:', err);
+      if (retryCount >= maxRetries - 1) {
+        throw err;
+      }
+      retryCount++;
+      const waitTime = Math.pow(2, retryCount) * 1000;
+      console.log(`Retrying after ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-    
-    if (activities) break;
   }
 
   if (!activities) {
-    console.error('All Garmin API endpoints failed. Last error:', lastError);
-    throw new Error(`Failed to fetch activities from Garmin. Last error: ${lastError}`);
+    throw new Error('Failed to fetch activities from Garmin API after retries');
   }
 
   let synced = 0;
