@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,8 @@ import { LabResults } from './LabResults';
 import { AICoachRecommendation } from './AICoachRecommendation';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { useAuth } from '@/hooks/useSupabase';
+import { supabase } from '@/integrations/supabase/client';
 import { formatActivityDate } from '@/utils/dateFormat';
 
 interface DashboardProps {
@@ -55,6 +57,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { metabolicMetrics } = useMetabolicData();
   const { tools: recoveryTools } = useRecoveryTools();
   const { timezone } = useUserTimezone();
+  const { user } = useAuth();
 
   // Get the closest dated Priority A goal
   const activeGoal = useMemo(() => {
@@ -75,6 +78,7 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const { sportMode } = useSportMode();
   const { isPopulating } = usePMCPopulation();
   const [combinedSports, setCombinedSports] = useState(false);
+  const [allSportTargets, setAllSportTargets] = useState<any[]>([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [recoveryModalOpen, setRecoveryModalOpen] = useState(false);
@@ -88,6 +92,24 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
     location: '',
     target_performance: ''
   });
+
+  // Fetch all sport targets for combined mode
+  useEffect(() => {
+    const fetchAllTargets = async () => {
+      if (!user || !combinedSports) return;
+      
+      const { data } = await supabase
+        .from('weekly_targets')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (data) {
+        setAllSportTargets(data);
+      }
+    };
+    
+    fetchAllTargets();
+  }, [user, combinedSports]);
 
   const handleUploadSuccess = (activityId?: string) => {
     console.log('handleUploadSuccess called with activityId:', activityId);
@@ -129,6 +151,18 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
   const weeklyTSS = currentWeekData.weeklyTSS;
   const weeklyHours = currentWeekData.weeklyHours;
   const completedSessions = currentWeekData.completedSessions;
+
+  // Calculate weekly target - responsive to combined sports toggle
+  const effectiveWeeklyTarget = useMemo(() => {
+    if (combinedSports && allSportTargets.length > 0) {
+      // Sum all sport targets when in combined mode
+      const totalTLI = allSportTargets.reduce((sum, target) => sum + (target.weekly_tli_target || 0), 0);
+      const totalSessions = allSportTargets.reduce((sum, target) => sum + (target.weekly_sessions_target || 0), 0);
+      return { weekly_tli_target: totalTLI, weekly_sessions_target: totalSessions };
+    }
+    // Use current sport target when not in combined mode
+    return weeklyTarget || { weekly_tli_target: 400, weekly_sessions_target: 12 };
+  }, [combinedSports, allSportTargets, weeklyTarget]);
 
   // Get recent activities (last 7 days)
   const sevenDaysAgo = new Date();
@@ -228,9 +262,9 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                 <p className="text-sm font-medium text-muted-foreground">Weekly TLI</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{Math.round(weeklyTSS)}</p>
-                  <span className="text-sm text-muted-foreground">/ {weeklyTarget?.weekly_tli_target || 400}</span>
+                  <span className="text-sm text-muted-foreground">/ {effectiveWeeklyTarget.weekly_tli_target}</span>
                 </div>
-                <Progress value={(weeklyTSS / (weeklyTarget?.weekly_tli_target || 400)) * 100} className="mt-2 h-2" />
+                <Progress value={(weeklyTSS / effectiveWeeklyTarget.weekly_tli_target) * 100} className="mt-2 h-2" />
               </div>
               <Target className="h-8 w-8 text-zone-2 group-hover:scale-110 transition-transform" />
             </div>
@@ -270,9 +304,9 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
                 <p className="text-sm font-medium text-muted-foreground">Sessions Complete</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{completedSessions}</p>
-                  <span className="text-sm text-muted-foreground">/ {weeklyTarget?.weekly_sessions_target || 12} this week</span>
+                  <span className="text-sm text-muted-foreground">/ {effectiveWeeklyTarget.weekly_sessions_target} this week</span>
                 </div>
-                <Progress value={(completedSessions / (weeklyTarget?.weekly_sessions_target || 12)) * 100} className="mt-2 h-2" />
+                <Progress value={(completedSessions / effectiveWeeklyTarget.weekly_sessions_target) * 100} className="mt-2 h-2" />
               </div>
               <Activity className="h-8 w-8 text-zone-4 group-hover:scale-110 transition-transform" />
             </div>
