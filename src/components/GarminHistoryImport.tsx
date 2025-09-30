@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Info, Calendar as CalendarIcon } from "lucide-react";
+import { Info, Calendar as CalendarIcon, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,37 @@ export function GarminHistoryImport() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { activeJob, refreshJobs } = useGarminJobs();
+
+  const handleCancelJob = async () => {
+    if (!activeJob) return;
+    
+    try {
+      const { error } = await supabase
+        .from('garmin_backfill_jobs')
+        .update({ 
+          status: 'cancelled',
+          last_error: 'Cancelled by user',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeJob.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Job cancelled",
+        description: "The import job has been cancelled",
+      });
+      
+      refreshJobs();
+    } catch (error) {
+      console.error('Cancel error:', error);
+      toast({
+        title: "Failed to cancel",
+        description: error instanceof Error ? error.message : "Failed to cancel job",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleImport = async () => {
     if (!startDate || !endDate) {
@@ -109,8 +140,29 @@ export function GarminHistoryImport() {
         {activeJob && (
           <Alert>
             <Info className="h-4 w-4" />
-            <AlertDescription>
-              Import in progress: {activeJob.activities_synced} synced, {activeJob.activities_skipped} skipped
+            <AlertDescription className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">Import in progress</p>
+                  <p className="text-sm">
+                    Status: {activeJob.status} | Synced: {activeJob.activities_synced} | Skipped: {activeJob.activities_skipped}
+                  </p>
+                  {activeJob.progress_date && (
+                    <p className="text-sm text-muted-foreground">
+                      Progress: {format(new Date(activeJob.progress_date), "PPP")}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelJob}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
