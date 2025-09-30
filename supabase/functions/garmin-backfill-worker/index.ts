@@ -186,9 +186,9 @@ Deno.serve(async (req) => {
           duration_seconds: activity.durationInSeconds || 0,
           distance_meters: activity.distanceInMeters,
           elevation_gain_meters: activity.elevationGainInMeters,
-          avg_heart_rate: activity.averageHeartRateInBeatsPerMinute,
-          max_heart_rate: activity.maxHeartRateInBeatsPerMinute,
-          calories: activity.activeKilocalories,
+          avg_heart_rate: activity.averageHeartRateInBeatsPerMinute ? Math.round(activity.averageHeartRateInBeatsPerMinute) : null,
+          max_heart_rate: activity.maxHeartRateInBeatsPerMinute ? Math.round(activity.maxHeartRateInBeatsPerMinute) : null,
+          calories: activity.activeKilocalories ? Math.round(activity.activeKilocalories) : null,
           sport_mode: sportMode,
           activity_type: 'normal',
         };
