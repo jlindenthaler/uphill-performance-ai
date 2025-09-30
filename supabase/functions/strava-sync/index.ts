@@ -279,6 +279,7 @@ Deno.serve(async (req) => {
 
     console.log(`Processing sync request for user: ${user.id}`)
 
+    // Parse request body for since date
     let sinceDate: Date | undefined
     
     // For POST requests, check if there's a since date
@@ -294,11 +295,14 @@ Deno.serve(async (req) => {
     }
 
     // Check if user has Strava tokens
-    const { data: stravaToken } = await supabaseClient
+    console.log('Checking for Strava tokens...')
+    const { data: stravaToken, error: tokenError } = await supabaseClient
       .from('strava_tokens')
       .select('user_id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
+
+    console.log('Strava token check result:', { hasToken: !!stravaToken, error: tokenError })
 
     if (!stravaToken) {
       return new Response(JSON.stringify({ 
@@ -311,7 +315,9 @@ Deno.serve(async (req) => {
     }
 
     // Perform the sync
+    console.log('Starting sync with sinceDate:', sinceDate)
     const result = await syncActivitiesForUser(supabaseClient, user.id, sinceDate)
+    console.log('Sync completed. Result:', result)
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
