@@ -3,22 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Activity, Clock, Unlink } from "lucide-react";
+import { Loader2, Activity, Link, Unlink, MapPin, Calendar } from "lucide-react";
 import { useStrava } from "@/hooks/useStrava";
 import { useStravaJobs } from "@/hooks/useStravaJobs";
-import { toast } from "sonner";
 import { StravaHistoryImport } from "@/components/StravaHistoryImport";
 
 export function StravaConnection() {
   const { connection, isLoading, connect, disconnect, isConnecting, isDisconnecting } = useStrava();
   const { activeJob, latestCompletedJob, calculateProgress } = useStravaJobs();
 
+  const getStatusBadge = () => {
+    if (isConnecting) {
+      return <Badge variant="secondary">Connecting...</Badge>;
+    }
+    if (connection?.connected) {
+      return <Badge variant="default" className="bg-green-500">Connected</Badge>;
+    }
+    return <Badge variant="outline">Not Connected</Badge>;
+  };
+
   if (isLoading) {
     return (
-      <Card>
+      <Card className="card-gradient">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-orange-500" />
+            <Activity className="w-5 h-5 text-primary" />
             Strava
           </CardTitle>
           <CardDescription>Sync activities from Strava</CardDescription>
@@ -31,47 +40,86 @@ export function StravaConnection() {
   }
 
   return (
-    <Card>
+    <Card className="card-gradient">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-orange-500" />
+          <Activity className="w-5 h-5 text-primary" />
           Strava
-          {connection?.connected && (
-            <Badge variant="secondary" className="ml-2">
-              Connected
-            </Badge>
-          )}
         </CardTitle>
         <CardDescription>
-          Automatically sync your activities and training data from Strava
+          Connect your Strava account to automatically sync activities and training data
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {connection?.connected ? (
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-1">
-              {connection.athlete_id && (
-                <p>Athlete ID: {connection.athlete_id}</p>
-              )}
-              {connection.expires_at && (
-                <p className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Token expires: {new Date(connection.expires_at).toLocaleDateString()}
-                </p>
-              )}
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Activity className="w-6 h-6 text-primary" />
             </div>
+            <div>
+              <h4 className="font-medium">Connection Status</h4>
+              <p className="text-sm text-muted-foreground">
+                {connection?.connected ? 'Your Strava account is connected' : 'Connect to sync activities automatically'}
+              </p>
+            </div>
+          </div>
+          {getStatusBadge()}
+        </div>
 
+        <Separator />
+
+        {!connection?.connected ? (
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-muted/20">
+              <h5 className="font-medium mb-2">What you'll get:</h5>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Automatic activity sync from Strava
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  GPS routes and elevation data
+                </li>
+                <li className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Training metrics and performance data
+                </li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => connect()} 
+              className="w-full bg-orange-600 hover:bg-orange-700"
+              disabled={isConnecting}
+            >
+              <Link className="w-4 h-4 mr-2" />
+              {isConnecting ? 'Connecting...' : 'Connect Strava Account'}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Active Job Status */}
             {activeJob && (
-              <div className="space-y-2 p-3 bg-muted rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">
-                    {activeJob.status === 'pending' ? 'Queued' : 'Syncing history...'}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {activeJob.activities_synced} synced
-                  </span>
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <h5 className="font-medium">Syncing History</h5>
+                  <Badge variant="secondary" className="ml-auto">
+                    {activeJob.status === 'pending' ? 'Queued' : 'In Progress'}
+                  </Badge>
                 </div>
-                <Progress value={calculateProgress(activeJob)} className="h-2" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  We're syncing your full training history in the background. This may take a few minutes.
+                </p>
+                {activeJob.status === 'running' && (
+                  <>
+                    <Progress value={calculateProgress(activeJob)} className="mb-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{activeJob.activities_synced} activities synced</span>
+                      <span>{Math.round(calculateProgress(activeJob))}% complete</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -106,38 +154,25 @@ export function StravaConnection() {
             >
               {isDisconnecting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2" />
                   Disconnecting...
                 </>
               ) : (
                 <>
-                  <Unlink className="mr-2 h-4 w-4" />
+                  <Unlink className="w-4 h-4 mr-2" />
                   Disconnect Strava
                 </>
               )}
             </Button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Connect your Strava account to automatically import activities and sync training data.
-            </p>
-            <Button 
-              onClick={() => connect()} 
-              disabled={isConnecting}
-              className="w-full bg-orange-600 hover:bg-orange-700"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                'Connect to Strava'
-              )}
-            </Button>
-          </div>
         )}
+
+        <div className="text-xs text-muted-foreground">
+          <p>
+            By connecting your Strava account, you agree to share your activity data with this application. 
+            We only access the data necessary for training analysis and never share it with third parties.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
