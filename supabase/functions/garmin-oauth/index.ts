@@ -222,13 +222,35 @@ async function handleCallback(req: Request, supabaseClient: any) {
     const tokens = await tokenResponse.json();
     console.log('Tokens received successfully');
 
-    // Store tokens
+    // Fetch Garmin user profile to get their Garmin user ID
+    let garminUserId = null;
+    try {
+      console.log('Fetching Garmin user profile...');
+      const profileResponse = await fetch(`${GARMIN_API_BASE}/wellness-api/rest/user/id`, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+        },
+      });
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        garminUserId = profileData.userId || profileData.id;
+        console.log('Garmin user ID obtained:', garminUserId);
+      } else {
+        console.warn('Could not fetch Garmin user profile:', profileResponse.status);
+      }
+    } catch (profileError) {
+      console.warn('Error fetching Garmin user profile:', profileError);
+    }
+
+    // Store tokens and garmin_user_id
     const { error: updateError } = await supabaseClient
       .from('garmin_tokens')
       .update({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
         expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
+        garmin_user_id: garminUserId,
         code_verifier: null, // Clear verifier
         updated_at: new Date().toISOString(),
       })

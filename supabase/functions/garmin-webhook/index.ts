@@ -104,35 +104,26 @@ async function processActivity(
     const activityData = await response.json()
     console.log('Activity data received:', JSON.stringify(activityData, null, 2))
 
-    // Find the user_id from garmin_tokens
-    const { data: tokenData } = await supabase
+    // Find the user_id from garmin_tokens using garmin_user_id
+    const { data: tokenData, error: tokenError } = await supabase
       .from('garmin_tokens')
       .select('user_id')
-      .eq('user_id', garminUserId)
+      .eq('garmin_user_id', garminUserId)
       .maybeSingle()
 
-    // If we can't find by user_id, the garminUserId might be stored differently
-    // Let's try to find any garmin_tokens record and use that user_id
-    let userId = tokenData?.user_id
-
-    if (!userId) {
-      // Try to find by checking profiles with garmin_connected
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('garmin_connected', true)
-        .limit(1)
-
-      if (profiles && profiles.length > 0) {
-        userId = profiles[0].user_id
-        console.log(`Mapped Garmin user ${garminUserId} to app user ${userId}`)
-      }
-    }
-
-    if (!userId) {
-      console.error(`Could not find user_id for Garmin user: ${garminUserId}`)
+    if (tokenError) {
+      console.error(`Error looking up Garmin user ${garminUserId}:`, tokenError)
       return
     }
+
+    if (!tokenData) {
+      console.error(`No token found for Garmin user: ${garminUserId}`)
+      console.log('User needs to complete OAuth flow to link their Garmin account')
+      return
+    }
+
+    const userId = tokenData.user_id
+    console.log(`Mapped Garmin user ${garminUserId} to app user ${userId}`)
 
     // Check if activity already exists
     const garminId = activityData.activityId?.toString() || summaryId
@@ -189,15 +180,15 @@ async function handleDeregistration(garminUserId: string, supabase: any) {
   try {
     console.log(`Handling deregistration for Garmin user: ${garminUserId}`)
 
-    // Find user by garmin tokens
+    // Find user by garmin_user_id
     const { data: tokenData } = await supabase
       .from('garmin_tokens')
       .select('user_id')
-      .eq('user_id', garminUserId)
+      .eq('garmin_user_id', garminUserId)
       .maybeSingle()
 
     if (!tokenData) {
-      console.log('No tokens found for deregistration')
+      console.log(`No tokens found for Garmin user ${garminUserId} during deregistration`)
       return
     }
 

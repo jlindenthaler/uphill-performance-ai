@@ -269,6 +269,7 @@ export type Database = {
           code_verifier: string | null
           created_at: string | null
           expires_at: string | null
+          garmin_user_id: string | null
           id: string
           refresh_token: string | null
           updated_at: string | null
@@ -279,6 +280,7 @@ export type Database = {
           code_verifier?: string | null
           created_at?: string | null
           expires_at?: string | null
+          garmin_user_id?: string | null
           id?: string
           refresh_token?: string | null
           updated_at?: string | null
@@ -289,6 +291,7 @@ export type Database = {
           code_verifier?: string | null
           created_at?: string | null
           expires_at?: string | null
+          garmin_user_id?: string | null
           id?: string
           refresh_token?: string | null
           updated_at?: string | null
