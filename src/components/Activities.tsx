@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Calendar, Clock, MapPin, Zap, Heart, TrendingUp, Filter, Search, Target, Award, ArrowLeft, Edit, Trash2, ChevronDown, ChevronUp, Upload, Plus, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { formatActivityDate, formatActivityDateTime } from '@/utils/dateFormat';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
@@ -45,6 +45,7 @@ export function Activities() {
   const [batchDeleteMode, setBatchDeleteMode] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -186,6 +187,24 @@ export function Activities() {
     setSelectedActivities(new Set());
     setBatchDeleteMode(false);
   };
+
+  // Infinite scroll implementation
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          fetchMoreActivities();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, fetchMoreActivities]);
 
   const renderExpandedActivity = (activityId: string) => {
     const detailedActivity = detailedActivities.get(activityId);
@@ -720,27 +739,15 @@ export function Activities() {
         </div>
       )}
 
-      {/* Load More Button / Infinite Scroll Trigger */}
+      {/* Infinite scroll sentinel and loading indicator */}
       {!loading && hasMore && (
-        <div className="flex justify-center py-8">
-          <Button 
-            variant="outline" 
-            onClick={fetchMoreActivities}
-            disabled={loadingMore}
-            className="min-w-[200px]"
-          >
-            {loadingMore ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                Loading more...
-              </>
-            ) : (
-              <>
-                Load More Activities
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
+        <div ref={sentinelRef} className="flex justify-center py-8">
+          {loadingMore && (
+            <div className="flex items-center text-muted-foreground">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3"></div>
+              <span>Loading more activities...</span>
+            </div>
+          )}
         </div>
       )}
 
