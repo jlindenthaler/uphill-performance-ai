@@ -302,9 +302,10 @@ Deno.serve(async (req) => {
 
     if (!stravaToken) {
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'Strava not connected. Please connect your Strava account first.' 
       }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -320,19 +321,12 @@ Deno.serve(async (req) => {
     console.error('Strava sync error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     
-    // Determine appropriate status code
-    let statusCode = 500
-    if (errorMessage.includes('not connected') || errorMessage.includes('No Strava tokens')) {
-      statusCode = 400
-    } else if (errorMessage.includes('Token refresh failed')) {
-      statusCode = 401
-    }
-    
     return new Response(JSON.stringify({ 
+      success: false,
       error: errorMessage,
       details: error instanceof Error ? error.stack : undefined 
     }), {
-      status: statusCode,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }

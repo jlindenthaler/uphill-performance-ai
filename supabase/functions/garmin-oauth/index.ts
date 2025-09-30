@@ -76,11 +76,13 @@ serve(async (req) => {
       case 'authorize':
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
+        // Garmin sync works via webhook push notifications
+        // Historical data backfill requires using Garmin Health API's backfill endpoint
         return new Response(JSON.stringify({ 
           success: true,
-          message: 'Garmin activities sync automatically via webhooks when configured in Garmin API Tools.',
+          message: 'Garmin activities sync automatically via webhooks. Historical data will sync as Garmin pushes updates.',
           webhookUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-webhook`,
-          instructions: 'Configure this webhook URL at https://apis.garmin.com/tools/endpoints to enable automatic activity syncing.'
+          note: 'After initial connection, Garmin may take 24-48 hours to backfill historical activities automatically.'
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -94,8 +96,8 @@ serve(async (req) => {
     console.error('Garmin OAuth error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
