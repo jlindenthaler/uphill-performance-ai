@@ -413,35 +413,6 @@ export function ActivityAnalysisChart({
           </div>
         </CardHeader>
         <CardContent>
-          {/* Training Load Metrics */}
-          {activity?.tss && (
-            <div className="mb-4 p-4 rounded-lg bg-muted/20 border">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Training Load Index</div>
-                  <div className="text-2xl font-bold text-primary">{Math.round(activity.tss)}</div>
-                </div>
-                {activity.intensity_factor && (
-                  <div>
-                    <div className="text-sm text-muted-foreground">Intensity Factor</div>
-                    <div className="text-2xl font-bold">{activity.intensity_factor.toFixed(2)}</div>
-                  </div>
-                )}
-                {activity.normalized_power && (
-                  <div>
-                    <div className="text-sm text-muted-foreground">Normalized Power</div>
-                    <div className="text-2xl font-bold">{Math.round(activity.normalized_power)}W</div>
-                  </div>
-                )}
-                {activity.variability_index && (
-                  <div>
-                    <div className="text-sm text-muted-foreground">Variability Index</div>
-                    <div className="text-2xl font-bold">{activity.variability_index.toFixed(2)}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
           <div className="mb-4">
             <ToggleGroup type="multiple" value={visibleMetrics} onValueChange={setVisibleMetrics} className="flex gap-1 flex-wrap">
               <ToggleGroupItem value="cadence" className="text-xs px-3 py-1.5 h-7 rounded-full bg-zone-1/10 text-zone-1 border border-zone-1/20 hover:bg-zone-1/20 data-[state=on]:bg-zone-1 data-[state=on]:text-white shadow-sm transition-all">
