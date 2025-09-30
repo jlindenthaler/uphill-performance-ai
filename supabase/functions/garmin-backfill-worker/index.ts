@@ -5,9 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GARMIN_API_BASE = 'https://connectapi.garmin.com/modern/proxy';
+const GARMIN_HEALTH_API_BASE = 'https://apis.garmin.com/wellness-api/rest';
 const GARMIN_OAUTH_BASE = 'https://connectapi.garmin.com/oauth-service/oauth';
-const CHUNK_SIZE_SECONDS = 86400; // 1 day (Garmin API limit)
+const CHUNK_SIZE_SECONDS = 86400; // 1 day (Garmin Health API limit)
 const THROTTLE_MS = 200; // 200ms between requests
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000; // Initial retry delay
@@ -158,104 +158,69 @@ Deno.serve(async (req) => {
     console.log(`Starting backfill from ${currentDate.toISOString()} to ${endDate.toISOString()}`);
     console.log(`Token info: has_token=${!!accessToken}, garmin_user_id=${tokenData.garmin_user_id}`);
 
-    // Process day by day
+    // Process day by day using Garmin Health API
     while (currentDate <= endDate) {
       const dayStart = Math.floor(currentDate.getTime() / 1000);
       const dayEnd = dayStart + CHUNK_SIZE_SECONDS;
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      // Try multiple Garmin API endpoints in order
-      const endpoints = [
-        {
-          url: `${GARMIN_API_BASE}/activitylist-service/activities`,
-          params: {
-            start: '0',
-            limit: '100',
-            startDate: currentDate.toISOString().split('T')[0],
-            endDate: currentDate.toISOString().split('T')[0],
+      // Step 1: Get activity summaries using Garmin Health API
+      const summariesUrl = `${GARMIN_HEALTH_API_BASE}/activities?uploadStartTimeInSeconds=${dayStart}&uploadEndTimeInSeconds=${dayEnd}`;
+      console.log(`Calling Health API: ${summariesUrl}`);
+
+      let response: Response;
+      try {
+        response = await fetch(summariesUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        console.log(`Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Failed to fetch activities (${response.status}):`, errorText.substring(0, 200));
+          
+          // If we get 401/403, it's likely an authentication issue
+          if (response.status === 401 || response.status === 403) {
+            await supabaseAdmin
+              .from('garmin_backfill_jobs')
+              .update({ 
+                status: 'error',
+                last_error: `Authentication failed. Please reconnect Garmin with 'activity' scope.`,
+                updated_at: new Date().toISOString() 
+              })
+              .eq('id', job.id);
+            throw new Error('Authentication failed - please reconnect Garmin');
           }
-        },
-        {
-          url: 'https://connect.garmin.com/activitylist-service/activities/search/activities',
-          params: {
-            start: '0',
-            limit: '100',
-            startDate: currentDate.toISOString().split('T')[0],
-            endDate: currentDate.toISOString().split('T')[0],
-          }
-        },
-        {
-          url: `${GARMIN_API_BASE}/wellness-api/rest/dailies`,
-          params: {
-            uploadStartTimeInSeconds: dayStart.toString(),
-            uploadEndTimeInSeconds: dayEnd.toString(),
-          }
-        }
-      ];
-
-      let response: Response | null = null;
-      let lastError: string | null = null;
-      let successfulEndpoint: string | null = null;
-      
-      // Try each endpoint
-      for (const endpoint of endpoints) {
-        const params = new URLSearchParams(endpoint.params);
-        const fullUrl = `${endpoint.url}?${params.toString()}`;
-        console.log(`Trying endpoint: ${fullUrl}`);
-
-        try {
-          response = await fetch(fullUrl, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          console.log(`Response status: ${response.status} ${response.statusText}`);
-
-          if (response.ok) {
-            successfulEndpoint = endpoint.url;
-            console.log(`✓ Success with endpoint: ${endpoint.url}`);
-            break;
-          } else {
-            // Clone response before reading body to avoid "Body already consumed" error
-            const errorText = await response.clone().text();
-            console.log(`✗ Failed (${response.status}): ${errorText.substring(0, 200)}`);
-            lastError = `HTTP ${response.status}: ${errorText}`;
-          }
-        } catch (fetchError) {
-          lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
-          console.error(`✗ Fetch error with ${endpoint.url}:`, lastError);
-        }
-      }
-
-      if (!response || !response.ok) {
-        const errorBody = response ? lastError || 'Unknown error' : lastError || 'No response';
-        const statusCode = response?.status || 0;
-        console.error(`Failed to fetch activities: ${statusCode}`, errorBody);
-        
-        // If we get 401/403, it's likely an authentication issue
-        if (statusCode === 401 || statusCode === 403) {
+          
+          // Move to next day on other errors
+          currentDate.setDate(currentDate.getDate() + 1);
           await supabaseAdmin
             .from('garmin_backfill_jobs')
             .update({ 
-              status: 'error',
-              last_error: `Authentication failed: ${errorBody}. Please reconnect Garmin.`,
+              progress_date: currentDate.toISOString(),
+              last_error: `HTTP ${response.status}: ${errorText}`,
               updated_at: new Date().toISOString() 
             })
             .eq('id', job.id);
-          throw new Error('Authentication failed - please reconnect Garmin');
+          
+          await new Promise(resolve => setTimeout(resolve, THROTTLE_MS));
+          continue;
         }
+      } catch (fetchError) {
+        const errorMsg = fetchError instanceof Error ? fetchError.message : 'Network error';
+        console.error('Fetch error:', errorMsg);
         
-        // Move to next day on other errors to avoid getting stuck
         currentDate.setDate(currentDate.getDate() + 1);
-        
         await supabaseAdmin
           .from('garmin_backfill_jobs')
           .update({ 
             progress_date: currentDate.toISOString(),
-            last_error: `HTTP ${statusCode}: ${errorBody}`,
+            last_error: errorMsg,
             updated_at: new Date().toISOString() 
           })
           .eq('id', job.id);
@@ -266,16 +231,20 @@ Deno.serve(async (req) => {
 
       const activities = await response.json();
 
-      // Process each activity (response is an array)
+      // Process each activity summary
       const activityList = Array.isArray(activities) ? activities : [];
+      console.log(`Found ${activityList.length} activities for this day`);
       
-      for (const activity of activityList) {
+      for (const summary of activityList) {
+        const summaryId = summary.summaryId;
+        const activityType = summary.activityType;
+        
         // Map sport type first to check if supported
-        const sportMode = mapGarminSportType(activity.activityType?.typeKey);
+        const sportMode = mapGarminSportType(activityType);
         
         // Skip if not a supported activity type
         if (!sportMode) {
-          console.log(`Skipping activity ${activity.activityId} - unsupported type: ${activity.activityType?.typeKey}`);
+          console.log(`Skipping activity ${summaryId} - unsupported type: ${activityType}`);
           totalSkipped++;
           continue;
         }
@@ -285,44 +254,85 @@ Deno.serve(async (req) => {
           .from('activities')
           .select('id')
           .eq('user_id', job.user_id)
-          .eq('garmin_activity_id', activity.activityId.toString())
+          .eq('garmin_activity_id', summaryId.toString())
           .maybeSingle();
 
         if (existing) {
-          console.log(`Skipping existing activity ${activity.activityId}`);
+          console.log(`Skipping existing activity ${summaryId}`);
           totalSkipped++;
           continue;
         }
 
-        // Map and insert activity (Connect API uses different field names)
-        const activityData = {
-          user_id: job.user_id,
-          garmin_activity_id: activity.activityId.toString(),
-          external_sync_source: 'garmin',
-          name: activity.activityName || 'Garmin Activity',
-          date: activity.startTimeLocal || activity.startTimeGMT,
-          duration_seconds: activity.duration ? Math.round(activity.duration) : 0,
-          distance_meters: activity.distance,
-          elevation_gain_meters: activity.elevationGain,
-          avg_heart_rate: activity.averageHR ? Math.round(activity.averageHR) : null,
-          max_heart_rate: activity.maxHR ? Math.round(activity.maxHR) : null,
-          avg_power: activity.avgPower || null,
-          max_power: activity.maxPower || null,
-          normalized_power: activity.normPower || null,
-          avg_speed_kmh: activity.averageSpeed ? activity.averageSpeed * 3.6 : null,
-          calories: activity.calories ? Math.round(activity.calories) : null,
-          sport_mode: sportMode,
-          activity_type: 'normal',
-        };
+        // Step 2: Download FIT file for this activity
+        const fitUrl = `${GARMIN_HEALTH_API_BASE}/activity/${summaryId}/download`;
+        console.log(`Downloading FIT file: ${fitUrl}`);
+        
+        try {
+          const fitResponse = await fetch(fitUrl, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
 
-        const { error: insertError } = await supabaseAdmin
-          .from('activities')
-          .insert(activityData);
+          if (!fitResponse.ok) {
+            console.error(`Failed to download FIT file for ${summaryId}: ${fitResponse.status}`);
+            totalSkipped++;
+            continue;
+          }
 
-        if (insertError) {
-          console.error(`Failed to insert activity ${activity.activityId}:`, insertError);
-        } else {
-          totalSynced++;
+          const fitBuffer = await fitResponse.arrayBuffer();
+          const fitBlob = new Blob([fitBuffer]);
+          
+          // Save FIT file to Supabase storage
+          const fileName = `${job.user_id}/${summaryId}_${Date.now()}.fit`;
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from('activity-files')
+            .upload(fileName, fitBlob, {
+              contentType: 'application/fit',
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error(`Failed to upload FIT file for ${summaryId}:`, uploadError);
+            totalSkipped++;
+            continue;
+          }
+
+          // Insert basic activity record (FIT parsing will happen later via existing upload flow)
+          const activityData = {
+            user_id: job.user_id,
+            garmin_activity_id: summaryId.toString(),
+            external_sync_source: 'garmin',
+            name: summary.activityName || 'Garmin Activity',
+            date: summary.startTimeInSeconds ? new Date(summary.startTimeInSeconds * 1000).toISOString() : new Date().toISOString(),
+            duration_seconds: summary.durationInSeconds || 0,
+            distance_meters: summary.distanceInMeters || null,
+            elevation_gain_meters: summary.elevationGainInMeters || null,
+            avg_heart_rate: summary.averageHeartRateInBeatsPerMinute || null,
+            max_heart_rate: summary.maxHeartRateInBeatsPerMinute || null,
+            calories: summary.activeKilocalories || null,
+            sport_mode: sportMode,
+            activity_type: 'normal',
+            file_type: 'fit',
+            file_path: fileName,
+          };
+
+          const { error: insertError } = await supabaseAdmin
+            .from('activities')
+            .insert(activityData);
+
+          if (insertError) {
+            console.error(`Failed to insert activity ${summaryId}:`, insertError);
+          } else {
+            console.log(`✓ Successfully synced activity ${summaryId}`);
+            totalSynced++;
+          }
+
+          // Throttle between FIT downloads
+          await new Promise(resolve => setTimeout(resolve, THROTTLE_MS));
+        } catch (error) {
+          console.error(`Error processing activity ${summaryId}:`, error);
+          totalSkipped++;
         }
       }
 
@@ -379,23 +389,29 @@ function mapGarminSportType(garminType: string | undefined): string | null {
   if (!garminType) return null;
   
   const typeMap: Record<string, string> = {
-    'cycling': 'cycling',
-    'road_biking': 'cycling',
-    'mountain_biking': 'cycling',
-    'gravel_cycling': 'cycling',
-    'indoor_cycling': 'cycling',
-    'virtual_ride': 'cycling',
-    'running': 'running',
-    'street_running': 'running',
-    'trail_running': 'running',
-    'treadmill_running': 'running',
-    'track_running': 'running',
-    'virtual_run': 'running',
-    'swimming': 'swimming',
-    'open_water_swimming': 'swimming',
-    'lap_swimming': 'swimming',
-    'pool_swimming': 'swimming',
+    // Cycling variants
+    'CYCLING': 'cycling',
+    'ROAD_BIKING': 'cycling',
+    'MOUNTAIN_BIKING': 'cycling',
+    'GRAVEL_CYCLING': 'cycling',
+    'INDOOR_CYCLING': 'cycling',
+    'VIRTUAL_RIDE': 'cycling',
+    'BIKE': 'cycling',
+    // Running variants
+    'RUNNING': 'running',
+    'STREET_RUNNING': 'running',
+    'TRAIL_RUNNING': 'running',
+    'TREADMILL_RUNNING': 'running',
+    'TRACK_RUNNING': 'running',
+    'VIRTUAL_RUN': 'running',
+    'RUN': 'running',
+    // Swimming variants
+    'SWIMMING': 'swimming',
+    'OPEN_WATER_SWIMMING': 'swimming',
+    'LAP_SWIMMING': 'swimming',
+    'POOL_SWIMMING': 'swimming',
+    'SWIM': 'swimming',
   };
   
-  return typeMap[garminType.toLowerCase()] || null;
+  return typeMap[garminType.toUpperCase()] || null;
 }
