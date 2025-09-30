@@ -98,18 +98,18 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching activities for ${currentDate.toISOString().split('T')[0]}`);
 
-      // Use the correct Garmin API endpoint format
+      // Use the correct Garmin Activity API format with token parameter
       const activitiesUrl = `${GARMIN_API_BASE}/activities`;
       const params = new URLSearchParams({
         uploadStartTimeInSeconds: dayStart.toString(),
-        uploadEndTimeInSeconds: dayEnd.toString()
+        uploadEndTimeInSeconds: dayEnd.toString(),
+        token: tokenData.access_token // Garmin Activity API uses token parameter, not Bearer
       });
 
-      console.log(`Request URL: ${activitiesUrl}?${params.toString()}`);
+      console.log(`Request URL: ${activitiesUrl}?${params.toString().replace(/token=[^&]+/, 'token=***')}`);
 
       const response = await fetch(`${activitiesUrl}?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`,
           'Accept': 'application/json'
         },
       });
