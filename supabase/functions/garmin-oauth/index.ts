@@ -76,25 +76,39 @@ serve(async (req) => {
       case 'authorize':
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
-        // Call garmin-backfill function to fetch historical activities
-        const backfillUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-backfill`;
-        const backfillResponse = await fetch(backfillUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': req.headers.get('Authorization')!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ daysBack: 90 })
-        });
-        
-        const backfillData = await backfillResponse.json();
-        
+        // Create a background job to fetch historical activities
+        const { data: tokenData } = await supabaseClient
+          .from('garmin_tokens')
+          .select('garmin_user_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!tokenData?.garmin_user_id) {
+          throw new Error('Garmin account not properly connected');
+        }
+
+        // Create backfill job for last 2 years
+        const now = new Date();
+        const twoYearsAgo = new Date();
+        twoYearsAgo.setFullYear(now.getFullYear() - 2);
+
+        const { error: jobError } = await supabaseClient
+          .from('garmin_backfill_jobs')
+          .insert({
+            user_id: user.id,
+            garmin_user_id: tokenData.garmin_user_id,
+            start_date: twoYearsAgo.toISOString(),
+            end_date: now.toISOString(),
+            status: 'pending'
+          });
+
+        if (jobError) {
+          throw new Error('Failed to create sync job');
+        }
+
         return new Response(JSON.stringify({ 
-          success: backfillData.success || false,
-          synced: backfillData.synced || 0,
-          skipped: backfillData.skipped || 0,
-          errors: backfillData.errors || 0,
-          error: backfillData.error
+          success: true,
+          message: 'Sync job created. Your activities will be synced in the background.'
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

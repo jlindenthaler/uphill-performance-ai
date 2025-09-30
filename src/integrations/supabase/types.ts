@@ -263,6 +263,51 @@ export type Database = {
         }
         Relationships: []
       }
+      garmin_backfill_jobs: {
+        Row: {
+          activities_skipped: number | null
+          activities_synced: number | null
+          created_at: string
+          end_date: string
+          garmin_user_id: string
+          id: string
+          last_error: string | null
+          progress_date: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activities_skipped?: number | null
+          activities_synced?: number | null
+          created_at?: string
+          end_date: string
+          garmin_user_id: string
+          id?: string
+          last_error?: string | null
+          progress_date?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activities_skipped?: number | null
+          activities_synced?: number | null
+          created_at?: string
+          end_date?: string
+          garmin_user_id?: string
+          id?: string
+          last_error?: string | null
+          progress_date?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       garmin_tokens: {
         Row: {
           access_token: string

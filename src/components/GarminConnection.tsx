@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { useGarmin } from "@/hooks/useGarmin";
+import { useGarminJobs } from "@/hooks/useGarminJobs";
 import { useToast } from "@/hooks/use-toast";
-import { Link, Unlink, Activity, Calendar, MapPin } from "lucide-react";
+import { Link, Unlink, Activity, Calendar, MapPin, Loader2 } from "lucide-react";
 
 export function GarminConnection() {
   const { 
@@ -15,6 +17,7 @@ export function GarminConnection() {
     disconnectGarmin,
     checkGarminConnection
   } = useGarmin();
+  const { activeJob, latestCompletedJob, calculateProgress, loading: jobsLoading } = useGarminJobs();
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
 
@@ -116,11 +119,38 @@ export function GarminConnection() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Active Job Status */}
+            {activeJob && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <h5 className="font-medium">Syncing History</h5>
+                  <Badge variant="secondary" className="ml-auto">
+                    {activeJob.status === 'pending' ? 'Queued' : 'In Progress'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  We're syncing your full training history in the background. This may take a few minutes.
+                </p>
+                {activeJob.status === 'running' && (
+                  <>
+                    <Progress value={calculateProgress(activeJob)} className="mb-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{activeJob.activities_synced} activities synced</span>
+                      <span>{Math.round(calculateProgress(activeJob))}% complete</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-muted/20">
-                <h5 className="font-medium mb-1">Last Sync</h5>
+                <h5 className="font-medium mb-1">Total Synced</h5>
                 <p className="text-sm text-muted-foreground">
-                  Recently synced activities
+                  {latestCompletedJob ? 
+                    `${latestCompletedJob.activities_synced} activities` : 
+                    'No sync history yet'}
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/20">
@@ -134,12 +164,12 @@ export function GarminConnection() {
             <div className="flex gap-3">
               <Button 
                 onClick={handleSync} 
-                disabled={syncing}
+                disabled={syncing || !!activeJob}
                 variant="outline"
                 className="flex-1"
               >
                 <Activity className="w-4 h-4 mr-2" />
-                {syncing ? 'Syncing...' : 'Sync Now'}
+                {activeJob ? 'Sync in Progress' : syncing ? 'Starting Sync...' : 'Sync History'}
               </Button>
               <Button 
                 onClick={handleDisconnect} 
