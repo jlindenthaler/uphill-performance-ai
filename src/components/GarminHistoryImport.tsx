@@ -119,24 +119,8 @@ export function GarminHistoryImport() {
     <Card>
       <CardHeader>
         <CardTitle>Garmin Historical Data Import</CardTitle>
-        <CardDescription>
-          Import your historical activities using Garmin Health API
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription className="space-y-2">
-            <p className="font-semibold">Requirements:</p>
-            <ul className="list-disc list-inside space-y-1 mt-2">
-              <li>Your Garmin connection must include the 'activity' OAuth scope</li>
-              <li>Import works 1 day at a time (Garmin Health API limitation)</li>
-              <li>FIT files will be downloaded and stored for detailed analysis</li>
-              <li>Large date ranges may take significant time to process</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
-
         {activeJob && (
           <Alert>
             <Info className="h-4 w-4" />
