@@ -16,11 +16,27 @@ export function StravaConnection() {
         body: {}
       });
       
+      console.log('Strava sync response:', { data, error });
+      
       if (error) throw error;
+      
+      // Handle both direct object and stringified response
+      if (!data) {
+        throw new Error('No data returned from Strava sync');
+      }
+      
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Successfully synced ${data.activitiesSynced} activities from Strava!`);
+      console.log('Strava sync success data:', data);
+      const count = data?.activitiesSynced ?? 0;
+      const skipped = data?.activitiesSkipped ?? 0;
+      
+      if (count === 0 && skipped === 0) {
+        toast.info('No new activities to sync from Strava');
+      } else {
+        toast.success(`Successfully synced ${count} activities from Strava${skipped > 0 ? ` (${skipped} skipped)` : ''}!`);
+      }
     },
     onError: (error: any) => {
       console.error('Sync error:', error);
