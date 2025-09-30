@@ -98,10 +98,16 @@ export function useGarmin() {
       }
 
       if (data?.success) {
+        const synced = data.synced || 0;
+        const skipped = data.skipped || 0;
+        const errors = data.errors || 0;
+        
         toast({
           title: "Sync Complete",
-          description: `Successfully synced ${data.synced || 0} activities from Garmin Connect.`
+          description: `Synced ${synced} new activities, ${skipped} already existed${errors > 0 ? `, ${errors} errors` : ''}.`
         });
+      } else if (data?.error) {
+        throw new Error(data.error);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';

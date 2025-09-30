@@ -76,13 +76,25 @@ serve(async (req) => {
       case 'authorize':
         return await handleAuthorize(user.id, supabaseClient);
       case 'sync':
-        // Garmin sync works via webhook push notifications
-        // Historical data backfill requires using Garmin Health API's backfill endpoint
+        // Call garmin-backfill function to fetch historical activities
+        const backfillUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-backfill`;
+        const backfillResponse = await fetch(backfillUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': req.headers.get('Authorization')!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ daysBack: 90 })
+        });
+        
+        const backfillData = await backfillResponse.json();
+        
         return new Response(JSON.stringify({ 
-          success: true,
-          message: 'Garmin activities sync automatically via webhooks. Historical data will sync as Garmin pushes updates.',
-          webhookUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/garmin-webhook`,
-          note: 'After initial connection, Garmin may take 24-48 hours to backfill historical activities automatically.'
+          success: backfillData.success || false,
+          synced: backfillData.synced || 0,
+          skipped: backfillData.skipped || 0,
+          errors: backfillData.errors || 0,
+          error: backfillData.error
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -134,7 +146,7 @@ async function handleAuthorize(userId: string, supabaseClient: any) {
     throw new Error('Failed to initiate OAuth');
   }
 
-  // Build authorization URL
+  // Build authorization URL with activity read scope
   const authUrl = new URL(GARMIN_AUTH_URL);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', clientId);
@@ -142,6 +154,7 @@ async function handleAuthorize(userId: string, supabaseClient: any) {
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', userId); // Simple state = userId
+  authUrl.searchParams.set('scope', 'ACTIVITY_READ'); // Required for activity backfill
 
   console.log('Authorization URL generated:', authUrl.toString());
 
