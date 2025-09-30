@@ -46,10 +46,10 @@ export function GarminHistoryImport() {
         .from('garmin_backfill_jobs')
         .insert({
           user_id: user.id,
-          garmin_user_id: garminToken.garmin_user_id,
+          garmin_user_id: String(garminToken.garmin_user_id),
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
-          status: 'pending',
+          status: 'pending' as const,
           user_selected: true
         })
         .select()

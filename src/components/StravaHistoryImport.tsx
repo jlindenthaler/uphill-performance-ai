@@ -46,10 +46,10 @@ export function StravaHistoryImport() {
         .from('strava_backfill_jobs')
         .insert({
           user_id: user.id,
-          strava_athlete_id: stravaToken.athlete_id,
+          strava_athlete_id: String(stravaToken.athlete_id),
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
-          status: 'pending',
+          status: 'pending' as const,
           user_selected: true
         })
         .select()
