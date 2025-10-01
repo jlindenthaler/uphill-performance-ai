@@ -14,7 +14,7 @@ interface EnhancedMapViewProps {
   activity?: any;
 }
 
-export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }: EnhancedMapViewProps) {
+export function EnhancedMapView({ gpsData, className = "w-full h-[340px]", activity }: EnhancedMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
