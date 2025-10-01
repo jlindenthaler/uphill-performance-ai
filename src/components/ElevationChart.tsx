@@ -227,7 +227,10 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
                 }}
                 labelFormatter={(label, payload) => {
                   if (payload && payload[0]?.payload?.gradient !== undefined) {
-                    return `Distance: ${label} | Gradient: ${payload[0].payload.gradient}%`;
+                    return [
+                      `Distance: ${label}`,
+                      `Gradient: ${payload[0].payload.gradient}%`
+                    ];
                   }
                   return `Distance: ${label}`;
                 }}
