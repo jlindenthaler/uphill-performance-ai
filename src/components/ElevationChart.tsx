@@ -67,16 +67,24 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerr
         };
       }).filter(point => point.elevation > 0);
 
-      // Calculate smoothed gradient over segments (reduces noise)
-      const segmentLength = 5; // Average over 5 points
+      // Calculate gradient over fixed distance (~100m) for accuracy
       return points.map((point, index) => {
         let gradient = 0;
-        if (index >= segmentLength) {
-          const startPoint = points[index - segmentLength];
-          const elevationDiff = point.elevation - startPoint.elevation;
-          const distanceDiff = point.distanceMeters - startPoint.distanceMeters;
-          if (distanceDiff > 0) {
-            gradient = (elevationDiff / distanceDiff) * 100;
+        if (index > 0) {
+          // Look backwards to find point approximately 100m ago
+          const targetDistance = 100; // meters
+          let lookbackIdx = index - 1;
+          let distanceBack = point.distanceMeters - points[lookbackIdx].distanceMeters;
+          
+          // Find the point closest to 100m back
+          while (lookbackIdx > 0 && distanceBack < targetDistance) {
+            lookbackIdx--;
+            distanceBack = point.distanceMeters - points[lookbackIdx].distanceMeters;
+          }
+          
+          const elevationDiff = point.elevation - points[lookbackIdx].elevation;
+          if (distanceBack > 0) {
+            gradient = (elevationDiff / distanceBack) * 100;
           }
         }
         return {
