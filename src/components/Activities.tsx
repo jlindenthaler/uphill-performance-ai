@@ -111,6 +111,14 @@ export function Activities() {
       if (!detailedActivities.has(activityId)) {
         await fetchActivityDetails(activityId);
       }
+      
+      // Scroll to top of the expanded activity after a brief delay
+      setTimeout(() => {
+        const activityElement = document.getElementById(`activity-${activityId}`);
+        if (activityElement) {
+          activityElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     }
   };
 
@@ -550,7 +558,7 @@ export function Activities() {
               open={expandedActivity === activity.id}
               onOpenChange={() => handleActivityToggle(activity.id)}
             >
-              <Card className="overflow-hidden">
+              <Card id={`activity-${activity.id}`} className="overflow-hidden">
                 <CollapsibleTrigger asChild>
                   <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-start gap-4">

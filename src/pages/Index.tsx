@@ -75,6 +75,19 @@ const Index = () => {
     if (isMobile) {
       setSidebarOpen(false);
     }
+    
+    // Scroll to top when changing sections
+    setTimeout(() => {
+      const mainContent = document.querySelector('.overflow-auto') || 
+                         document.querySelector('main') ||
+                         window;
+      
+      if (mainContent === window) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      } else if (mainContent instanceof HTMLElement) {
+        mainContent.scrollTop = 0;
+      }
+    }, 0);
   };
 
   // Remove the problematic tab switching - let the Activities component handle its own refresh

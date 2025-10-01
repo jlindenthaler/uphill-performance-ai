@@ -38,16 +38,44 @@ TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className,
-    )}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    // Scroll to top when tab becomes active
+    const element = contentRef.current;
+    if (element && element.getAttribute('data-state') === 'active') {
+      const scrollableParent = element.closest('[data-radix-scroll-area-viewport]') || 
+                               element.closest('.overflow-auto') ||
+                               element.closest('.overflow-y-auto') ||
+                               window;
+      
+      if (scrollableParent === window) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      } else if (scrollableParent instanceof HTMLElement) {
+        scrollableParent.scrollTop = 0;
+      }
+    }
+  });
+
+  return (
+    <TabsPrimitive.Content
+      ref={(node) => {
+        contentRef.current = node;
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      }}
+      className={cn(
+        "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
