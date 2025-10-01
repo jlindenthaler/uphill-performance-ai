@@ -23,6 +23,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [enrichedGpsData, setEnrichedGpsData] = useState<any>(null);
+  const [elevationProcessing, setElevationProcessing] = useState(false);
   const routeMarkers = useRef<mapboxgl.Marker[]>([]);
   const { toast } = useToast();
 
@@ -115,23 +116,52 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             // Enable terrain for 3D elevation data
             map.current.setTerrain({ source: 'mapbox-dem', exaggeration: 1 });
             
-            // Query terrain elevation for all coordinates after terrain loads
-            setTimeout(() => {
+            // Query terrain elevation with proper event handling
+            const enrichTerrainData = () => {
               if (!map.current) return;
               
-              const enrichedCoords = coordinates.map((coord, idx) => {
-                const elevation = map.current?.queryTerrainElevation(coord as [number, number], { exaggerated: false }) || 0;
-                return {
-                  longitude: coord[0],
-                  latitude: coord[1],
-                  elevation: elevation,
-                  index: idx
-                };
-              });
+              setElevationProcessing(true);
+              console.log('Starting terrain elevation enrichment...');
+              
+              try {
+                // Sample if too many points (for performance)
+                const maxPoints = 500;
+                const step = Math.ceil(coordinates.length / maxPoints);
+                
+                const enrichedCoords = coordinates.map((coord, idx) => {
+                  // Sample points for performance
+                  const elevation = (idx % step === 0 || idx === 0 || idx === coordinates.length - 1)
+                    ? map.current?.queryTerrainElevation(coord as [number, number], { exaggerated: false }) || 0
+                    : 0;
+                  
+                  return {
+                    longitude: coord[0],
+                    latitude: coord[1],
+                    elevation: elevation,
+                    altitude: elevation,
+                    index: idx
+                  };
+                });
 
-              setEnrichedGpsData({ trackPoints: enrichedCoords });
-              console.log('Enriched GPS data with Mapbox terrain:', enrichedCoords.slice(0, 5));
-            }, 1500); // Wait for terrain to load
+                setEnrichedGpsData({ trackPoints: enrichedCoords });
+                console.log('Successfully enriched GPS data with Mapbox terrain:', enrichedCoords.slice(0, 5));
+                setElevationProcessing(false);
+              } catch (err) {
+                console.error('Error enriching terrain data:', err);
+                setElevationProcessing(false);
+              }
+            };
+            
+            // Wait for terrain source to be fully loaded
+            if (map.current.isSourceLoaded('mapbox-dem')) {
+              setTimeout(enrichTerrainData, 1000);
+            } else {
+              map.current.on('sourcedata', (e) => {
+                if (e.sourceId === 'mapbox-dem' && e.isSourceLoaded) {
+                  setTimeout(enrichTerrainData, 1000);
+                }
+              });
+            }
 
             // Add the route source
             map.current.addSource('route', {
@@ -315,6 +345,9 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
         <div className="text-center space-y-2">
           <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
           <p className="text-muted-foreground">Loading map...</p>
+          {elevationProcessing && (
+            <p className="text-sm text-muted-foreground">Processing terrain elevation...</p>
+          )}
         </div>
       </div>
     );
@@ -358,6 +391,12 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
     <div className="space-y-4">
       <div className={`${className} rounded-lg overflow-hidden border relative`}>
         <div ref={mapContainer} className="w-full h-full" />
+        {elevationProcessing && (
+          <div className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg border shadow-lg flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Processing elevation data...</p>
+          </div>
+        )}
       </div>
       
       {/* Elevation Chart */}
