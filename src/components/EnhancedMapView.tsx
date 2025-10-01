@@ -116,49 +116,104 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             // Enable terrain for 3D elevation data
             map.current.setTerrain({ source: 'mapbox-dem', exaggeration: 1 });
             
-            // Query terrain elevation with proper event handling
-            const enrichTerrainData = () => {
+            // Query terrain elevation for ALL points with proper event handling
+            const enrichTerrainData = async () => {
               if (!map.current) return;
               
               setElevationProcessing(true);
-              console.log('Starting terrain elevation enrichment...');
+              console.log(`Starting terrain elevation enrichment for ${coordinates.length} points...`);
               
               try {
-                // Sample if too many points (for performance)
-                const maxPoints = 500;
-                const step = Math.ceil(coordinates.length / maxPoints);
-                
+                // Wait for map to be fully idle (all terrain tiles loaded)
+                await new Promise<void>((resolve) => {
+                  const checkIdle = () => {
+                    if (map.current?.isStyleLoaded() && !map.current?.isMoving()) {
+                      map.current?.off('idle', checkIdle);
+                      resolve();
+                    }
+                  };
+                  map.current?.on('idle', checkIdle);
+                  // Fallback timeout
+                  setTimeout(() => {
+                    map.current?.off('idle', checkIdle);
+                    resolve();
+                  }, 3000);
+                });
+
+                console.log('Terrain fully loaded, querying elevation for ALL points...');
+
+                // Process ALL coordinates (no sampling)
+                let validCount = 0;
+                let failedCount = 0;
+
                 const enrichedCoords = coordinates.map((coord, idx) => {
-                  // Sample points for performance
-                  const elevation = (idx % step === 0 || idx === 0 || idx === coordinates.length - 1)
-                    ? map.current?.queryTerrainElevation(coord as [number, number], { exaggerated: false }) || 0
-                    : 0;
+                  const elevation = map.current?.queryTerrainElevation(
+                    coord as [number, number], 
+                    { exaggerated: false }
+                  );
+                  
+                  // Validate elevation - must be a valid number
+                  const isValid = typeof elevation === 'number' && 
+                                 !isNaN(elevation) && 
+                                 elevation !== null && 
+                                 elevation !== undefined;
+                  
+                  if (isValid) {
+                    validCount++;
+                  } else {
+                    failedCount++;
+                  }
+
+                  // Log progress every 100 points
+                  if (idx % 100 === 0) {
+                    console.log(`Progress: ${idx}/${coordinates.length} (${validCount} valid, ${failedCount} failed)`);
+                  }
                   
                   return {
                     longitude: coord[0],
                     latitude: coord[1],
-                    elevation: elevation,
-                    altitude: elevation,
+                    elevation: isValid ? elevation : 0,
+                    altitude: isValid ? elevation : 0,
                     index: idx
                   };
                 });
 
+                // Calculate statistics
+                const validElevations = enrichedCoords
+                  .map(p => p.elevation)
+                  .filter(e => e > 0);
+
+                console.log('✅ Terrain enrichment complete:', {
+                  total: coordinates.length,
+                  valid: validCount,
+                  failed: failedCount,
+                  successRate: `${Math.round(validCount / coordinates.length * 100)}%`,
+                  elevationRange: validElevations.length > 0 ? {
+                    min: Math.min(...validElevations).toFixed(1) + 'm',
+                    max: Math.max(...validElevations).toFixed(1) + 'm',
+                    avg: (validElevations.reduce((a, b) => a + b, 0) / validElevations.length).toFixed(1) + 'm'
+                  } : 'No valid elevations'
+                });
+
+                if (validCount < coordinates.length * 0.3) {
+                  console.warn(`⚠️ Warning: Only ${Math.round(validCount / coordinates.length * 100)}% of points have valid elevation`);
+                }
+
                 setEnrichedGpsData({ trackPoints: enrichedCoords });
-                console.log('Successfully enriched GPS data with Mapbox terrain:', enrichedCoords.slice(0, 5));
                 setElevationProcessing(false);
               } catch (err) {
-                console.error('Error enriching terrain data:', err);
+                console.error('❌ Error enriching terrain data:', err);
                 setElevationProcessing(false);
               }
             };
             
-            // Wait for terrain source to be fully loaded
+            // Wait for terrain source to be fully loaded before querying
             if (map.current.isSourceLoaded('mapbox-dem')) {
-              setTimeout(enrichTerrainData, 1000);
+              enrichTerrainData();
             } else {
               map.current.on('sourcedata', (e) => {
                 if (e.sourceId === 'mapbox-dem' && e.isSourceLoaded) {
-                  setTimeout(enrichTerrainData, 1000);
+                  enrichTerrainData();
                 }
               });
             }
