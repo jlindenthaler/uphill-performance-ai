@@ -47,6 +47,8 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentWeekRef = useRef<HTMLDivElement>(null);
+  const manualSelectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isManualSelectionRef = useRef(false);
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts(false); // Show all sports
   const { activities, deleteActivity } = useActivities(false); // Show all sports
@@ -147,8 +149,22 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     const selectedMonth = monthOptions.find(option => option.value === monthValue);
     if (selectedMonth) {
       const firstWeekOfMonth = startOfWeek(startOfMonth(selectedMonth.date), { weekStartsOn: 1 });
+      
+      // Set manual selection flag to prevent scroll updates
+      isManualSelectionRef.current = true;
+      
       setCurrentWeek(firstWeekOfMonth);
       scrollToWeek(firstWeekOfMonth);
+      
+      // Clear any existing timeout
+      if (manualSelectionTimeoutRef.current) {
+        clearTimeout(manualSelectionTimeoutRef.current);
+      }
+      
+      // Re-enable scroll updates after 2 seconds
+      manualSelectionTimeoutRef.current = setTimeout(() => {
+        isManualSelectionRef.current = false;
+      }, 2000);
     }
   };
 
@@ -159,31 +175,48 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
   // Infinite scroll handlers
   const loadMoreWeeks = useCallback((direction: 'before' | 'after') => {
-    setWeeks(prevWeeks => {
-      if (direction === 'before') {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (direction === 'before') {
+      // Save current scroll position and height before adding weeks
+      const oldScrollHeight = container.scrollHeight;
+      const oldScrollTop = container.scrollTop;
+      
+      setWeeks(prevWeeks => {
         const newWeek = subWeeks(prevWeeks[0], 1);
         return [newWeek, ...prevWeeks];
-      } else {
+      });
+      
+      // Restore scroll position after new weeks are added
+      requestAnimationFrame(() => {
+        const newScrollHeight = container.scrollHeight;
+        const heightDiff = newScrollHeight - oldScrollHeight;
+        container.scrollTop = oldScrollTop + heightDiff;
+      });
+    } else {
+      setWeeks(prevWeeks => {
         const newWeek = addWeeks(prevWeeks[prevWeeks.length - 1], 1);
         return [...prevWeeks, newWeek];
-      }
-    });
+      });
+    }
   }, []);
 
   // Update current week based on viewport - only after initial load
   const updateCurrentWeekFromScroll = useCallback(() => {
-    if (!scrollContainerRef.current || weeks.length === 0 || isInitialLoad) return;
+    // Don't update if initial load or manual selection is active
+    if (!scrollContainerRef.current || weeks.length === 0 || isInitialLoad || isManualSelectionRef.current) return;
 
     const { scrollTop, clientHeight } = scrollContainerRef.current;
     
-    // Calculate which week is at the top of the viewport (not center)
+    // Calculate which week is at the top of the viewport with slight offset
     const weekHeight = 180;
-    const topWeekIndex = Math.floor(scrollTop / weekHeight);
+    const topWeekIndex = Math.floor((scrollTop + 100) / weekHeight);
     
     if (topWeekIndex >= 0 && topWeekIndex < weeks.length) {
       const visibleWeek = weeks[topWeekIndex];
       
-      // Only update if we've moved to a different month AND scrolling has settled
+      // Only update if we've moved to a different month
       const currentMonth = format(currentWeek, 'yyyy-MM');
       const visibleMonth = format(visibleWeek, 'yyyy-MM');
       
@@ -193,14 +226,14 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     }
   }, [weeks, currentWeek, isInitialLoad]);
 
-  // Debounced version with longer delay to prevent rapid updates
+  // Debounced version to prevent rapid updates
   const debouncedUpdateCurrentWeek = useRef<NodeJS.Timeout | null>(null);
   
   const scheduleCurrentWeekUpdate = useCallback(() => {
     if (debouncedUpdateCurrentWeek.current) {
       clearTimeout(debouncedUpdateCurrentWeek.current);
     }
-    debouncedUpdateCurrentWeek.current = setTimeout(updateCurrentWeekFromScroll, 500);
+    debouncedUpdateCurrentWeek.current = setTimeout(updateCurrentWeekFromScroll, 300);
   }, [updateCurrentWeekFromScroll]);
 
   const handleScroll = useCallback(() => {
@@ -208,17 +241,17 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     
-    // Load more weeks at the top
-    if (scrollTop < 100) {
+    // More aggressive threshold for loading previous weeks
+    if (scrollTop < 400) {
       loadMoreWeeks('before');
     }
     
     // Load more weeks at the bottom
-    if (scrollTop + clientHeight > scrollHeight - 100) {
+    if (scrollTop + clientHeight > scrollHeight - 400) {
       loadMoreWeeks('after');
     }
 
-    // Update current week based on viewport (debounced with longer delay)
+    // Update current week based on viewport (debounced)
     scheduleCurrentWeekUpdate();
   }, [loadMoreWeeks, scheduleCurrentWeekUpdate]);
 
@@ -519,8 +552,12 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         <CardContent className="p-0">
           <div 
             ref={scrollContainerRef}
-            className="max-h-[800px] overflow-y-auto"
-            style={{ scrollBehavior: 'smooth' }}
+            className="max-h-[800px] overflow-y-scroll scrollbar-hide"
+            style={{ 
+              scrollBehavior: 'smooth',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            } as React.CSSProperties}
           >
             {weeks.map((weekStart) => {
               const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
