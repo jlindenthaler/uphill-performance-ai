@@ -242,24 +242,38 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerr
                 axisLine={false}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)',
-                  color: 'hsl(var(--popover-foreground))',
-                }}
-                formatter={(value: number, name: string) => {
-                  if (name === 'elevation') return [`${value}m`, 'Elevation'];
-                  return [value, name];
-                }}
-                labelFormatter={(label, payload) => {
-                  if (payload && payload[0]?.payload?.gradient !== undefined) {
-                    return [
-                      `Distance: ${label}`,
-                      `Gradient: ${payload[0].payload.gradient}%`
-                    ];
-                  }
-                  return `Distance: ${label}`;
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload[0]) return null;
+                  
+                  const data = payload[0].payload;
+                  const gradient = data.gradient !== undefined ? data.gradient : null;
+                  const elevation = data.elevation;
+                  const distance = data.formattedDistance;
+                  
+                  return (
+                    <div 
+                      style={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        color: 'hsl(var(--popover-foreground))',
+                      }}
+                    >
+                      {gradient !== null && (
+                        <div style={{ marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 500 }}>Grade:</span> {gradient}%
+                        </div>
+                      )}
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 500 }}>Elev:</span> {elevation}m
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 500 }}>Dist:</span> {distance}
+                      </div>
+                    </div>
+                  );
                 }}
               />
               
