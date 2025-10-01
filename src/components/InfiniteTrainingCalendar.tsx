@@ -522,9 +522,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      {/* Header - Fixed */}
+      <div className="flex justify-between items-center mb-6 flex-shrink-0">
         <div>
           <h1 className="text-3xl font-bold">Training Calendar</h1>
           <p className="text-muted-foreground">Plan and track your training activities</p>
@@ -548,16 +548,14 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* Infinite Scrolling Calendar */}
-      <Card>
-        <CardContent className="p-0">
+      {/* Infinite Scrolling Calendar - Takes remaining space */}
+      <Card className="flex-1 overflow-hidden">
+        <CardContent className="p-0 h-full">
           <div 
             ref={scrollContainerRef}
-            className="max-h-[800px] overflow-y-scroll scrollbar-hide"
+            className="h-full overflow-y-auto"
             style={{ 
               scrollBehavior: 'smooth',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
             } as React.CSSProperties}
           >
             {weeks.map((weekStart) => {
