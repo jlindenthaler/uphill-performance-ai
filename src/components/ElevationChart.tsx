@@ -18,7 +18,7 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
     if (gpsData?.trackPoints && Array.isArray(gpsData.trackPoints)) {
       let cumulativeDistance = 0;
       
-      return gpsData.trackPoints.map((point: any, index: number) => {
+      const points = gpsData.trackPoints.map((point: any, index: number) => {
         // Calculate cumulative distance
         if (index > 0) {
           const prevPoint = gpsData.trackPoints[index - 1];
@@ -42,12 +42,30 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
         const elevation = point.altitude || point.elevation || 0;
         return {
           index,
-          distance: cumulativeDistance / 1000, // Convert to km as number
+          distance: cumulativeDistance / 1000,
           elevation: Math.round(elevation),
           distanceKm: cumulativeDistance / 1000,
+          distanceMeters: cumulativeDistance,
           formattedDistance: `${(cumulativeDistance / 1000).toFixed(1)} km`
         };
       }).filter(point => point.elevation > 0);
+
+      // Calculate gradient % for each point
+      return points.map((point, index) => {
+        let gradient = 0;
+        if (index > 0) {
+          const prevPoint = points[index - 1];
+          const elevationDiff = point.elevation - prevPoint.elevation;
+          const distanceDiff = point.distanceMeters - prevPoint.distanceMeters;
+          if (distanceDiff > 0) {
+            gradient = (elevationDiff / distanceDiff) * 100;
+          }
+        }
+        return {
+          ...point,
+          gradient: Math.round(gradient * 10) / 10 // Round to 1 decimal
+        };
+      });
     }
     
     // Fallback to coordinates format for backward compatibility
@@ -203,8 +221,16 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
                   borderRadius: 'var(--radius)',
                   color: 'hsl(var(--popover-foreground))',
                 }}
-                formatter={(value: number) => [`${value}m`, 'Elevation']}
-                labelFormatter={(label) => `Distance: ${label}`}
+                formatter={(value: number, name: string) => {
+                  if (name === 'elevation') return [`${value}m`, 'Elevation'];
+                  return [value, name];
+                }}
+                labelFormatter={(label, payload) => {
+                  if (payload && payload[0]?.payload?.gradient !== undefined) {
+                    return `Distance: ${label} | Gradient: ${payload[0].payload.gradient}%`;
+                  }
+                  return `Distance: ${label}`;
+                }}
               />
               
                {/* Floating indicator line */}
