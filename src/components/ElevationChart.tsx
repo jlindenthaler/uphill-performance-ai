@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Mountain } from 'lucide-react';
 
@@ -180,19 +179,42 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerr
     onHover?.(null);
   };
 
+  // Custom Tooltip component
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-background border border-border rounded-lg shadow-lg p-3">
+          <div className="space-y-1 text-sm">
+            {data.gradient !== undefined && (
+              <p className="text-foreground">
+                <span className="font-medium">Grade:</span> {data.gradient}%
+              </p>
+            )}
+            <p className="text-foreground">
+              <span className="font-medium">Elev:</span> {data.elevation}m
+            </p>
+            <p className="text-foreground">
+              <span className="font-medium">Dist:</span> {data.formattedDistance}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (chartData.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mountain className="w-5 h-5" />
-            Elevation Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
+      <div className="w-full border rounded-lg bg-card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Mountain className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Elevation Profile</span>
+        </div>
+        <div className="text-center py-8">
           <p className="text-muted-foreground">No elevation data available</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -205,101 +227,70 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerr
   }, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mountain className="w-5 h-5" />
-          Elevation Profile
-        </CardTitle>
-        <div className="flex gap-4 text-sm text-muted-foreground">
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <Mountain className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Elevation Profile</span>
+        </div>
+        <div className="flex gap-4 text-xs text-muted-foreground">
           <span>Min: {minElevation}m</span>
           <span>Max: {maxElevation}m</span>
           <span>Gain: {Math.round(totalGain)}m</span>
-          {useTerrainData && <span className="text-xs opacity-70">(Mapbox Terrain)</span>}
+          {useTerrainData && <span className="opacity-70">(Mapbox Terrain)</span>}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart 
-              data={chartData}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="formattedDistance"
-                className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                ticks={getCustomDistanceTicks}
-                interval={0}
-              />
-              <YAxis 
-                domain={['dataMin - 10', 'dataMax + 10']}
-                className="text-xs"
-                tick={false}
-                axisLine={false}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload || !payload[0]) return null;
-                  
-                  const data = payload[0].payload;
-                  const gradient = data.gradient !== undefined ? data.gradient : null;
-                  const elevation = data.elevation;
-                  const distance = data.formattedDistance;
-                  
-                  return (
-                    <div 
-                      style={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        padding: '8px 12px',
-                        fontSize: '13px',
-                        color: 'hsl(var(--popover-foreground))',
-                      }}
-                    >
-                      {gradient !== null && (
-                        <div style={{ marginBottom: '4px' }}>
-                          <span style={{ fontWeight: 500 }}>Grade:</span> {gradient}%
-                        </div>
-                      )}
-                      <div style={{ marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 500 }}>Elev:</span> {elevation}m
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 500 }}>Dist:</span> {distance}
-                      </div>
-                    </div>
-                  );
-                }}
-              />
-              
-               {/* Floating indicator line */}
-               {(hoverIndex !== null || activeIndex !== null) && (
-                 <ReferenceLine 
-                   x={chartData[hoverIndex ?? activeIndex ?? 0]?.formattedDistance} 
-                   stroke="hsl(var(--primary))"
-                   strokeWidth={2}
-                   strokeDasharray="5 5"
-                 />
-               )}
+      </div>
+      <div className="h-32 border rounded-lg bg-card">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart 
+            data={chartData}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+            <XAxis 
+              dataKey="formattedDistance"
+              className="text-xs"
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+              ticks={getCustomDistanceTicks}
+              interval={0}
+            />
+            <YAxis 
+              domain={['dataMin - 10', 'dataMax + 10']}
+              className="text-xs"
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+              label={{ 
+                value: 'Elevation (m)', 
+                angle: -90, 
+                position: 'insideLeft',
+                style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
+              }}
+            />
+            <Tooltip content={<CustomTooltip />} />
 
-              <Line
-                type="monotone"
-                dataKey="elevation"
-                stroke="hsl(var(--zone-3))"
+            {/* Floating indicator line */}
+            {(hoverIndex !== null || activeIndex !== null) && (
+              <ReferenceLine 
+                x={chartData[hoverIndex ?? activeIndex ?? 0]?.formattedDistance} 
+                stroke="hsl(var(--primary))"
                 strokeWidth={2}
-                dot={false}
-                fill="hsl(var(--zone-3))"
-                fillOpacity={0.1}
+                strokeDasharray="5 5"
               />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+            )}
+
+            <Line
+              type="monotone"
+              dataKey="elevation"
+              stroke="hsl(var(--zone-3))"
+              strokeWidth={2}
+              dot={false}
+              fill="hsl(var(--zone-3))"
+              fillOpacity={0.1}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
