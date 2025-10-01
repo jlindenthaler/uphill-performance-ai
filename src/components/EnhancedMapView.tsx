@@ -22,6 +22,7 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
   const [error, setError] = useState<string | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [enrichedGpsData, setEnrichedGpsData] = useState<any>(null);
   const routeMarkers = useRef<mapboxgl.Marker[]>([]);
   const { toast } = useToast();
 
@@ -100,6 +101,37 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
             
             console.log('Map loaded, adding route source and layer');
             console.log('GeoJSON data:', geojson);
+
+            // Add DEM source for terrain elevation
+            if (!map.current.getSource('mapbox-dem')) {
+              map.current.addSource('mapbox-dem', {
+                type: 'raster-dem',
+                url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                tileSize: 512,
+                maxzoom: 14
+              });
+            }
+
+            // Enable terrain for 3D elevation data
+            map.current.setTerrain({ source: 'mapbox-dem', exaggeration: 1 });
+            
+            // Query terrain elevation for all coordinates after terrain loads
+            setTimeout(() => {
+              if (!map.current) return;
+              
+              const enrichedCoords = coordinates.map((coord, idx) => {
+                const elevation = map.current?.queryTerrainElevation(coord as [number, number], { exaggerated: false }) || 0;
+                return {
+                  longitude: coord[0],
+                  latitude: coord[1],
+                  elevation: elevation,
+                  index: idx
+                };
+              });
+
+              setEnrichedGpsData({ trackPoints: enrichedCoords });
+              console.log('Enriched GPS data with Mapbox terrain:', enrichedCoords.slice(0, 5));
+            }, 1500); // Wait for terrain to load
 
             // Add the route source
             map.current.addSource('route', {
@@ -330,10 +362,11 @@ export function EnhancedMapView({ gpsData, className = "w-full h-64", activity }
       
       {/* Elevation Chart */}
       <ElevationChart 
-        gpsData={gpsData} 
+        gpsData={enrichedGpsData || gpsData} 
         activity={activity}
         onHover={handleElevationHover}
         hoverIndex={hoverIndex}
+        useTerrainData={!!enrichedGpsData}
       />
     </div>
   );

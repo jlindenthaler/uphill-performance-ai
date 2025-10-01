@@ -8,10 +8,33 @@ interface ElevationChartProps {
   activity?: any;
   onHover?: (index: number | null) => void;
   hoverIndex?: number | null;
+  useTerrainData?: boolean;
 }
 
-export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: ElevationChartProps) {
+export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerrainData = false }: ElevationChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  // Calculate 3D distance including elevation change
+  const calculate3DDistance = (lat1: number, lon1: number, ele1: number, lat2: number, lon2: number, ele2: number) => {
+    // Haversine formula for horizontal distance
+    const R = 6371000; // Earth's radius in meters
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const deltaLat = (lat2 - lat1) * Math.PI / 180;
+    const deltaLon = (lon2 - lon1) * Math.PI / 180;
+    
+    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+             Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+             Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const horizontalDistance = R * c;
+    
+    // Calculate 3D distance including elevation
+    const elevationChange = ele2 - ele1;
+    const distance3D = Math.sqrt(horizontalDistance * horizontalDistance + elevationChange * elevationChange);
+    
+    return distance3D; // in meters
+  };
 
   const elevationData = useMemo(() => {
     // Check for trackPoints format first (actual GPS data from activities)
@@ -19,22 +42,16 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
       let cumulativeDistance = 0;
       
       const points = gpsData.trackPoints.map((point: any, index: number) => {
-        // Calculate cumulative distance
+        // Calculate cumulative distance with 3D calculation
         if (index > 0) {
           const prevPoint = gpsData.trackPoints[index - 1];
           if (point.latitude && point.longitude && prevPoint.latitude && prevPoint.longitude) {
-            // Haversine formula for distance calculation
-            const lat1 = prevPoint.latitude * Math.PI / 180;
-            const lat2 = point.latitude * Math.PI / 180;
-            const deltaLat = (point.latitude - prevPoint.latitude) * Math.PI / 180;
-            const deltaLon = (point.longitude - prevPoint.longitude) * Math.PI / 180;
-            
-            const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
-                     Math.cos(lat1) * Math.cos(lat2) *
-                     Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distance = 6371000 * c; // Earth's radius in meters
-            
+            const ele1 = prevPoint.altitude || prevPoint.elevation || 0;
+            const ele2 = point.altitude || point.elevation || 0;
+            const distance = calculate3DDistance(
+              prevPoint.latitude, prevPoint.longitude, ele1,
+              point.latitude, point.longitude, ele2
+            );
             cumulativeDistance += distance;
           }
         }
@@ -50,13 +67,14 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
         };
       }).filter(point => point.elevation > 0);
 
-      // Calculate gradient % for each point
+      // Calculate smoothed gradient over segments (reduces noise)
+      const segmentLength = 5; // Average over 5 points
       return points.map((point, index) => {
         let gradient = 0;
-        if (index > 0) {
-          const prevPoint = points[index - 1];
-          const elevationDiff = point.elevation - prevPoint.elevation;
-          const distanceDiff = point.distanceMeters - prevPoint.distanceMeters;
+        if (index >= segmentLength) {
+          const startPoint = points[index - segmentLength];
+          const elevationDiff = point.elevation - startPoint.elevation;
+          const distanceDiff = point.distanceMeters - startPoint.distanceMeters;
           if (distanceDiff > 0) {
             gradient = (elevationDiff / distanceDiff) * 100;
           }
@@ -189,6 +207,7 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex }: Eleva
           <span>Min: {minElevation}m</span>
           <span>Max: {maxElevation}m</span>
           <span>Gain: {Math.round(totalGain)}m</span>
+          {useTerrainData && <span className="text-xs opacity-70">(Mapbox Terrain)</span>}
         </div>
       </CardHeader>
       <CardContent>
