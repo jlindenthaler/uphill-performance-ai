@@ -40,7 +40,7 @@ interface WeekSummary {
 }
 
 export const InfiniteTrainingCalendar: React.FC = () => {
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [weeks, setWeeks] = useState<Date[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
@@ -60,7 +60,8 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
   // Initialize weeks around current week
   useEffect(() => {
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const initialWeeks = [];
     for (let i = -4; i <= 4; i++) {
       initialWeeks.push(addWeeks(weekStart, i));
@@ -209,9 +210,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
     const { scrollTop, clientHeight } = scrollContainerRef.current;
     
-    // Calculate which week is at the top of the viewport with slight offset
+    // Calculate which week is near the top of the viewport
     const weekHeight = 180;
-    const topWeekIndex = Math.floor((scrollTop + 100) / weekHeight);
+    const topWeekIndex = Math.floor(scrollTop / weekHeight);
     
     if (topWeekIndex >= 0 && topWeekIndex < weeks.length) {
       const visibleWeek = weeks[topWeekIndex];
