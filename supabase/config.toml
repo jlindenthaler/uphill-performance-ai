@@ -6,7 +6,7 @@ verify_jwt = true
 [functions.get-mapbox-token]
 verify_jwt = true
 
-[functions.garmin-oauth]
+[functions.garmin-oauth-start]
 verify_jwt = false
 
 [functions.garmin-backfill]
