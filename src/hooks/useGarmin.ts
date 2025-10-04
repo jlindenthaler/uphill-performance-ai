@@ -55,9 +55,7 @@ export function useGarmin() {
       console.log('Initiating Garmin connection...');
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-      const { data, error } = await supabase.functions.invoke('garmin-oauth', {
-        body: { action: 'authorize' }
-      });
+      const { data, error } = await supabase.functions.invoke('garmin-oauth-start');
 
       console.log('Garmin OAuth response:', { data, error });
 
@@ -88,8 +86,8 @@ export function useGarmin() {
     try {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-      const { data, error } = await supabase.functions.invoke('garmin-oauth', {
-        body: { action: 'sync' }
+      const { data, error } = await supabase.functions.invoke('garmin-backfill', {
+        body: { daysBack: 90 }
       });
 
       if (error) {
@@ -126,13 +124,24 @@ export function useGarmin() {
     try {
       setConnectionStatus(prev => ({ ...prev, loading: true, error: null }));
 
-      const { error } = await supabase.functions.invoke('garmin-oauth', {
-        body: { action: 'disconnect' }
-      });
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
 
-      if (error) {
-        throw new Error('Failed to disconnect Garmin account');
-      }
+      // Delete Garmin tokens
+      const { error: tokensError } = await supabase
+        .from('garmin_tokens')
+        .delete()
+        .eq('user_id', user.user.id);
+
+      if (tokensError) throw tokensError;
+
+      // Update profile to mark Garmin as disconnected
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ garmin_connected: false })
+        .eq('user_id', user.user.id);
+
+      if (profileError) throw profileError;
 
       setConnectionStatus(prev => ({ ...prev, isConnected: false }));
       
