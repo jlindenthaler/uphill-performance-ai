@@ -2,19 +2,19 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // --- Load secrets ---
-const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID");
-const AUTH_URL = Deno.env.get("GARMIN_AUTH_URL"); // should be: https://connect.garmin.com/oauth2Confirm
-const FUNC_BASE = Deno.env.get("FUNCTION_BASE"); // your Supabase functions base URL
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID")!;
+const AUTH_URL = Deno.env.get("GARMIN_AUTH_URL")!; // should be: https://connect.garmin.com/oauth2Confirm
+const FUNC_BASE = Deno.env.get("FUNCTION_BASE")!; // your Supabase functions base URL
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
 // --- PKCE helper functions ---
-async function sha256(s) {
+async function sha256(s: string) {
   const data = new TextEncoder().encode(s);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return new Uint8Array(hash);
 }
-function b64url(u8) {
+function b64url(u8: Uint8Array) {
   return btoa(String.fromCharCode(...u8)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 function rnd(len = 64) {
@@ -24,17 +24,22 @@ function rnd(len = 64) {
   for(let i = 0; i < len; i++)out += cs[r[i] % cs.length];
   return out;
 }
-serve(async ()=>{
+serve(async (req)=>{
   try {
+    // Get origin from query parameter (passed from frontend)
+    const url = new URL(req.url);
+    const origin = url.searchParams.get("origin") || "https://uphill.lovable.dev";
+    
     // 1️⃣ Generate PKCE verifier & challenge
     const codeVerifier = rnd();
     const codeChallenge = b64url(await sha256(codeVerifier));
     // 2️⃣ Generate state (used as DB key)
     const state = crypto.randomUUID();
-    // 3️⃣ Insert verifier into DB with expiry (trigger handles expires_at)
+    // 3️⃣ Insert verifier and origin into DB with expiry (trigger handles expires_at)
     const { error } = await sb.from("oauth_pkce").insert({
       state,
-      code_verifier: codeVerifier
+      code_verifier: codeVerifier,
+      origin_url: origin
     });
     if (error) {
       console.error("Failed to persist PKCE:", error);
@@ -66,9 +71,10 @@ serve(async ()=>{
     });
   } catch (e) {
     console.error("OAuth start failed:", e);
+    const error = e as Error;
     return new Response(JSON.stringify({
       error: "server_error",
-      message: e.message
+      message: error.message
     }), {
       status: 500,
       headers: {

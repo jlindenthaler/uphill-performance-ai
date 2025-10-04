@@ -20,10 +20,22 @@ export function GarminConnection() {
 
   useEffect(() => {
     checkGarminConnection();
+    
+    // Check for success parameter from OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('garmin') === 'connected') {
+      toast({
+        title: "Garmin Connected",
+        description: "Your Garmin account has been successfully connected!",
+      });
+      // Clean up URL parameter
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const handleConnect = () => {
-    window.location.href = 'https://srwuprrcbfuzvkehvgyt.supabase.co/functions/v1/garmin-oauth-start';
+    const origin = encodeURIComponent(window.location.origin);
+    window.location.href = `https://srwuprrcbfuzvkehvgyt.supabase.co/functions/v1/garmin-oauth-start?origin=${origin}`;
   };
 
   const handleDisconnect = async () => {

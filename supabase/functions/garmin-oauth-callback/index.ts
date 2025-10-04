@@ -1,12 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
-const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID");
-const CLIENT_SECRET = Deno.env.get("GARMIN_CLIENT_SECRET");
-const FUNC_BASE = Deno.env.get("FUNCTION_BASE");
+const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID")!;
+const CLIENT_SECRET = Deno.env.get("GARMIN_CLIENT_SECRET")!;
+const FUNC_BASE = Deno.env.get("FUNCTION_BASE")!;
 const REDIRECT_URI = `${FUNC_BASE}/garmin-oauth-callback`;
 const TOKEN_URL = "https://diauth.garmin.com/di-oauth2-service/oauth/token";
 // 👤 Temporary test user (replace with real auth user later)
@@ -26,8 +26,8 @@ serve(async (req)=>{
         }
       });
     }
-    // 1️⃣ Retrieve PKCE verifier
-    const { data, error } = await sb.from("oauth_pkce").select("code_verifier").eq("state", state).single();
+    // 1️⃣ Retrieve PKCE verifier and origin URL
+    const { data, error } = await sb.from("oauth_pkce").select("code_verifier, origin_url").eq("state", state).single();
     if (error || !data) {
       console.error("State lookup failed:", error);
       return new Response(JSON.stringify({
@@ -97,17 +97,21 @@ serve(async (req)=>{
         }
       });
     }
-    // 4️⃣ Redirect to frontend success page
+    // 4️⃣ Redirect back to the origin URL with success parameter
+    const redirectUrl = data.origin_url || "https://uphill.lovable.dev";
+    const finalUrl = `${redirectUrl}/settings/integrations?garmin=connected`;
+    
     return new Response(null, {
       status: 302,
       headers: {
-        Location: "https://uphill-ai.uphill.com.au/settings/integrations?garmin=connected"
+        Location: finalUrl
       }
     });
   } catch (e) {
     console.error("Callback error:", e);
+    const error = e as Error;
     return new Response(JSON.stringify({
-      error: e.message
+      error: error.message
     }), {
       status: 500,
       headers: {

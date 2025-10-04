@@ -161,6 +161,21 @@ export type Database = {
         }
         Relationships: []
       }
+      app_secrets: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           auto_sync: boolean | null
@@ -332,37 +347,76 @@ export type Database = {
         }
         Relationships: []
       }
+      garmin_fit_jobs: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          garmin_activity_id: string
+          id: string
+          last_error: string | null
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          garmin_activity_id: string
+          id?: string
+          last_error?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          garmin_activity_id?: string
+          id?: string
+          last_error?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       garmin_tokens: {
         Row: {
           access_token: string
-          code_verifier: string | null
           created_at: string | null
-          expires_at: string | null
+          expires_at: string
           garmin_user_id: string | null
-          id: string
-          refresh_token: string | null
+          last_sync_at: string | null
+          refresh_expires_at: string | null
+          refresh_token: string
+          scope: string | null
+          token_type: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           access_token: string
-          code_verifier?: string | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at: string
           garmin_user_id?: string | null
-          id?: string
-          refresh_token?: string | null
+          last_sync_at?: string | null
+          refresh_expires_at?: string | null
+          refresh_token: string
+          scope?: string | null
+          token_type?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           access_token?: string
-          code_verifier?: string | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at?: string
           garmin_user_id?: string | null
-          id?: string
-          refresh_token?: string | null
+          last_sync_at?: string | null
+          refresh_expires_at?: string | null
+          refresh_token?: string
+          scope?: string | null
+          token_type?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -518,6 +572,30 @@ export type Database = {
           vt2_hr?: number | null
           vt2_power?: number | null
           w_prime?: number | null
+        }
+        Relationships: []
+      }
+      oauth_pkce: {
+        Row: {
+          code_verifier: string
+          created_at: string | null
+          expires_at: string | null
+          origin_url: string | null
+          state: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string | null
+          expires_at?: string | null
+          origin_url?: string | null
+          state: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string | null
+          expires_at?: string | null
+          origin_url?: string | null
+          state?: string
         }
         Relationships: []
       }
@@ -1023,16 +1101,99 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bytea_to_text: {
+        Args: { data: string }
+        Returns: string
+      }
       get_mapbox_elevation_profile: {
         Args: { coordinates: Json }
         Returns: Json
+      }
+      http: {
+        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_delete: {
+        Args:
+          | { content: string; content_type: string; uri: string }
+          | { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_get: {
+        Args: { data: Json; uri: string } | { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_head: {
+        Args: { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_header: {
+        Args: { field: string; value: string }
+        Returns: Database["public"]["CompositeTypes"]["http_header"]
+      }
+      http_list_curlopt: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          curlopt: string
+          value: string
+        }[]
+      }
+      http_patch: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_post: {
+        Args:
+          | { content: string; content_type: string; uri: string }
+          | { data: Json; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_put: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_reset_curlopt: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      http_set_curlopt: {
+        Args: { curlopt: string; value: string }
+        Returns: boolean
+      }
+      text_to_bytea: {
+        Args: { data: string }
+        Returns: string
+      }
+      trigger_garmin_refresh: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      urlencode: {
+        Args: { data: Json } | { string: string } | { string: string }
+        Returns: string
       }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      http_header: {
+        field: string | null
+        value: string | null
+      }
+      http_request: {
+        method: unknown | null
+        uri: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content_type: string | null
+        content: string | null
+      }
+      http_response: {
+        status: number | null
+        content_type: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content: string | null
+      }
     }
   }
 }
