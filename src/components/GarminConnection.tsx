@@ -1,6 +1,5 @@
 import { useAuth } from "@/hooks/useSupabase";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,20 +23,7 @@ export function GarminConnection() {
   }, []);
 
   const handleConnect = async () => {
-    try {
-      await initiateGarminConnection();
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return console.error("No Supabase session token");
-      const res = await fetch("/functions/v1/garmin_backfill", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ daysBack: 90 })
-      });
-      console.log(res.ok ? "Garmin sync triggered" : await res.text());
-    } catch (err) {
-      console.error("Connect error:", err);
-    }
+    await initiateGarminConnection();
   };
 
   const handleDisconnect = async () => {
