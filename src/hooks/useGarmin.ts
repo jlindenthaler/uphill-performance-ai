@@ -24,15 +24,17 @@ export function useGarmin() {
   // Handle OAuth callback
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const garminConnected = urlParams.get('garmin_connected');
+    const tab = urlParams.get('tab');
     const garminError = urlParams.get('garmin_error');
 
-    if (garminConnected === 'true') {
+    if (tab === 'integrations' && !garminError) {
       toast({
         title: "Success!",
         description: "Your Garmin Connect account has been connected successfully. You can now import your activity history."
       });
-      setConnectionStatus(prev => ({ ...prev, isConnected: true }));
+      
+      // Refresh connection status from database
+      checkGarminConnection();
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
