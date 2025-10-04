@@ -22,8 +22,8 @@ export function GarminConnection() {
     checkGarminConnection();
   }, []);
 
-  const handleConnect = async () => {
-    await initiateGarminConnection();
+  const handleConnect = () => {
+    window.location.href = 'https://srwuprrcbfuzvkehvgyt.supabase.co/functions/v1/garmin-oauth-start';
   };
 
   const handleDisconnect = async () => {
