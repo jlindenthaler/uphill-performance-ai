@@ -188,14 +188,14 @@ export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerr
           <div className="space-y-1 text-sm">
             {data.gradient !== undefined && (
               <p className="text-foreground">
-                <span className="font-medium">Grade:</span> {data.gradient}%
+                <span className="font-small">Grade:</span> {data.gradient}%
               </p>
             )}
             <p className="text-foreground">
-              <span className="font-medium">Elev:</span> {data.elevation}m
+              <span className="font-small">Elev:</span> {data.elevation}m
             </p>
             <p className="text-foreground">
-              <span className="font-medium">Dist:</span> {data.formattedDistance}
+              <span className="font-small">Dist:</span> {data.formattedDistance}
             </p>
           </div>
         </div>
