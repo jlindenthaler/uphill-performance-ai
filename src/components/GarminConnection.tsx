@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useSupabase";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import { Link, Unlink, Activity, Loader2 } from "lucide-react";
 import { GarminHistoryImport } from "@/components/GarminHistoryImport";
 
 export function GarminConnection() {
-  const { session } = useAuth();
+  const { user } = useAuth();
   const { connectionStatus, initiateGarminConnection, disconnectGarmin, checkGarminConnection } = useGarmin();
   const { activeJob, latestCompletedJob, calculateProgress } = useGarminJobs();
   const { toast } = useToast();
@@ -25,6 +26,7 @@ export function GarminConnection() {
   const handleConnect = async () => {
     try {
       await initiateGarminConnection();
+      const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return console.error("No Supabase session token");
       const res = await fetch("/functions/v1/garmin_backfill", {

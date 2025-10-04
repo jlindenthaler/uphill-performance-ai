@@ -126,14 +126,14 @@ serve(async (req)=>{
   } catch (error) {
     console.error("Backfill error:", error);
     return new Response(JSON.stringify({
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
       headers: corsHeaders
     });
   }
 });
-function mapGarminSportType(type) {
+function mapGarminSportType(type: string | null | undefined): string | null {
   if (!type) return null;
   const t = type.toLowerCase();
   if (t.includes("run")) return "running";
