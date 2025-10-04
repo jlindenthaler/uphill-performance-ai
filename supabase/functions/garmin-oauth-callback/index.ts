@@ -39,7 +39,6 @@ serve(async (req)=>{
         }
       });
     }
-    // Delete PKCE row (one-time use)
     await sb.from("oauth_pkce").delete().eq("state", state);
     // 2️⃣ Exchange code + verifier for tokens
     const form = new URLSearchParams();
@@ -98,21 +97,22 @@ serve(async (req)=>{
         }
       });
     }
-    // 4️⃣ Return a simple success message
-    return new Response(JSON.stringify({
-      success: true,
-      stored_for: TEST_USER_ID
-    }), {
-      status: 200,
+    // 4️⃣ Redirect to frontend success page
+    return new Response(null, {
+      status: 302,
       headers: {
-        "Content-Type": "application/json"
+        Location: "https://uphill-ai.uphill.com.au/settings/integrations?garmin=connected"
       }
     });
   } catch (e) {
     console.error("Callback error:", e);
-    return new Response(null, {
-  status: 302,
-  headers: {
-    Location: "https://uphill.lovable.dev/settings/integrations?garmin=connected"
-  },
+    return new Response(JSON.stringify({
+      error: e.message
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
 });
