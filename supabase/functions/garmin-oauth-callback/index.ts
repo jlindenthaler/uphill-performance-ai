@@ -97,6 +97,17 @@ serve(async (req)=>{
         }
       });
     }
+
+    // 3.5️⃣ Update profile to mark Garmin as connected
+    const { error: profileError } = await sb.from("profiles").update({
+      garmin_connected: true
+    }).eq("user_id", TEST_USER_ID);
+
+    if (profileError) {
+      console.error("Failed to update profile:", profileError);
+      // Continue anyway since tokens are stored
+    }
+
     // 4️⃣ Redirect back to the origin URL with success parameter
     const redirectUrl = data.origin_url || "https://uphill.lovable.dev";
     const finalUrl = `${redirectUrl}/settings/integrations?garmin=connected`;
