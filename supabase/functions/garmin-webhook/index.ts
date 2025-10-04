@@ -1,246 +1,115 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
-
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-serve(async (req) => {
-  try {
-    // Handle Garmin handshake verification (GET/HEAD requests)
-    if (req.method === 'GET' || req.method === 'HEAD') {
-      console.log('Garmin handshake verification request received')
-      return new Response('ok', { status: 200 })
-    }
-
-    // Handle CORS preflight
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders })
-    }
-
-    // Handle webhook notifications (POST requests)
-    if (req.method === 'POST') {
-      const notification = await req.json()
-      console.log('Garmin webhook notification received:', JSON.stringify(notification, null, 2))
-
-      // Process notification in background (don't await)
-      processNotification(notification)
-
-      // Immediately respond with 200 OK
-      return new Response('ok', { status: 200 })
-    }
-
-    // Unsupported method
-    console.log(`Unsupported method: ${req.method}`)
-    return new Response('ok', { status: 200 })
-
-  } catch (error) {
-    console.error('Garmin webhook error:', error)
-    // Always return 200 to Garmin to avoid retry storms
-    return new Response('ok', { status: 200 })
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+serve(async (req)=>{
+  // ✅ Garmin handshake verification
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    console.log('Garmin handshake verification request');
+    return new Response('ok', {
+      status: 200
+    });
   }
-})
-
-async function processNotification(notification: any) {
-  try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Extract notification details
-    const {
-      userId: garminUserId,
-      userAccessToken: pullToken,
-      summaryId,
-      callbackURL,
-      type
-    } = notification
-
-    console.log(`Processing notification type: ${type} for Garmin user: ${garminUserId}`)
-
-    // Handle deregistration
-    if (type === 'USER_DEREGISTRATION') {
-      await handleDeregistration(garminUserId, supabase)
-      return
-    }
-
-    // Handle activity notifications
-    if (type === 'ACTIVITY' && callbackURL && pullToken) {
-      await processActivity(garminUserId, pullToken, callbackURL, summaryId, supabase)
-      return
-    }
-
-    console.log(`Unhandled notification type: ${type}`)
-
-  } catch (error) {
-    console.error('Error processing notification:', error)
+  // ✅ CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: corsHeaders
+    });
   }
-}
-
-async function processActivity(
-  garminUserId: string,
-  pullToken: string,
-  callbackURL: string,
-  summaryId: string,
-  supabase: any
-) {
-  try {
-    console.log(`Fetching activity from: ${callbackURL}`)
-
-    // Fetch activity data using Pull Token
-    const response = await fetch(`${callbackURL}?token=${pullToken}`, {
-      headers: {
-        'Accept': 'application/json'
+  // ✅ Handle notifications
+  if (req.method === 'POST') {
+    try {
+      const notification = await req.json();
+      console.log('Garmin webhook notification (RAW):', JSON.stringify(notification, null, 2));
+      console.log('Garmin webhook received:', JSON.stringify(notification, null, 2));
+      const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+      // Extract key fields from notification
+      const { userId: garminUserId, userAccessToken: pullToken, callbackURL, summaryId, type } = notification;
+      // Deregistration
+      if (type === 'USER_DEREGISTRATION') {
+        console.log(`User ${garminUserId} deregistered`);
+        await supabase.from('garmin_tokens').delete().eq('garmin_user_id', garminUserId);
+        return new Response('ok', {
+          status: 200
+        });
       }
-    })
-
-    if (!response.ok) {
-      console.error(`Failed to fetch activity: ${response.status} ${response.statusText}`)
-      return
-    }
-
-    const activityData = await response.json()
-    console.log('Activity data received:', JSON.stringify(activityData, null, 2))
-
-    // Find the user_id from garmin_tokens using garmin_user_id
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('garmin_tokens')
-      .select('user_id')
-      .eq('garmin_user_id', garminUserId)
-      .maybeSingle()
-
-    if (tokenError) {
-      console.error(`Error looking up Garmin user ${garminUserId}:`, tokenError)
-      return
-    }
-
-    if (!tokenData) {
-      console.error(`No token found for Garmin user: ${garminUserId}`)
-      console.log('User needs to complete OAuth flow to link their Garmin account')
-      return
-    }
-
-    const userId = tokenData.user_id
-    console.log(`Mapped Garmin user ${garminUserId} to app user ${userId}`)
-
-    // Check if activity already exists
-    const garminId = activityData.activityId?.toString() || summaryId
-    const { data: existing } = await supabase
-      .from('activities')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('garmin_activity_id', garminId)
-      .maybeSingle()
-
-    if (existing) {
-      console.log(`Activity ${garminId} already exists, skipping`)
-      return
-    }
-
-    // Map activity to our schema and filter by sport type
-    const sportMode = mapGarminSportType(activityData.activityType?.typeKey || activityData.activityType)
-    
-    // Skip if not a supported activity type
-    if (!sportMode) {
-      console.log(`Skipping activity ${garminId} - unsupported type: ${activityData.activityType?.typeKey || activityData.activityType}`)
-      return
-    }
-
-    const mappedActivity = {
-      user_id: userId,
-      garmin_activity_id: garminId,
-      name: activityData.activityName || activityData.name || 'Garmin Activity',
-      date: activityData.startTimeGMT || activityData.startTime || new Date().toISOString(),
-      duration_seconds: Math.round(activityData.duration || activityData.movingDuration || 0),
-      distance_meters: activityData.distance || null,
-      elevation_gain_meters: activityData.elevationGain || activityData.totalAscent || null,
-      avg_heart_rate: activityData.averageHR || activityData.avgHr || null,
-      max_heart_rate: activityData.maxHR || activityData.maxHr || null,
-      calories: activityData.calories || null,
-      sport_mode: sportMode,
-      external_sync_source: 'garmin',
-      activity_type: 'normal'
-    }
-
-    // Insert activity
-    const { error: insertError } = await supabase
-      .from('activities')
-      .insert(mappedActivity)
-
-    if (insertError) {
-      if (insertError.code === '23505') {
-        console.log(`Activity ${garminId} duplicate detected, skipping`)
-      } else {
-        console.error(`Failed to insert activity ${garminId}:`, insertError.message)
+      // Activity notification
+      if (type === 'ACTIVITY' && callbackURL && pullToken) {
+        const activityUrl = `${callbackURL}?token=${pullToken}`;
+        const res = await fetch(activityUrl, {
+          headers: {
+            Accept: 'application/json'
+          }
+        });
+        if (!res.ok) {
+          console.error('Failed to pull activity summary:', res.status, res.statusText);
+          return new Response('ok', {
+            status: 200
+          });
+        }
+        const summary = await res.json();
+        console.log('Activity summary pulled:', summary.summaryId || summary.activityId);
+        // Get our user_id using Garmin user id
+        const { data: tokenRow } = await supabase.from('garmin_tokens').select('user_id').eq('garmin_user_id', garminUserId).maybeSingle();
+        if (!tokenRow) {
+          console.error(`No user found for Garmin ID: ${garminUserId}`);
+          return new Response('ok', {
+            status: 200
+          });
+        }
+        const userId = tokenRow.user_id;
+        const garminActivityId = summary.summaryId?.toString() || summary.activityId?.toString();
+        // Insert summary into activities if not already there
+        const { error: insertError } = await supabase.from('activities').insert({
+          user_id: userId,
+          garmin_activity_id: garminActivityId,
+          name: summary.activityName || 'Garmin Activity',
+          date: summary.startTimeGMT || summary.startTime || new Date().toISOString(),
+          duration_seconds: Math.round(summary.duration || 0),
+          distance_meters: summary.distance || null,
+          elevation_gain_meters: summary.elevationGain || null,
+          avg_heart_rate: summary.averageHR || null,
+          max_heart_rate: summary.maxHR || null,
+          calories: summary.calories || null,
+          sport_mode: mapGarminSportType(summary.activityType?.typeKey || summary.activityType),
+          external_sync_source: 'garmin'
+        }).select().maybeSingle();
+        if (insertError && insertError.code !== '23505') {
+          console.error('Error inserting activity summary:', insertError.message);
+        }
+        // Enqueue FIT download job
+        const { error: jobError } = await supabase.from('garmin_fit_jobs').upsert({
+          user_id: userId,
+          garmin_activity_id: garminActivityId,
+          status: 'pending'
+        });
+        if (jobError) {
+          console.error('Failed to queue FIT job:', jobError.message);
+        } else {
+          console.log(`Queued FIT job for activity ${garminActivityId}`);
+        }
       }
-    } else {
-      console.log(`✓ Activity synced: "${mappedActivity.name}" (ID: ${garminId})`)
+      return new Response('ok', {
+        status: 200
+      });
+    } catch (err) {
+      console.error('Webhook error:', err);
+      return new Response('ok', {
+        status: 200
+      });
     }
-
-  } catch (error) {
-    console.error('Error processing activity:', error)
   }
-}
-
-async function handleDeregistration(garminUserId: string, supabase: any) {
-  try {
-    console.log(`Handling deregistration for Garmin user: ${garminUserId}`)
-
-    // Find user by garmin_user_id
-    const { data: tokenData } = await supabase
-      .from('garmin_tokens')
-      .select('user_id')
-      .eq('garmin_user_id', garminUserId)
-      .maybeSingle()
-
-    if (!tokenData) {
-      console.log(`No tokens found for Garmin user ${garminUserId} during deregistration`)
-      return
-    }
-
-    const userId = tokenData.user_id
-
-    // Delete tokens
-    await supabase
-      .from('garmin_tokens')
-      .delete()
-      .eq('user_id', userId)
-
-    // Update profile
-    await supabase
-      .from('profiles')
-      .update({ garmin_connected: false })
-      .eq('user_id', userId)
-
-    console.log(`✓ Deregistered Garmin for user: ${userId}`)
-
-  } catch (error) {
-    console.error('Error handling deregistration:', error)
-  }
-}
-
-function mapGarminSportType(activityType: string | undefined): string | null {
-  if (!activityType) return null
-  
-  const type = activityType.toLowerCase()
-  
-  // Cycling activities
-  if (type.includes('cycling') || type.includes('bike') || type.includes('gravel') || type.includes('mountain')) {
-    return 'cycling'
-  }
-  
-  // Running activities (including trail and train)
-  if (type.includes('running') || type.includes('run') || type.includes('trail') || type.includes('train')) {
-    return 'running'
-  }
-  
-  // Swimming activities
-  if (type.includes('swimming') || type.includes('swim')) {
-    return 'swimming'
-  }
-  
-  // Return null for unsupported activity types (will be filtered out)
-  return null
+  return new Response('Method not allowed', {
+    status: 405
+  });
+});
+function mapGarminSportType(activityType) {
+  if (!activityType) return null;
+  const t = activityType.toLowerCase();
+  if (t.includes('bike') || t.includes('cycling')) return 'cycling';
+  if (t.includes('run')) return 'running';
+  if (t.includes('swim')) return 'swimming';
+  return null;
 }
