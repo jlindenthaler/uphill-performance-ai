@@ -110,14 +110,9 @@ serve(async (req)=>{
     });
   } catch (e) {
     console.error("Callback error:", e);
-    return new Response(JSON.stringify({
-      error: "server_error",
-      message: e.message
-    }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
-  }
+    return new Response(null, {
+  status: 302,
+  headers: {
+    Location: "https://uphill.lovable.dev/settings/integrations?garmin=connected"
+  },
 });
