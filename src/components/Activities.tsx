@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { useDeduplicatedActivities } from '@/hooks/useDeduplicatedActivities';
 import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
@@ -45,9 +46,13 @@ export function Activities() {
   const [batchDeleteMode, setBatchDeleteMode] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const filteredActivities = activities.filter(activity => {
+  // Apply deduplication
+  const { displayActivities, duplicateGroups } = useDeduplicatedActivities(activities, showDuplicates);
+
+  const filteredActivities = displayActivities.filter(activity => {
     const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSport = filterSport === 'all' || activity.sport_mode === filterSport;
     return matchesSearch && matchesSport;
@@ -118,6 +123,19 @@ export function Activities() {
       );
     }
     return null;
+  };
+
+  const getDuplicateSourcesBadge = (activity: any) => {
+    if (!activity.is_deduplicated || !activity.duplicate_sources) return null;
+    
+    const sources = activity.duplicate_sources;
+    if (sources.length <= 1) return null;
+
+    return (
+      <Badge variant="secondary" className="text-xs">
+        🔗 {sources.join(' + ')}
+      </Badge>
+    );
   };
 
   const handleActivityToggle = async (activityId: string) => {
@@ -524,6 +542,27 @@ export function Activities() {
         
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
+          {!showDuplicates && duplicateGroups.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDuplicates(true)}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Show All Duplicates ({duplicateGroups.size} hidden)
+            </Button>
+          )}
+          {showDuplicates && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDuplicates(false)}
+              className="flex items-center gap-2"
+            >
+              Hide Duplicates
+            </Button>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -620,9 +659,10 @@ export function Activities() {
                                     <Target className="h-2 w-2 mr-1" />
                                     TLI {Math.round(activity.tss)}
                                   </Badge>
-                                )}
-                                {getSyncSourceBadge(activity.external_sync_source)}
-                              </div>
+                                 )}
+                                 {getSyncSourceBadge(activity.external_sync_source)}
+                                 {getDuplicateSourcesBadge(activity)}
+                               </div>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

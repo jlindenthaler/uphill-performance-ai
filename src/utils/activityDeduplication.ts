@@ -178,3 +178,57 @@ export function logDeduplicationResult(
     })));
   }
 }
+
+export interface ActivityWithData {
+  id: string;
+  created_at: string;
+  external_sync_source?: string | null;
+  power_time_series?: any;
+  gps_data?: any;
+  heart_rate_time_series?: any;
+  cadence_time_series?: any;
+  altitude_time_series?: any;
+  elevation_profile?: any;
+  summary_metrics?: any;
+}
+
+/**
+ * Calculate data completeness score for an activity
+ * Higher score means more complete data
+ */
+export function calculateDataCompleteness(activity: ActivityWithData): number {
+  let score = 0;
+  
+  // Power data is highly valuable
+  if (activity.power_time_series && Array.isArray(activity.power_time_series) && activity.power_time_series.length > 0) {
+    score += 10;
+  }
+  
+  // GPS/location data
+  if (activity.gps_data && Array.isArray(activity.gps_data) && activity.gps_data.length > 0) {
+    score += 10;
+  }
+  
+  // Heart rate data
+  if (activity.heart_rate_time_series && Array.isArray(activity.heart_rate_time_series) && activity.heart_rate_time_series.length > 0) {
+    score += 8;
+  }
+  
+  // Cadence data
+  if (activity.cadence_time_series && Array.isArray(activity.cadence_time_series) && activity.cadence_time_series.length > 0) {
+    score += 5;
+  }
+  
+  // Elevation data
+  if ((activity.altitude_time_series && Array.isArray(activity.altitude_time_series) && activity.altitude_time_series.length > 0) ||
+      (activity.elevation_profile && Array.isArray(activity.elevation_profile) && activity.elevation_profile.length > 0)) {
+    score += 5;
+  }
+  
+  // Summary metrics
+  if (activity.summary_metrics && Object.keys(activity.summary_metrics).length > 0) {
+    score += 3;
+  }
+  
+  return score;
+}
