@@ -4,16 +4,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar as CalendarIcon, Download, Info } from "lucide-react";
+import { Calendar as CalendarIcon, Download, Info, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useStravaJobs } from "@/hooks/useStravaJobs";
 
 export function StravaHistoryImport() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [importing, setImporting] = useState(false);
+  const { activeJob, refreshJobs } = useStravaJobs();
+
+  const handleCancelJob = async () => {
+    if (!activeJob) return;
+    
+    try {
+      const { error } = await supabase
+        .from('strava_backfill_jobs')
+        .update({ 
+          status: 'error',
+          last_error: 'Cancelled by user',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeJob.id);
+
+      if (error) throw error;
+
+      toast.success("Import job cancelled");
+      refreshJobs();
+    } catch (error) {
+      console.error('Cancel error:', error);
+      toast.error("Failed to cancel job");
+    }
+  };
 
   const handleImport = async () => {
     if (!startDate || !endDate) {
@@ -85,6 +110,31 @@ export function StravaHistoryImport() {
           </AlertDescription>
         </Alert>
 
+        {activeJob && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">Import in progress</p>
+                  <p className="text-sm">
+                    Status: {activeJob.status} | Synced: {activeJob.activities_synced} | Skipped: {activeJob.activities_skipped}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelJob}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Start Date</label>
@@ -143,7 +193,7 @@ export function StravaHistoryImport() {
 
         <Button
           onClick={handleImport}
-          disabled={!startDate || !endDate || importing}
+          disabled={!startDate || !endDate || importing || !!activeJob}
           className="w-full bg-orange-600 hover:bg-orange-700"
         >
           <Download className="mr-2 h-4 w-4" />

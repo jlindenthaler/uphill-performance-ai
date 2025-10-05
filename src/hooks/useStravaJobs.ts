@@ -17,7 +17,7 @@ export interface StravaBackfillJob {
 }
 
 export function useStravaJobs() {
-  const { data: jobs, isLoading } = useQuery({
+  const { data: jobs, isLoading, refetch } = useQuery({
     queryKey: ['strava-backfill-jobs'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -65,5 +65,6 @@ export function useStravaJobs() {
     activeJob,
     latestCompletedJob,
     calculateProgress,
+    refreshJobs: refetch,
   };
 }
