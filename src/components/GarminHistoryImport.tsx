@@ -126,27 +126,28 @@ export function GarminHistoryImport() {
         }
       });
 
+      console.log('Backfill invoke result:', { invokeData, invokeError });
+
+      // Check if it's a duplicate backfill error (409 status) - data is still returned even with error
+      if (invokeData?.error === 'duplicate' || (invokeError && invokeData?.error === 'duplicate')) {
+        // Delete the job we just created since there's already one running
+        if (jobId) {
+          await supabase
+            .from('garmin_backfill_jobs')
+            .delete()
+            .eq('id', jobId);
+        }
+        
+        toast({
+          title: "Backfill already in progress",
+          description: invokeData?.message || "Garmin is already processing a backfill for this date range. Please wait 5-10 minutes for it to complete.",
+        });
+        refreshJobs();
+        return;
+      }
+
       if (invokeError) {
         console.error('Failed to invoke backfill:', invokeError);
-        console.log('Invoke response data:', invokeData);
-        
-        // Check if it's a duplicate backfill error (409 status)
-        if (invokeData?.error === 'duplicate' || invokeError.message?.includes('duplicate')) {
-          // Delete the job we just created since there's already one running
-          if (jobId) {
-            await supabase
-              .from('garmin_backfill_jobs')
-              .delete()
-              .eq('id', jobId);
-          }
-          
-          toast({
-            title: "Backfill already in progress",
-            description: invokeData?.message || "Garmin is already processing a backfill for this date range. Please wait 5-10 minutes for it to complete.",
-          });
-          refreshJobs();
-          return;
-        }
         
         // Update job status to error for other failures
         if (jobId) {
