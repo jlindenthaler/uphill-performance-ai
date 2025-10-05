@@ -97,11 +97,26 @@ export function GarminHistoryImport() {
 
       if (jobError) throw jobError;
 
-      toast({
-        title: "Import started",
-        description: "Your Garmin activities are being imported in the background. This may take a while.",
+      // Invoke the garmin-backfill edge function to actually start the backfill
+      const { error: invokeError } = await supabase.functions.invoke('garmin-backfill', {
+        body: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        }
       });
 
+      if (invokeError) {
+        console.error('Failed to invoke backfill:', invokeError);
+        throw new Error(`Failed to start backfill: ${invokeError.message}`);
+      }
+
+      toast({
+        title: "Import started",
+        description: "Backfill request sent to Garmin. Your activities will arrive via webhook shortly.",
+      });
+
+      setStartDate(undefined);
+      setEndDate(undefined);
       refreshJobs();
     } catch (error) {
       console.error('Import error:', error);
