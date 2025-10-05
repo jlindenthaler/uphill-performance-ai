@@ -1,14 +1,13 @@
-// Garmin Backfill Edge Function
-// Imports historical activities in 1-day chunks with correct parameters and token refresh
+// Garmin Backfill Edge Function - Pagination Version
+// Full-precision historical import using Garmin activities pagination
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const GARMIN_API_BASE = "https://apis.garmin.com/wellness-api/rest";
-const CHUNK_MS = 24 * 60 * 60 * 1000; // 1 day
-const MAX_DAYS_PER_RUN = 365; // 1 year cap
 const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID")!;
 const CLIENT_SECRET = Deno.env.get("GARMIN_CLIENT_SECRET")!;
+const MAX_DAYS_PER_RUN = 365; // still cap per run to avoid insane loads
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,11 +25,8 @@ async function ensureGarminToken(supabase: any, userId: string): Promise<string>
   if (error || !tokenRow) throw new Error("Garmin not connected");
 
   const expiresAt = new Date(tokenRow.expires_at);
-  if (expiresAt > new Date()) {
-    return tokenRow.access_token;
-  }
+  if (expiresAt > new Date()) return tokenRow.access_token;
 
-  // Refresh
   const res = await fetch("https://apis.garmin.com/wellness-api/rest/oauth2/token", {
     method: "POST",
     headers: {
@@ -61,7 +57,7 @@ async function ensureGarminToken(supabase: any, userId: string): Promise<string>
   return newTokens.access_token;
 }
 
-// 🏃 Main backfill function
+// 🏃 Main
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -83,29 +79,35 @@ serve(async (req) => {
       });
     }
 
-    // Parse request body
+    // Parse dates
     const { startDate, endDate } = await req.json().catch(() => ({}));
-    const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate ? new Date(startDate) : new Date(end.getTime() - MAX_DAYS_PER_RUN * CHUNK_MS);
+    if (!startDate || !endDate) {
+      return new Response(JSON.stringify({ error: "Missing startDate or endDate" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-    const totalDaysRequested = Math.ceil((end.getTime() - start.getTime()) / CHUNK_MS);
-    const cappedDays = Math.min(totalDaysRequested, MAX_DAYS_PER_RUN);
-    const cappedEnd = new Date(start.getTime() + cappedDays * CHUNK_MS);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const cappedDays = Math.min(totalDays, MAX_DAYS_PER_RUN);
 
-    console.log(`Backfill requested: ${totalDaysRequested} days, capped at ${cappedDays}`);
+    const cappedEnd = new Date(start.getTime() + cappedDays * 24 * 60 * 60 * 1000);
+    const startSec = Math.floor(start.getTime() / 1000);
+    const endSec = Math.floor(cappedEnd.getTime() / 1000);
 
-    let current = start.getTime();
+    console.log(`Garmin backfill (pagination): ${start.toISOString()} → ${cappedEnd.toISOString()}`);
+
+    // Fetch paginated activities
+    let page = 1;
     let inserted = 0;
     let skipped = 0;
+    const accessToken = await ensureGarminToken(supabase, user.id);
 
-    for (let day = 0; day < cappedDays; day++) {
-      const currentEnd = current + CHUNK_MS;
-      const accessToken = await ensureGarminToken(supabase, user.id);
-
-      // ✅ Correct Garmin params: summaryStartTimeInSeconds / summaryEndTimeInSeconds
-      const url = `${GARMIN_API_BASE}/activities?summaryStartTimeInSeconds=${Math.floor(current / 1000)}&summaryEndTimeInSeconds=${Math.floor(currentEnd / 1000)}`;
-      console.log(`Fetching Garmin activities: ${new Date(current).toISOString()} → ${new Date(currentEnd).toISOString()}`);
-
+    while (true) {
+      const url = `${GARMIN_API_BASE}/activities?page=${page}`;
+      console.log(`Fetching Garmin page ${page}...`);
       const res = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -114,63 +116,69 @@ serve(async (req) => {
       });
 
       if (!res.ok) {
-        const errBody = await res.text();
-        console.error(`Garmin fetch failed [${res.status}]: ${errBody}`);
-        current = currentEnd;
-        continue;
+        const errText = await res.text();
+        console.error(`Garmin fetch failed [${res.status}] page ${page}: ${errText}`);
+        break;
       }
 
       const activities = await res.json();
       if (!Array.isArray(activities) || activities.length === 0) {
-        current = currentEnd;
-        continue;
+        console.log(`Page ${page}: no more activities, stopping.`);
+        break;
       }
 
-      const mapped = activities.map((act: any) => ({
-        user_id: user.id,
-        garmin_activity_id: act.summaryId?.toString(),
-        name: act.activityName || "Garmin Activity",
-        date: act.startTimeInSeconds
-          ? new Date(act.startTimeInSeconds * 1000).toISOString()
-          : new Date().toISOString(),
-        duration_seconds: act.durationInSeconds || 0,
-        distance_meters: act.distanceInMeters || null,
-        elevation_gain_meters: act.elevationGainInMeters || null,
-        avg_heart_rate: act.averageHeartRateInBeatsPerMinute || null,
-        max_heart_rate: act.maxHeartRateInBeatsPerMinute || null,
-        calories: act.activeKilocalories || null,
-        sport_mode: mapGarminSportType(act.activityType),
-        external_sync_source: "garmin",
-      })).filter((x: any) => x.garmin_activity_id);
+      const filtered = activities.filter((act: any) => {
+        const ts = act.startTimeInSeconds;
+        return ts && ts >= startSec && ts < endSec;
+      });
 
-      if (mapped.length > 0) {
+      if (filtered.length > 0) {
+        const mapped = filtered.map((act: any) => ({
+          user_id: user.id,
+          garmin_activity_id: act.summaryId?.toString(),
+          name: act.activityName || "Garmin Activity",
+          date: act.startTimeInSeconds
+            ? new Date(act.startTimeInSeconds * 1000).toISOString()
+            : new Date().toISOString(),
+          duration_seconds: act.durationInSeconds || 0,
+          distance_meters: act.distanceInMeters || null,
+          elevation_gain_meters: act.elevationGainInMeters || null,
+          avg_heart_rate: act.averageHeartRateInBeatsPerMinute || null,
+          max_heart_rate: act.maxHeartRateInBeatsPerMinute || null,
+          calories: act.activeKilocalories || null,
+          sport_mode: mapGarminSportType(act.activityType),
+          external_sync_source: "garmin",
+        })).filter(x => x.garmin_activity_id);
+
         const { error } = await supabase
           .from("activities")
           .upsert(mapped, { onConflict: "user_id,garmin_activity_id" });
+
         if (error) {
-          console.error("Insert error:", error);
+          console.error(`Supabase insert error page ${page}:`, error);
         } else {
           inserted += mapped.length;
         }
       }
 
-      // polite delay
-      await new Promise(r => setTimeout(r, 200));
-      current = currentEnd;
+      page++;
+      // optional: small delay to be nice
+      await new Promise(r => setTimeout(r, 150));
     }
 
-    const remainingYears = Math.max(0, Math.ceil(totalDaysRequested / 365) - 1);
+    const remainingYears = Math.max(0, Math.ceil(totalDays / 365) - 1);
 
     return new Response(JSON.stringify({
       success: true,
       inserted,
       skipped,
+      start: start.toISOString(),
+      end: cappedEnd.toISOString(),
       totalDaysProcessed: cappedDays,
-      capped: totalDaysRequested > cappedDays,
       remainingYears,
       message: remainingYears > 0
-        ? `Imported ${cappedDays} days (~1 year) of Garmin history. ${remainingYears} more year(s) remaining — run again tomorrow to continue.`
-        : `Imported ${cappedDays} days of Garmin history successfully.`,
+        ? `Imported activities from ${start.toISOString()} to ${cappedEnd.toISOString()} (~1 year). ${remainingYears} more year(s) remaining — run again tomorrow to continue.`
+        : `Imported activities from ${start.toISOString()} to ${cappedEnd.toISOString()} successfully.`,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -184,7 +192,7 @@ serve(async (req) => {
   }
 });
 
-// 🧠 Basic Garmin sport mapping helper
+// 🧠 Garmin sport type mapping helper
 function mapGarminSportType(type: string) {
   if (!type) return null;
   const t = type.toLowerCase();
