@@ -73,28 +73,33 @@ export function GarminHistoryImport() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Call the garmin-backfill edge function
-      const { data, error } = await supabase.functions.invoke('garmin-backfill', {
-        body: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-        },
-      });
+      // Get Garmin token
+      const { data: tokenData } = await supabase
+        .from('garmin_tokens')
+        .select('garmin_user_id')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
+      if (!tokenData?.garmin_user_id) {
+        throw new Error("Garmin not connected");
+      }
 
-      const result = data as { 
-        success: boolean; 
-        inserted: number; 
-        totalDaysProcessed: number; 
-        capped: boolean;
-        remainingYears: number;
-        message: string;
-      };
+      // Create backfill job
+      const { error: jobError } = await supabase
+        .from('garmin_backfill_jobs')
+        .insert({
+          user_id: user.id,
+          garmin_user_id: tokenData.garmin_user_id,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          status: 'pending',
+        });
+
+      if (jobError) throw jobError;
 
       toast({
-        title: result.capped ? "Import Started (1 Year Limit)" : "Import Complete",
-        description: result.message,
+        title: "Import started",
+        description: "Your Garmin activities are being imported in the background. This may take a while.",
       });
 
       refreshJobs();
@@ -102,7 +107,7 @@ export function GarminHistoryImport() {
       console.error('Import error:', error);
       toast({
         title: "Import failed",
-        description: error instanceof Error ? error.message : "Failed to import activities",
+        description: error instanceof Error ? error.message : "Failed to start import",
         variant: "destructive",
       });
     } finally {
