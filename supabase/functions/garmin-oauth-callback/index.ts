@@ -73,6 +73,27 @@ serve(async (req)=>{
     const now = Date.now();
     const expiresAt = new Date(now + token.expires_in * 1000).toISOString();
     const refreshExpiresAt = new Date(now + token.refresh_token_expires_in * 1000).toISOString();
+    
+    // 2.5️⃣ Fetch Garmin User ID using the access token
+    let garminUserId = null;
+    try {
+      const userIdResponse = await fetch("https://apis.garmin.com/wellness-api/rest/user/id", {
+        headers: {
+          "Authorization": `Bearer ${token.access_token}`
+        }
+      });
+      
+      if (userIdResponse.ok) {
+        const userIdData = await userIdResponse.json();
+        garminUserId = userIdData.userId;
+        console.log("Fetched Garmin user ID:", garminUserId);
+      } else {
+        console.error("Failed to fetch Garmin user ID:", userIdResponse.status);
+      }
+    } catch (e) {
+      console.error("Error fetching Garmin user ID:", e);
+    }
+    
     // 3️⃣ Upsert tokens into DB
     const { error: upsertError } = await sb.from("garmin_tokens").upsert({
       user_id: TEST_USER_ID,
@@ -81,7 +102,8 @@ serve(async (req)=>{
       scope: token.scope,
       token_type: token.token_type,
       expires_at: expiresAt,
-      refresh_expires_at: refreshExpiresAt
+      refresh_expires_at: refreshExpiresAt,
+      garmin_user_id: garminUserId
     }, {
       onConflict: "user_id"
     });

@@ -52,7 +52,33 @@ serve(async (req)=>{
         const summary = await res.json();
         console.log('Activity summary pulled:', summary.summaryId || summary.activityId);
         // Get our user_id using Garmin user id
-        const { data: tokenRow } = await supabase.from('garmin_tokens').select('user_id').eq('garmin_user_id', garminUserId).maybeSingle();
+        let { data: tokenRow } = await supabase.from('garmin_tokens').select('user_id').eq('garmin_user_id', garminUserId).maybeSingle();
+        
+        // Fallback: If not found by garmin_user_id, try to find by checking all tokens and update with the garmin_user_id
+        if (!tokenRow) {
+          console.log(`No token found with garmin_user_id ${garminUserId}, checking for tokens without garmin_user_id...`);
+          const { data: tokensWithoutGarminId } = await supabase
+            .from('garmin_tokens')
+            .select('user_id')
+            .is('garmin_user_id', null)
+            .limit(1)
+            .maybeSingle();
+          
+          if (tokensWithoutGarminId) {
+            console.log(`Updating token for user ${tokensWithoutGarminId.user_id} with garmin_user_id ${garminUserId}`);
+            const { error: updateError } = await supabase
+              .from('garmin_tokens')
+              .update({ garmin_user_id: garminUserId })
+              .eq('user_id', tokensWithoutGarminId.user_id);
+            
+            if (!updateError) {
+              tokenRow = tokensWithoutGarminId;
+            } else {
+              console.error('Failed to update garmin_user_id:', updateError);
+            }
+          }
+        }
+        
         if (!tokenRow) {
           console.error(`No user found for Garmin ID: ${garminUserId}`);
           return new Response('ok', {
