@@ -110,7 +110,7 @@ serve(async (req)=>{
 
     // 4️⃣ Redirect back to the origin URL with success parameter
     const redirectUrl = data.origin_url || "https://uphill.lovable.dev";
-    const finalUrl = `${redirectUrl}/settings/integrations?garmin=connected`;
+    const finalUrl = `${redirectUrl}?tab=integrations&garmin=connected`;
     
     return new Response(null, {
       status: 302,
