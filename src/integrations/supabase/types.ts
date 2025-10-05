@@ -582,6 +582,7 @@ export type Database = {
           expires_at: string | null
           origin_url: string | null
           state: string
+          user_id: string | null
         }
         Insert: {
           code_verifier: string
@@ -589,6 +590,7 @@ export type Database = {
           expires_at?: string | null
           origin_url?: string | null
           state: string
+          user_id?: string | null
         }
         Update: {
           code_verifier?: string
@@ -596,6 +598,7 @@ export type Database = {
           expires_at?: string | null
           origin_url?: string | null
           state?: string
+          user_id?: string | null
         }
         Relationships: []
       }
