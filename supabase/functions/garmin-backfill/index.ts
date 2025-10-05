@@ -45,78 +45,56 @@ serve(async (req)=>{
       });
     }
     const accessToken = tokenData.access_token;
-    // ✅ Date range chunking
+    
+    // ✅ Date range chunking (30 days per request as per Garmin docs)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - daysBack);
-    const chunkMs = 30 * 24 * 60 * 60 * 1000; // 30 days per chunk
+    const chunkMs = 30 * 24 * 60 * 60 * 1000; // 30 days per chunk (Garmin maximum)
+    
     let currentStart = startDate.getTime();
-    let inserted = 0;
-    let skipped = 0;
+    let requestsSent = 0;
+    
+    console.log(`Starting Garmin backfill: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
     while(currentStart < endDate.getTime()){
       const currentEnd = Math.min(currentStart + chunkMs, endDate.getTime());
-      const url = `${GARMIN_API_BASE}/activities?uploadStartTimeInSeconds=${Math.floor(currentStart / 1000)}&uploadEndTimeInSeconds=${Math.floor(currentEnd / 1000)}`;
-      console.log(`Fetching activities: ${new Date(currentStart).toISOString()} → ${new Date(currentEnd).toISOString()}`);
+      
+      // ✅ Use the official BACKFILL endpoint with correct parameters (per Garmin Activity API v1.2.3)
+      const url = `${GARMIN_API_BASE}/backfill/activities?summaryStartTimeInSeconds=${Math.floor(currentStart / 1000)}&summaryEndTimeInSeconds=${Math.floor(currentEnd / 1000)}`;
+      
+      console.log(`Sending backfill request: ${new Date(currentStart).toISOString()} → ${new Date(currentEnd).toISOString()}`);
+      
       const response = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Accept": "application/json"
         }
       });
-      if (!response.ok) {
-        console.error(`Failed to fetch: ${response.status}`);
-        currentStart = currentEnd;
-        continue;
+      
+      // ✅ Backfill endpoint returns 202 Accepted (asynchronous processing)
+      // Activities will arrive later via the garmin-webhook endpoint
+      if (response.status === 202) {
+        console.log(`✅ Backfill request accepted. Activities will arrive via webhook.`);
+        requestsSent++;
+      } else if (response.status === 409) {
+        console.log(`⚠️ Duplicate backfill request (already processing): ${response.status}`);
+        requestsSent++;
+      } else if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error(`❌ Backfill request failed: ${response.status} - ${errorText}`);
+        // Continue to next chunk even if one fails
       }
-      const activities = await response.json();
-      if (!Array.isArray(activities) || activities.length === 0) {
-        currentStart = currentEnd;
-        continue;
-      }
-      for (const act of activities){
-        const summaryId = act.summaryId?.toString();
-        if (!summaryId) continue;
-        // ✅ Check if exists
-        const { data: existing } = await supabase.from("activities").select("id").eq("garmin_activity_id", summaryId).eq("user_id", user.id).maybeSingle();
-        if (existing) {
-          skipped++;
-          continue;
-        }
-        const mapped = {
-          user_id: user.id,
-          garmin_activity_id: summaryId,
-          name: act.activityName || "Garmin Activity",
-          date: act.startTimeInSeconds ? new Date(act.startTimeInSeconds * 1000).toISOString() : new Date().toISOString(),
-          duration_seconds: act.durationInSeconds || 0,
-          distance_meters: act.distanceInMeters || null,
-          elevation_gain_meters: act.elevationGainInMeters || null,
-          avg_heart_rate: act.averageHeartRateInBeatsPerMinute || null,
-          max_heart_rate: act.maxHeartRateInBeatsPerMinute || null,
-          calories: act.activeKilocalories || null,
-          sport_mode: mapGarminSportType(act.activityType),
-          activity_type: "normal",
-          external_sync_source: "garmin"
-        };
-        const { error: insertError } = await supabase.from("activities").insert(mapped);
-        if (insertError) {
-          console.error(`Insert failed for ${summaryId}:`, insertError);
-          skipped++;
-          continue;
-        }
-        inserted++;
-        // ✅ Queue job for worker to download FIT later
-        await supabase.from("garmin_backfill_jobs").insert({
-          user_id: user.id,
-          summary_id: summaryId,
-          status: "pending"
-        });
-      }
+      
       currentStart = currentEnd;
     }
+    
+    console.log(`Backfill complete: ${requestsSent} request(s) sent to Garmin. Activities will arrive asynchronously via webhook.`);
+    
     return new Response(JSON.stringify({
       success: true,
-      inserted,
-      skipped
+      message: `Backfill initiated for ${daysBack} days. Activities will sync via webhook.`,
+      requestsSent
     }), {
       headers: {
         ...corsHeaders,
