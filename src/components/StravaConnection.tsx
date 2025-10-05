@@ -3,14 +3,39 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Activity, Link, Unlink, MapPin, Calendar } from "lucide-react";
+import { Loader2, Activity, Link, Unlink, MapPin, Calendar, XCircle } from "lucide-react";
 import { useStrava } from "@/hooks/useStrava";
 import { useStravaJobs } from "@/hooks/useStravaJobs";
 import { StravaHistoryImport } from "@/components/StravaHistoryImport";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export function StravaConnection() {
   const { connection, isLoading, connect, disconnect, isConnecting, isDisconnecting } = useStrava();
-  const { activeJob, latestCompletedJob, calculateProgress } = useStravaJobs();
+  const { activeJob, latestCompletedJob, calculateProgress, refreshJobs } = useStravaJobs();
+
+  const handleCancelJob = async () => {
+    if (!activeJob) return;
+    
+    try {
+      const { error } = await supabase
+        .from('strava_backfill_jobs')
+        .update({ 
+          status: 'error' as const,
+          last_error: 'Cancelled by user',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeJob.id);
+
+      if (error) throw error;
+
+      toast.success("Import job cancelled");
+      await refreshJobs();
+    } catch (error) {
+      console.error('Cancel error:', error);
+      toast.error("Failed to cancel job");
+    }
+  };
 
   const getStatusBadge = () => {
     if (isConnecting) {
@@ -107,6 +132,14 @@ export function StravaConnection() {
                   <Badge variant="secondary" className="ml-auto">
                     {activeJob.status === 'pending' ? 'Queued' : 'In Progress'}
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelJob}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
                   We're syncing your full training history in the background. This may take a few minutes.
