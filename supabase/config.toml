@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.garmin-webhook]
 verify_jwt = false
 
+[functions.garmin-fit-worker]
+verify_jwt = false
+
 [functions.strava-auth]
 verify_jwt = false
 
