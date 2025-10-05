@@ -20,23 +20,32 @@ export function StravaHistoryImport() {
   const handleCancelJob = async () => {
     if (!activeJob) return;
     
+    console.log('Cancelling Strava job:', activeJob.id);
+    
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('strava_backfill_jobs')
         .update({ 
-          status: 'error',
+          status: 'error' as const,
           last_error: 'Cancelled by user',
           updated_at: new Date().toISOString()
         })
-        .eq('id', activeJob.id);
+        .eq('id', activeJob.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Cancel error:', error);
+        throw error;
+      }
 
+      console.log('Job cancelled successfully:', data);
       toast.success("Import job cancelled");
-      refreshJobs();
+      
+      // Force immediate refresh
+      await refreshJobs();
     } catch (error) {
       console.error('Cancel error:', error);
-      toast.error("Failed to cancel job");
+      toast.error("Failed to cancel job: " + (error as Error).message);
     }
   };
 
