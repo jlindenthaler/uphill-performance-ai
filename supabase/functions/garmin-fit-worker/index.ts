@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { Stream, Decoder } from "https://esm.sh/@garmin/fitsdk@21.178.0";
 
 const GARMIN_API_BASE = "https://apis.garmin.com/wellness-api/rest";
 
@@ -81,9 +82,13 @@ serve(async (req) => {
           continue;
         }
 
-        // Fetch activity details from Garmin
+        // Try activityDetails first (for backfill), fallback to FIT file download
+        let samples: any[] = [];
+        let dataSource = 'unknown';
+
+        // Attempt 1: Try activityDetails endpoint
         const detailsUrl = `${GARMIN_API_BASE}/activityDetails/${job.garmin_activity_id}`;
-        console.log(`Fetching activity details from: ${detailsUrl}`);
+        console.log(`Trying activityDetails endpoint: ${detailsUrl}`);
 
         const detailsResponse = await fetch(detailsUrl, {
           headers: {
@@ -92,9 +97,97 @@ serve(async (req) => {
           },
         });
 
-        if (!detailsResponse.ok) {
+        if (detailsResponse.ok) {
+          const activityDetails = await detailsResponse.json();
+          samples = activityDetails.samples || [];
+          dataSource = 'activityDetails';
+          console.log(`✅ Got ${samples.length} samples from activityDetails`);
+        } else if (detailsResponse.status === 404) {
+          // Attempt 2: Download and parse FIT file
+          console.log(`ActivityDetails not available (404), downloading FIT file...`);
+          
+          const fitUrl = `${GARMIN_API_BASE}/activityFile/${job.garmin_activity_id}`;
+          console.log(`Downloading FIT file from: ${fitUrl}`);
+
+          const fitResponse = await fetch(fitUrl, {
+            headers: {
+              "Authorization": `Bearer ${tokenData.access_token}`,
+            },
+          });
+
+          if (!fitResponse.ok) {
+            const errorText = await fitResponse.text();
+            console.error(`Failed to download FIT file: ${fitResponse.status} - ${errorText}`);
+            
+            await supabase
+              .from("garmin_fit_jobs")
+              .update({
+                status: job.attempts + 1 >= 3 ? "error" : "pending",
+                last_error: `FIT download failed: HTTP ${fitResponse.status}`,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", job.id);
+            
+            failed++;
+            continue;
+          }
+
+          // Parse FIT file
+          const fitBuffer = await fitResponse.arrayBuffer();
+          console.log(`Downloaded FIT file, size: ${fitBuffer.byteLength} bytes`);
+
+          try {
+            const fitStream = Stream.fromByteArray(new Uint8Array(fitBuffer));
+            const decoder = new Decoder(fitStream);
+            const { messages } = decoder.read();
+
+            console.log(`Decoded FIT file, found ${Object.keys(messages).length} message types`);
+
+            // Extract record messages (time series data)
+            const records = messages.recordMesgs || [];
+            console.log(`Found ${records.length} record messages`);
+
+            // Convert FIT records to sample format matching activityDetails
+            samples = records.map((record: any) => {
+              const unwrap = (obj: any) => {
+                if (obj && typeof obj === 'object' && 'value' in obj) {
+                  return obj.value !== 'undefined' ? obj.value : undefined;
+                }
+                return obj;
+              };
+
+              return {
+                startTimeInSeconds: unwrap(record.timestamp) ? Math.floor(new Date(unwrap(record.timestamp)).getTime() / 1000) : 0,
+                powerInWatts: unwrap(record.power) || 0,
+                heartRate: unwrap(record.heartRate) || 0,
+                bikeCadenceInRPM: unwrap(record.cadence) || 0,
+                speedMetersPerSecond: unwrap(record.speed) || 0,
+                totalDistanceInMeters: unwrap(record.distance) || 0,
+                elevationInMeters: unwrap(record.altitude) || 0,
+                airTemperatureCelcius: unwrap(record.temperature) || 0,
+                latitudeInDegree: unwrap(record.positionLat) ? unwrap(record.positionLat) * (180 / Math.pow(2, 31)) : undefined,
+                longitudeInDegree: unwrap(record.positionLong) ? unwrap(record.positionLong) * (180 / Math.pow(2, 31)) : undefined,
+              };
+            });
+
+            dataSource = 'fitFile';
+            console.log(`✅ Parsed FIT file, extracted ${samples.length} samples`);
+          } catch (parseError) {
+            console.error(`Failed to parse FIT file:`, parseError);
+            await supabase
+              .from("garmin_fit_jobs")
+              .update({
+                status: "error",
+                last_error: `FIT parse error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", job.id);
+            failed++;
+            continue;
+          }
+        } else {
           const errorText = await detailsResponse.text();
-          console.error(`Failed to fetch activity details: ${detailsResponse.status} - ${errorText}`);
+          console.error(`Failed to fetch activity data: ${detailsResponse.status} - ${errorText}`);
           
           await supabase
             .from("garmin_fit_jobs")
@@ -108,12 +201,6 @@ serve(async (req) => {
           failed++;
           continue;
         }
-
-        const activityDetails = await detailsResponse.json();
-        console.log(`Received activity details with ${activityDetails.samples?.length || 0} samples`);
-
-        // Parse and store the time series data
-        const samples = activityDetails.samples || [];
         
         const powerSeries: number[] = [];
         const heartRateSeries: number[] = [];
@@ -187,7 +274,7 @@ serve(async (req) => {
           })
           .eq("id", job.id);
 
-        console.log(`✅ Successfully processed activity ${job.garmin_activity_id}`);
+        console.log(`✅ Successfully processed activity ${job.garmin_activity_id} from ${dataSource}`);
         processed++;
 
       } catch (jobError) {
