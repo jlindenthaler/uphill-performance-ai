@@ -1,18 +1,18 @@
 // Garmin Backfill Edge Function
-// Handles historical activity import in 1-day chunks with token refresh and a 1-year cap
+// Imports historical activities in 1-day chunks with correct parameters and token refresh
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const GARMIN_API_BASE = "https://apis.garmin.com/wellness-api/rest";
 const CHUNK_MS = 24 * 60 * 60 * 1000; // 1 day
-const MAX_DAYS_PER_RUN = 365; // 1 year cap per import run
+const MAX_DAYS_PER_RUN = 365; // 1 year cap
 const CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID")!;
 const CLIENT_SECRET = Deno.env.get("GARMIN_CLIENT_SECRET")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 // 🔄 Refresh token helper
@@ -50,7 +50,6 @@ async function ensureGarminToken(supabase: any, userId: string): Promise<string>
   }
 
   const newTokens = await res.json();
-
   const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
   await supabase.from("garmin_tokens").update({
@@ -62,7 +61,7 @@ async function ensureGarminToken(supabase: any, userId: string): Promise<string>
   return newTokens.access_token;
 }
 
-// 🏃 Backfill main
+// 🏃 Main backfill function
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,16 +83,13 @@ serve(async (req) => {
       });
     }
 
-    // Params
+    // Parse request body
     const { startDate, endDate } = await req.json().catch(() => ({}));
-
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date(end.getTime() - MAX_DAYS_PER_RUN * CHUNK_MS);
 
     const totalDaysRequested = Math.ceil((end.getTime() - start.getTime()) / CHUNK_MS);
     const cappedDays = Math.min(totalDaysRequested, MAX_DAYS_PER_RUN);
-
-    // Adjust end if needed
     const cappedEnd = new Date(start.getTime() + cappedDays * CHUNK_MS);
 
     console.log(`Backfill requested: ${totalDaysRequested} days, capped at ${cappedDays}`);
@@ -106,8 +102,9 @@ serve(async (req) => {
       const currentEnd = current + CHUNK_MS;
       const accessToken = await ensureGarminToken(supabase, user.id);
 
-      const url = `${GARMIN_API_BASE}/activities?uploadStartTimeInSeconds=${Math.floor(current / 1000)}&uploadEndTimeInSeconds=${Math.floor(currentEnd / 1000)}`;
-      console.log(`Fetching: ${new Date(current).toISOString()} → ${new Date(currentEnd).toISOString()}`);
+      // ✅ Correct Garmin params: summaryStartTimeInSeconds / summaryEndTimeInSeconds
+      const url = `${GARMIN_API_BASE}/activities?summaryStartTimeInSeconds=${Math.floor(current / 1000)}&summaryEndTimeInSeconds=${Math.floor(currentEnd / 1000)}`;
+      console.log(`Fetching Garmin activities: ${new Date(current).toISOString()} → ${new Date(currentEnd).toISOString()}`);
 
       const res = await fetch(url, {
         headers: {
@@ -117,7 +114,8 @@ serve(async (req) => {
       });
 
       if (!res.ok) {
-        console.error(`Garmin fetch failed: ${res.status} ${res.statusText}`);
+        const errBody = await res.text();
+        console.error(`Garmin fetch failed [${res.status}]: ${errBody}`);
         current = currentEnd;
         continue;
       }
@@ -156,9 +154,8 @@ serve(async (req) => {
         }
       }
 
-      // optional: small delay to avoid hammering Garmin
+      // polite delay
       await new Promise(r => setTimeout(r, 200));
-
       current = currentEnd;
     }
 
@@ -187,6 +184,7 @@ serve(async (req) => {
   }
 });
 
+// 🧠 Basic Garmin sport mapping helper
 function mapGarminSportType(type: string) {
   if (!type) return null;
   const t = type.toLowerCase();
