@@ -34,6 +34,106 @@ serve(async (req)=>{
         return new Response('ok', { status: 200 });
       }
 
+      // Handle activityDetails array (detailed data with samples)
+      if (notification.activityDetails && Array.isArray(notification.activityDetails)) {
+        console.log(`Processing ${notification.activityDetails.length} activity details with samples`);
+        
+        for (const activityDetail of notification.activityDetails) {
+          const garminUserId = activityDetail.userId;
+          const garminActivityId = activityDetail.activityId?.toString();
+          
+          if (!garminUserId || !garminActivityId) {
+            console.warn('Missing userId or activityId in activityDetails:', activityDetail);
+            continue;
+          }
+
+          // Get user_id
+          const { data: tokenRow } = await supabase
+            .from('garmin_tokens')
+            .select('user_id')
+            .eq('garmin_user_id', garminUserId)
+            .maybeSingle();
+          
+          if (!tokenRow) {
+            console.error(`No user found for Garmin ID: ${garminUserId}`);
+            continue;
+          }
+
+          const userId = tokenRow.user_id;
+          const samples = activityDetail.samples || [];
+          
+          if (samples.length > 0) {
+            console.log(`Processing ${samples.length} samples for activity ${garminActivityId}`);
+            
+            // Parse time series data
+            const powerSeries: number[] = [];
+            const heartRateSeries: number[] = [];
+            const cadenceSeries: number[] = [];
+            const speedSeries: number[] = [];
+            const distanceSeries: number[] = [];
+            const altitudeSeries: number[] = [];
+            const temperatureSeries: number[] = [];
+            const timeSeries: number[] = [];
+            const gpsData: any[] = [];
+
+            for (const sample of samples) {
+              timeSeries.push(sample.startTimeInSeconds || 0);
+              powerSeries.push(sample.powerInWatts || 0);
+              heartRateSeries.push(sample.heartRate || 0);
+              cadenceSeries.push(sample.bikeCadenceInRPM || 0);
+              speedSeries.push(sample.speedMetersPerSecond || 0);
+              distanceSeries.push(sample.totalDistanceInMeters || 0);
+              altitudeSeries.push(sample.elevationInMeters || 0);
+              temperatureSeries.push(sample.airTemperatureCelcius || 0);
+
+              if (sample.latitudeInDegree && sample.longitudeInDegree) {
+                gpsData.push({
+                  lat: sample.latitudeInDegree,
+                  lon: sample.longitudeInDegree,
+                  alt: sample.elevationInMeters,
+                  time: sample.startTimeInSeconds,
+                });
+              }
+            }
+
+            // Update activity with time series data
+            const { error: updateError } = await supabase
+              .from('activities')
+              .update({
+                power_time_series: powerSeries.length > 0 ? powerSeries : null,
+                heart_rate_time_series: heartRateSeries.length > 0 ? heartRateSeries : null,
+                cadence_time_series: cadenceSeries.length > 0 ? cadenceSeries : null,
+                speed_time_series: speedSeries.length > 0 ? speedSeries : null,
+                distance_time_series: distanceSeries.length > 0 ? distanceSeries : null,
+                altitude_time_series: altitudeSeries.length > 0 ? altitudeSeries : null,
+                temperature_time_series: temperatureSeries.length > 0 ? temperatureSeries : null,
+                time_time_series: timeSeries.length > 0 ? timeSeries : null,
+                gps_data: gpsData.length > 0 ? gpsData : null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('garmin_activity_id', garminActivityId)
+              .eq('user_id', userId);
+
+            if (updateError) {
+              console.error(`Failed to update activity ${garminActivityId} with time series:`, updateError.message);
+            } else {
+              console.log(`✅ Updated activity ${garminActivityId} with ${samples.length} samples`);
+            }
+
+            // Mark FIT job as completed if it exists
+            await supabase
+              .from('garmin_fit_jobs')
+              .update({
+                status: 'completed',
+                last_error: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('garmin_activity_id', garminActivityId)
+              .eq('user_id', userId);
+          }
+        }
+      }
+
       // Handle activities array (backfill response format)
       if (notification.activities && Array.isArray(notification.activities)) {
         console.log(`Processing ${notification.activities.length} activities from backfill`);
