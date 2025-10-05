@@ -11,6 +11,9 @@ interface ElevationChartProps {
 }
 
 export function ElevationChart({ gpsData, activity, onHover, hoverIndex, useTerrainData = false }: ElevationChartProps) {
+  // Temporarily hidden
+  return null;
+  
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   // Calculate 3D distance including elevation change
