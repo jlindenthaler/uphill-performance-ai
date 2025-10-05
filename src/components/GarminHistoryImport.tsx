@@ -98,7 +98,7 @@ export function GarminHistoryImport() {
       if (jobError) throw jobError;
 
       // Invoke the garmin-backfill edge function to actually start the backfill
-      const { error: invokeError } = await supabase.functions.invoke('garmin-backfill', {
+      const { data: invokeData, error: invokeError } = await supabase.functions.invoke('garmin-backfill', {
         body: {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -107,12 +107,23 @@ export function GarminHistoryImport() {
 
       if (invokeError) {
         console.error('Failed to invoke backfill:', invokeError);
+        
+        // Check if it's a duplicate backfill error
+        if (invokeError.message?.includes('duplicate') || invokeData?.error === 'duplicate') {
+          toast({
+            title: "Backfill already in progress",
+            description: invokeData?.message || "Garmin is already processing a backfill for this date range. Please wait 5-10 minutes for it to complete.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         throw new Error(`Failed to start backfill: ${invokeError.message}`);
       }
 
       toast({
         title: "Import started",
-        description: "Backfill request sent to Garmin. Your activities will arrive via webhook shortly.",
+        description: "Backfill request sent to Garmin. Activities will arrive via webhook in 5-10 minutes.",
       });
 
       setStartDate(undefined);
@@ -142,7 +153,9 @@ export function GarminHistoryImport() {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Importing more data helps create better AI training plans, but larger date ranges can take up to several days to complete. 
+            <strong>Important:</strong> Garmin's backfill process is asynchronous and can take 5-10 minutes to complete.
+            Activities will arrive via webhook once Garmin processes them. Only one backfill per date range can run at a time.
+            <br /><br />
             Only Running, Cycling, and Swimming activities will be imported.
           </AlertDescription>
         </Alert>

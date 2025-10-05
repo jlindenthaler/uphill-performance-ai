@@ -83,7 +83,18 @@ serve(async (req)=>{
         requestsSent++;
       } else if (response.status === 409) {
         console.log(`⚠️ Duplicate backfill request (already processing): ${response.status}`);
-        requestsSent++;
+        // Mark this as duplicate - Garmin is still processing a previous request
+        return new Response(JSON.stringify({
+          error: 'duplicate',
+          message: 'A backfill for this date range is already in progress on Garmin\'s servers. Please wait 5-10 minutes for it to complete before trying again.',
+          requestsSent: 0
+        }), {
+          status: 409,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
+        });
       } else if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
         console.error(`❌ Backfill request failed: ${response.status} - ${errorText}`);
