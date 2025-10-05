@@ -30,10 +30,10 @@ serve(async (req)=>{
         headers: corsHeaders
       });
     }
-    const { daysBack = 90 } = await req.json().catch(()=>({
+    const { startDate: startDateStr, endDate: endDateStr, daysBack } = await req.json().catch(()=>({
         daysBack: 90
       }));
-    console.log(`Backfill: user=${user.id}, daysBack=${daysBack}`);
+    console.log(`Backfill: user=${user.id}, startDate=${startDateStr}, endDate=${endDateStr}, daysBack=${daysBack}`);
     // ✅ Get token
     const { data: tokenData, error: tokenError } = await supabase.from("garmin_tokens").select("access_token, expires_at").eq("user_id", user.id).single();
     if (tokenError || !tokenData?.access_token) {
@@ -47,9 +47,13 @@ serve(async (req)=>{
     const accessToken = tokenData.access_token;
     
     // ✅ Date range chunking (30 days per request as per Garmin docs)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - daysBack);
+    // Use provided dates if available, otherwise fall back to daysBack
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    const startDate = startDateStr ? new Date(startDateStr) : (() => {
+      const date = new Date();
+      date.setDate(date.getDate() - (daysBack || 90));
+      return date;
+    })();
     const chunkMs = 30 * 24 * 60 * 60 * 1000; // 30 days per chunk (Garmin maximum)
     
     let currentStart = startDate.getTime();

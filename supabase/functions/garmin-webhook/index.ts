@@ -25,96 +25,145 @@ serve(async (req)=>{
       console.log('Garmin webhook notification (RAW):', JSON.stringify(notification, null, 2));
       console.log('Garmin webhook received:', JSON.stringify(notification, null, 2));
       const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-      // Extract key fields from notification
-      const { userId: garminUserId, userAccessToken: pullToken, callbackURL, summaryId, type } = notification;
-      // Deregistration
+      
+      // Handle deregistration notifications
+      const { userId: garminUserId, type } = notification;
       if (type === 'USER_DEREGISTRATION') {
         console.log(`User ${garminUserId} deregistered`);
         await supabase.from('garmin_tokens').delete().eq('garmin_user_id', garminUserId);
-        return new Response('ok', {
-          status: 200
-        });
+        return new Response('ok', { status: 200 });
       }
-      // Activity notification
-      if (type === 'ACTIVITY' && callbackURL && pullToken) {
-        const activityUrl = `${callbackURL}?token=${pullToken}`;
-        const res = await fetch(activityUrl, {
-          headers: {
-            Accept: 'application/json'
-          }
-        });
-        if (!res.ok) {
-          console.error('Failed to pull activity summary:', res.status, res.statusText);
-          return new Response('ok', {
-            status: 200
-          });
-        }
-        const summary = await res.json();
-        console.log('Activity summary pulled:', summary.summaryId || summary.activityId);
-        // Get our user_id using Garmin user id
-        let { data: tokenRow } = await supabase.from('garmin_tokens').select('user_id').eq('garmin_user_id', garminUserId).maybeSingle();
+
+      // Handle activities array (backfill response format)
+      if (notification.activities && Array.isArray(notification.activities)) {
+        console.log(`Processing ${notification.activities.length} activities from backfill`);
         
-        // Fallback: If not found by garmin_user_id, try to find by checking all tokens and update with the garmin_user_id
-        if (!tokenRow) {
-          console.log(`No token found with garmin_user_id ${garminUserId}, checking for tokens without garmin_user_id...`);
-          const { data: tokensWithoutGarminId } = await supabase
+        for (const activity of notification.activities) {
+          const garminUserId = activity.userId;
+          const garminActivityId = activity.summaryId?.toString() || activity.activityId?.toString();
+          
+          if (!garminUserId || !garminActivityId) {
+            console.warn('Missing userId or activityId:', activity);
+            continue;
+          }
+
+          // Get our user_id using Garmin user id
+          let { data: tokenRow } = await supabase
             .from('garmin_tokens')
             .select('user_id')
-            .is('garmin_user_id', null)
-            .limit(1)
+            .eq('garmin_user_id', garminUserId)
             .maybeSingle();
           
-          if (tokensWithoutGarminId) {
-            console.log(`Updating token for user ${tokensWithoutGarminId.user_id} with garmin_user_id ${garminUserId}`);
-            const { error: updateError } = await supabase
+          // Fallback: If not found by garmin_user_id, try to find by checking all tokens
+          if (!tokenRow) {
+            console.log(`No token found with garmin_user_id ${garminUserId}, checking for tokens without garmin_user_id...`);
+            const { data: tokensWithoutGarminId } = await supabase
               .from('garmin_tokens')
-              .update({ garmin_user_id: garminUserId })
-              .eq('user_id', tokensWithoutGarminId.user_id);
+              .select('user_id')
+              .is('garmin_user_id', null)
+              .limit(1)
+              .maybeSingle();
             
-            if (!updateError) {
-              tokenRow = tokensWithoutGarminId;
-            } else {
-              console.error('Failed to update garmin_user_id:', updateError);
+            if (tokensWithoutGarminId) {
+              console.log(`Updating token for user ${tokensWithoutGarminId.user_id} with garmin_user_id ${garminUserId}`);
+              const { error: updateError } = await supabase
+                .from('garmin_tokens')
+                .update({ garmin_user_id: garminUserId })
+                .eq('user_id', tokensWithoutGarminId.user_id);
+              
+              if (!updateError) {
+                tokenRow = tokensWithoutGarminId;
+              } else {
+                console.error('Failed to update garmin_user_id:', updateError);
+              }
             }
           }
-        }
-        
-        if (!tokenRow) {
-          console.error(`No user found for Garmin ID: ${garminUserId}`);
-          return new Response('ok', {
-            status: 200
+          
+          if (!tokenRow) {
+            console.error(`No user found for Garmin ID: ${garminUserId}`);
+            continue;
+          }
+
+          const userId = tokenRow.user_id;
+
+          // Convert Unix timestamp to ISO string
+          const activityDate = activity.startTimeInSeconds 
+            ? new Date(activity.startTimeInSeconds * 1000).toISOString()
+            : new Date().toISOString();
+
+          // Insert activity into database
+          const { error: insertError } = await supabase.from('activities').insert({
+            user_id: userId,
+            garmin_activity_id: garminActivityId,
+            name: activity.activityName || 'Garmin Activity',
+            date: activityDate,
+            duration_seconds: activity.durationInSeconds || 0,
+            distance_meters: activity.distanceInMeters || null,
+            elevation_gain_meters: activity.totalElevationGainInMeters || null,
+            avg_heart_rate: activity.averageHeartRateInBeatsPerMinute || null,
+            max_heart_rate: activity.maxHeartRateInBeatsPerMinute || null,
+            calories: activity.activeKilocalories || null,
+            avg_cadence: activity.averageBikeCadenceInRoundsPerMinute || null,
+            avg_speed_kmh: activity.averageSpeedInMetersPerSecond ? activity.averageSpeedInMetersPerSecond * 3.6 : null,
+            sport_mode: mapGarminSportType(activity.activityType),
+            external_sync_source: 'garmin'
           });
+
+          if (insertError && insertError.code !== '23505') {
+            console.error(`Error inserting activity ${garminActivityId}:`, insertError.message);
+          } else {
+            console.log(`✅ Inserted activity ${garminActivityId}`);
+          }
+
+          // Enqueue FIT download job for detailed data
+          const { error: jobError } = await supabase.from('garmin_fit_jobs').upsert({
+            user_id: userId,
+            garmin_activity_id: garminActivityId,
+            status: 'pending'
+          });
+
+          if (jobError) {
+            console.error(`Failed to queue FIT job for ${garminActivityId}:`, jobError.message);
+          } else {
+            console.log(`Queued FIT job for activity ${garminActivityId}`);
+          }
         }
-        const userId = tokenRow.user_id;
-        const garminActivityId = summary.summaryId?.toString() || summary.activityId?.toString();
-        // Insert summary into activities if not already there
-        const { error: insertError } = await supabase.from('activities').insert({
-          user_id: userId,
-          garmin_activity_id: garminActivityId,
-          name: summary.activityName || 'Garmin Activity',
-          date: summary.startTimeGMT || summary.startTime || new Date().toISOString(),
-          duration_seconds: Math.round(summary.duration || 0),
-          distance_meters: summary.distance || null,
-          elevation_gain_meters: summary.elevationGain || null,
-          avg_heart_rate: summary.averageHR || null,
-          max_heart_rate: summary.maxHR || null,
-          calories: summary.calories || null,
-          sport_mode: mapGarminSportType(summary.activityType?.typeKey || summary.activityType),
-          external_sync_source: 'garmin'
-        }).select().maybeSingle();
-        if (insertError && insertError.code !== '23505') {
-          console.error('Error inserting activity summary:', insertError.message);
-        }
-        // Enqueue FIT download job
-        const { error: jobError } = await supabase.from('garmin_fit_jobs').upsert({
-          user_id: userId,
-          garmin_activity_id: garminActivityId,
-          status: 'pending'
-        });
-        if (jobError) {
-          console.error('Failed to queue FIT job:', jobError.message);
-        } else {
-          console.log(`Queued FIT job for activity ${garminActivityId}`);
+      }
+
+      // Handle activityFiles array (FIT file notifications)
+      if (notification.activityFiles && Array.isArray(notification.activityFiles)) {
+        console.log(`Processing ${notification.activityFiles.length} FIT files`);
+        
+        for (const file of notification.activityFiles) {
+          const garminUserId = file.userId;
+          const garminActivityId = file.summaryId?.replace('-file', '') || file.activityId?.toString();
+          
+          if (!garminUserId || !garminActivityId) continue;
+
+          // Get user_id
+          const { data: tokenRow } = await supabase
+            .from('garmin_tokens')
+            .select('user_id')
+            .eq('garmin_user_id', garminUserId)
+            .maybeSingle();
+          
+          if (!tokenRow) {
+            console.error(`No user found for Garmin ID: ${garminUserId}`);
+            continue;
+          }
+
+          // Queue FIT download job
+          const { error: jobError } = await supabase.from('garmin_fit_jobs').upsert({
+            user_id: tokenRow.user_id,
+            garmin_activity_id: garminActivityId,
+            status: 'pending'
+          });
+
+          if (jobError) {
+            console.error(`Failed to queue FIT job:`, jobError.message);
+          } else {
+            console.log(`Queued FIT job for activity ${garminActivityId}`);
+          }
         }
       }
       return new Response('ok', {

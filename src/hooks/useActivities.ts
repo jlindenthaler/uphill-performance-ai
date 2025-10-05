@@ -23,6 +23,7 @@ interface ActivitySummary {
   avg_speed_kmh?: number;
   avg_pace_per_km?: number;
   tss?: number;
+  external_sync_source?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +95,7 @@ export function useActivities(filterBySport: boolean = true) {
           avg_speed_kmh,
           avg_pace_per_km,
           tss,
+          external_sync_source,
           created_at,
           updated_at
         `)

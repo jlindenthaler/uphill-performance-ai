@@ -102,6 +102,24 @@ export function Activities() {
     }
   };
 
+  const getSyncSourceBadge = (source: string | null | undefined) => {
+    if (source === 'garmin') {
+      return (
+        <Badge variant="outline" className="text-xs">
+          Garmin
+        </Badge>
+      );
+    }
+    if (source === 'strava') {
+      return (
+        <Badge variant="outline" className="text-xs">
+          Strava
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   const handleActivityToggle = async (activityId: string) => {
     if (expandedActivity === activityId) {
       setExpandedActivity(null);
@@ -603,6 +621,7 @@ export function Activities() {
                                     TLI {Math.round(activity.tss)}
                                   </Badge>
                                 )}
+                                {getSyncSourceBadge(activity.external_sync_source)}
                               </div>
                             </div>
                             <DropdownMenu>
