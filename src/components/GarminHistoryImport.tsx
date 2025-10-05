@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,8 +15,9 @@ export function GarminHistoryImport() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [isLoading, setIsLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const { toast } = useToast();
-  const { activeJob, refreshJobs } = useGarminJobs();
+  const { activeJob, checkDateRangeOverlap, refreshJobs } = useGarminJobs();
 
   const handleCancelJob = async () => {
     if (!activeJob) return;
@@ -50,6 +51,9 @@ export function GarminHistoryImport() {
   };
 
   const handleImport = async () => {
+    // Prevent rapid double-clicks
+    if (isSubmittingRef.current) return;
+    
     if (!startDate || !endDate) {
       toast({
         title: "Missing dates",
@@ -68,7 +72,21 @@ export function GarminHistoryImport() {
       return;
     }
 
+    // Check for overlapping date ranges with active jobs
+    const overlappingJob = checkDateRangeOverlap(startDate, endDate);
+    if (overlappingJob) {
+      toast({
+        title: "Import already in progress",
+        description: `An import for ${format(new Date(overlappingJob.start_date), "PPP")} to ${format(new Date(overlappingJob.end_date), "PPP")} is already running. Please wait for it to complete.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    isSubmittingRef.current = true;
     setIsLoading(true);
+    let jobId: string | null = null;
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -85,7 +103,7 @@ export function GarminHistoryImport() {
       }
 
       // Create backfill job
-      const { error: jobError } = await supabase
+      const { data: jobData, error: jobError } = await supabase
         .from('garmin_backfill_jobs')
         .insert({
           user_id: user.id,
@@ -93,9 +111,12 @@ export function GarminHistoryImport() {
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
           status: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (jobError) throw jobError;
+      jobId = jobData?.id;
 
       // Invoke the garmin-backfill edge function to actually start the backfill
       const { data: invokeData, error: invokeError } = await supabase.functions.invoke('garmin-backfill', {
@@ -107,6 +128,18 @@ export function GarminHistoryImport() {
 
       if (invokeError) {
         console.error('Failed to invoke backfill:', invokeError);
+        
+        // Update job status to error if we created it
+        if (jobId) {
+          await supabase
+            .from('garmin_backfill_jobs')
+            .update({ 
+              status: 'error',
+              last_error: invokeError.message || 'Failed to invoke backfill',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
+        }
         
         // Check if it's a duplicate backfill error
         if (invokeError.message?.includes('duplicate') || invokeData?.error === 'duplicate') {
@@ -138,6 +171,7 @@ export function GarminHistoryImport() {
       });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -248,7 +282,7 @@ export function GarminHistoryImport() {
 
         <Button
           onClick={handleImport}
-          disabled={!startDate || !endDate || isLoading || !!activeJob}
+          disabled={!startDate || !endDate || isLoading || !!activeJob || !!checkDateRangeOverlap(startDate, endDate)}
           className="w-full bg-green-600 hover:bg-green-700"
         >
           <Download className="mr-2 h-4 w-4" />

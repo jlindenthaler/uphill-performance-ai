@@ -72,12 +72,33 @@ export function useGarminJobs() {
     return Math.min(Math.max(progress, 0), 100);
   };
 
+  const checkDateRangeOverlap = (
+    newStart: Date | undefined, 
+    newEnd: Date | undefined
+  ): GarminBackfillJob | null => {
+    if (!newStart || !newEnd) return null;
+    
+    const activeJob = getActiveJob();
+    if (!activeJob) return null;
+    
+    const existingStart = new Date(activeJob.start_date);
+    const existingEnd = new Date(activeJob.end_date);
+    
+    // Check if date ranges overlap
+    if (newStart <= existingEnd && newEnd >= existingStart) {
+      return activeJob;
+    }
+    
+    return null;
+  };
+
   return {
     jobs,
     loading,
     activeJob: getActiveJob(),
     latestCompletedJob: getLatestCompletedJob(),
     calculateProgress,
+    checkDateRangeOverlap,
     refreshJobs: fetchJobs
   };
 }
