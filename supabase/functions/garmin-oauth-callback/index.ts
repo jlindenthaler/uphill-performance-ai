@@ -1,4 +1,3 @@
-// supabase/functions/garmin-oauth-callback/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -20,7 +19,7 @@ serve(async (req) => {
       return new Response("Missing code or state", { status: 400 });
     }
 
-    // Step 1: Look up PKCE details from DB using state
+    // 1. Look up PKCE data
     const { data: pkceData, error: pkceError } = await supabaseClient
       .from("oauth_pkce")
       .select("*")
@@ -34,13 +33,12 @@ serve(async (req) => {
 
     const { code_verifier, user_id, origin_url } = pkceData;
 
-    // Step 2: Exchange code for tokens
+    // 2. Exchange code for tokens
     const tokenResponse = await fetch("https://connect.garmin.com/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        Authorization:
-          "Basic " + btoa(`${GARMIN_CLIENT_ID}:${GARMIN_CLIENT_SECRET}`),
+        Authorization: "Basic " + btoa(`${GARMIN_CLIENT_ID}:${GARMIN_CLIENT_SECRET}`),
       },
       body: new URLSearchParams({
         code,
@@ -50,16 +48,26 @@ serve(async (req) => {
       }),
     });
 
-    const tokenData = await tokenResponse.json();
+    const rawText = await tokenResponse.text();
+
     if (!tokenResponse.ok) {
-      console.error("Garmin token exchange failed:", tokenData);
+      console.error("Garmin token exchange failed:", rawText);
       return new Response("Token exchange failed", { status: 400 });
     }
 
-    const { access_token, refresh_token, expires_in } = tokenData;
+    const tokenParams = new URLSearchParams(rawText);
+    const access_token = tokenParams.get("access_token");
+    const refresh_token = tokenParams.get("refresh_token");
+    const expires_in = parseInt(tokenParams.get("expires_in") ?? "0");
+
+    if (!access_token || !refresh_token) {
+      console.error("Garmin token parse failed:", rawText);
+      return new Response("Invalid token response from Garmin", { status: 400 });
+    }
+
     const expires_at = new Date(Date.now() + expires_in * 1000).toISOString();
 
-    // Step 3: Store tokens
+    // 3. Store tokens
     const { error: tokenError } = await supabaseClient
       .from("garmin_tokens")
       .upsert({
@@ -73,7 +81,7 @@ serve(async (req) => {
       console.error("Token storage failed:", tokenError);
     }
 
-    // Step 4: Mark profile as connected
+    // 4. Update profile connection flag
     const { error: profileError } = await supabaseClient
       .from("profiles")
       .update({ garmin_connected: true })
@@ -83,10 +91,9 @@ serve(async (req) => {
       console.error("Error updating profile:", profileError);
     }
 
-    // Step 5: Redirect back to frontend
+    // 5. Redirect back to frontend
     const redirectUrl = origin_url ?? "https://uphill-ai.uphill.com.au";
     const finalUrl = `${redirectUrl}/settings/integrations?garmin=connected`;
-
     return Response.redirect(finalUrl, 302);
 
   } catch (err) {
