@@ -16,6 +16,7 @@ export function EnhancedPowerProfileChart({
   const [dateRange, setDateRange] = useState('90');
   const {
     powerProfile,
+    recalculatedProfile,
     loading
   } = usePowerProfile(parseInt(dateRange));
   const {
@@ -86,17 +87,18 @@ export function EnhancedPowerProfileChart({
   };
   const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
 
-  // Use the already filtered power profile from the hook - now showing ALL data points
+  // Use recalculated profile data for the selected timeframe
   const chartData = useMemo(() => {
-    if (!powerProfile || powerProfile.length === 0) return [];
+    const dataToUse = recalculatedProfile.length > 0 ? recalculatedProfile : powerProfile;
+    if (!dataToUse || dataToUse.length === 0) return [];
     
-    return powerProfile.map(item => ({
+    return dataToUse.map(item => ({
       duration: item.duration,
       durationSeconds: item.durationSeconds,
       allTimeBest: item.best,
       rangeFiltered: item.current,
     }));
-  }, [powerProfile]);
+  }, [recalculatedProfile, powerProfile]);
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center h-64">
@@ -104,7 +106,7 @@ export function EnhancedPowerProfileChart({
         </CardContent>
       </Card>;
   }
-  if (powerProfile.length === 0) {
+  if (recalculatedProfile.length === 0 && powerProfile.length === 0) {
     return <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

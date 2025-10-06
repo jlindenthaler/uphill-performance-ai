@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useSupabase';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
 
 interface PowerProfileData {
   duration: string;
@@ -17,6 +18,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
   const { sportMode, isRunning } = useSportMode();
   const [powerProfile, setPowerProfile] = useState<PowerProfileData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recalculatedProfile, setRecalculatedProfile] = useState<PowerProfileData[]>([]);
 
   const fetchPowerProfile = async () => {
     if (!user) return;
@@ -135,9 +137,96 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     }
   };
 
+  const recalculateFromActivities = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Build date filter
+      let query = supabase
+        .from('activities')
+        .select('id, date, power_time_series, speed_time_series, gps_data')
+        .eq('user_id', user.id)
+        .eq('sport_mode', sportMode)
+        .order('date', { ascending: false });
+
+      if (dateRangeDays) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
+        query = query.gte('date', cutoffDate.toISOString());
+      }
+
+      const { data: activities, error } = await query;
+      if (error) throw error;
+
+      // Standard durations to calculate (in seconds)
+      const durations = [1, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 600, 900, 1200, 1800, 2400, 3600];
+      const bestValues = new Map<number, number>();
+
+      // Process each activity
+      activities?.forEach(activity => {
+        let records: any[] = [];
+        
+        // Get the appropriate time series data
+        if (isRunning) {
+          if (activity.speed_time_series) {
+            records = activity.speed_time_series as any[];
+          } else if (activity.gps_data && typeof activity.gps_data === 'object' && 'trackPoints' in activity.gps_data) {
+            records = (activity.gps_data as any).trackPoints || [];
+          }
+        } else {
+          if (activity.power_time_series) {
+            records = activity.power_time_series as any[];
+          } else if (activity.gps_data && typeof activity.gps_data === 'object' && 'trackPoints' in activity.gps_data) {
+            records = (activity.gps_data as any).trackPoints || [];
+          }
+        }
+
+        if (!records || records.length === 0) return;
+
+        // Calculate mean max for each duration
+        durations.forEach(duration => {
+          if (records.length < duration) return;
+
+          let value: number | null = null;
+          if (isRunning) {
+            value = calculateMeanMaximalPace(records, duration);
+          } else {
+            value = calculateMeanMaximalPower(records, duration);
+          }
+
+          if (value && value > 0) {
+            const existing = bestValues.get(duration);
+            // For running (pace), lower is better; for cycling (power), higher is better
+            if (!existing || (isRunning ? value < existing : value > existing)) {
+              bestValues.set(duration, value);
+            }
+          }
+        });
+      });
+
+      // Convert to PowerProfileData format
+      const profile = Array.from(bestValues.entries()).map(([durationSeconds, value]) => ({
+        duration: formatDuration(durationSeconds),
+        durationSeconds,
+        current: value,
+        best: value,
+        date: new Date().toISOString(),
+        unit: isRunning ? 'min/km' : 'W'
+      })).sort((a, b) => a.durationSeconds - b.durationSeconds);
+
+      setRecalculatedProfile(profile);
+    } catch (error) {
+      console.error('Error recalculating power profile from activities:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchPowerProfile();
+      recalculateFromActivities();
     }
   }, [user, sportMode, dateRangeDays, excludeActivityId]);
 
@@ -154,8 +243,10 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
   return {
     powerProfile,
+    recalculatedProfile,
     loading,
     fetchPowerProfile,
-    addPowerProfileEntry
+    addPowerProfileEntry,
+    recalculateFromActivities
   };
 }
