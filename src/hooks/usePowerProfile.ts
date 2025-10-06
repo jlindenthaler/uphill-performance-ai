@@ -158,21 +158,44 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
         // Calculate mean max for each duration
         durations.forEach(duration => {
-          if (activity.duration_seconds < duration) return; // Skip if activity too short
-
-          let value: number | null = null;
-          if (isRunning) {
-            value = calculateMeanMaximalPace(records, duration);
-          } else {
-            value = calculateMeanMaximalPower(records, duration);
+          if (records.length < duration) return; // Skip if not enough data points
+          
+          let bestValue: number | null = null;
+          
+          // Calculate rolling averages - work directly with number arrays
+          for (let i = 0; i <= records.length - duration; i++) {
+            const slice = records.slice(i, i + duration);
+            
+            if (isRunning) {
+              // For running: records are speeds in m/s, convert to pace (min/km)
+              const validSpeeds = slice.filter(s => typeof s === 'number' && s > 0);
+              if (validSpeeds.length === 0) continue;
+              
+              const avgSpeed = validSpeeds.reduce((sum, s) => sum + s, 0) / validSpeeds.length;
+              const paceMinPerKm = avgSpeed > 0 ? (1000 / 60) / avgSpeed : null;
+              
+              if (paceMinPerKm !== null && (bestValue === null || paceMinPerKm < bestValue)) {
+                bestValue = paceMinPerKm;
+              }
+            } else {
+              // For cycling: records are power values in watts
+              const validPower = slice.filter(p => typeof p === 'number' && p >= 0);
+              if (validPower.length === 0) continue;
+              
+              const avgPower = validPower.reduce((sum, p) => sum + p, 0) / validPower.length;
+              
+              if (avgPower > 0 && (bestValue === null || avgPower > bestValue)) {
+                bestValue = avgPower;
+              }
+            }
           }
-
-          if (value && value > 0) {
+          
+          if (bestValue !== null && bestValue > 0) {
             const existing = bestValues.get(duration);
             // For running (pace), lower is better; for cycling (power), higher is better
-            if (!existing || (isRunning ? value < existing.value : value > existing.value)) {
+            if (!existing || (isRunning ? bestValue < existing.value : bestValue > existing.value)) {
               bestValues.set(duration, {
-                value,
+                value: bestValue,
                 activityName: activity.name,
                 date: activity.date
               });
