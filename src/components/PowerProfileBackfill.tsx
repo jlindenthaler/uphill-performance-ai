@@ -14,14 +14,29 @@ export function PowerProfileBackfill() {
   const { toast } = useToast();
 
   const handleBackfill = async () => {
+    if (!backfillPowerProfile) {
+      console.error('❌ backfillPowerProfile function not available');
+      toast({
+        title: "Error",
+        description: "Power profile backfill function is not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsBackfilling(true);
     setShowProgress(true);
     setProgress({ current: 0, total: 0, activityName: '' });
     
+    console.log('🎯 Starting backfill from UI...');
+    
     try {
       await backfillPowerProfile((current, total, activityName) => {
+        console.log(`Progress: ${current}/${total} - ${activityName}`);
         setProgress({ current, total, activityName });
       });
+      
+      console.log('✅ Backfill completed successfully');
       
       toast({
         title: "Power Profile Updated",
@@ -33,10 +48,10 @@ export function PowerProfileBackfill() {
         setShowProgress(false);
       }, 3000);
     } catch (error) {
-      console.error('Backfill error:', error);
+      console.error('❌ Backfill error:', error);
       toast({
         title: "Backfill Failed",
-        description: "Failed to populate power profile data. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to populate power profile data. Please try again.",
         variant: "destructive",
       });
       setShowProgress(false);
