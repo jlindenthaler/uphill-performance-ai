@@ -125,18 +125,6 @@ export function Activities() {
     return null;
   };
 
-  const getDuplicateSourcesBadge = (activity: any) => {
-    if (!activity.is_deduplicated || !activity.duplicate_sources) return null;
-    
-    const sources = activity.duplicate_sources;
-    if (sources.length <= 1) return null;
-
-    return (
-      <Badge variant="secondary" className="text-xs">
-        {sources.join(' + ')}
-      </Badge>
-    );
-  };
 
   const handleActivityToggle = async (activityId: string) => {
     if (expandedActivity === activityId) {
@@ -661,7 +649,6 @@ export function Activities() {
                                   </Badge>
                                  )}
                                  {getSyncSourceBadge(activity.external_sync_source)}
-                                 {getDuplicateSourcesBadge(activity)}
                                </div>
                             </div>
                             <DropdownMenu>
