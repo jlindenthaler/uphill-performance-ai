@@ -25,6 +25,8 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     
     setLoading(true);
     try {
+      console.log(`[Power Profile] Fetching for sport: ${sportMode}, dateRange: ${dateRangeDays || 'all-time'}`);
+      
       // Get all-time best values from cache
       const { data: allTimeData, error: allTimeError } = await supabase
         .from('power_profile')
@@ -34,12 +36,14 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         .order('duration_seconds', { ascending: true });
 
       if (allTimeError) throw allTimeError;
+      console.log(`[Power Profile] Fetched ${allTimeData?.length || 0} all-time records`);
 
       // Get date-filtered values if dateRangeDays is specified
       let dateFilteredData = null;
       if (dateRangeDays) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
+        console.log(`[Power Profile] Fetching date-filtered data since ${cutoffDate.toISOString()}`);
         
         const { data, error } = await supabase
           .from('power_profile')
@@ -51,6 +55,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
         if (!error) {
           dateFilteredData = data;
+          console.log(`[Power Profile] Fetched ${dateFilteredData?.length || 0} date-filtered records`);
         }
       }
 
@@ -80,18 +85,33 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         });
       }
 
-      // Create profile with both all-time and filtered bests
-      const profile = Array.from(allTimeMap.entries()).map(([durationSeconds, allTimeBest]) => ({
+      console.log(`[Power Profile] Processed ${allTimeMap.size} all-time durations, ${dateFilteredMap.size} filtered durations`);
+
+      // Create all-time profile
+      const profile = Array.from(allTimeMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds: durationSeconds,
-        current: dateFilteredMap.get(durationSeconds) || allTimeBest,
-        best: allTimeBest,
+        current: value,
+        best: value,
         date: new Date().toISOString(),
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
+      // Create date-filtered profile (for recalculatedProfile compatibility)
+      const filteredProfile = dateFilteredMap.size > 0 
+        ? Array.from(dateFilteredMap.entries()).map(([durationSeconds, value]) => ({
+            duration: formatDuration(durationSeconds),
+            durationSeconds: durationSeconds,
+            current: value,
+            best: allTimeMap.get(durationSeconds) || value,
+            date: new Date().toISOString(),
+            unit: isRunning ? 'min/km' : 'W'
+          })).sort((a, b) => a.durationSeconds - b.durationSeconds)
+        : [];
+
       setPowerProfile(profile);
-      setRecalculatedProfile([]); // Clear recalculated since we're using cache
+      setRecalculatedProfile(filteredProfile);
+      console.log(`[Power Profile] Updated: ${profile.length} all-time points, ${filteredProfile.length} filtered points`);
     } catch (error) {
       console.error('Error fetching power profile:', error);
     } finally {
