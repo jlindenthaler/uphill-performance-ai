@@ -306,7 +306,7 @@ export async function backfillPowerProfileData(
 ): Promise<void> {
   console.log('🚀 Starting power profile backfill for user:', userId);
   
-  const BATCH_SIZE = 25; // Process 25 activities at a time to avoid timeout
+  const BATCH_SIZE = 10; // Process 10 activities at a time to avoid performance issues
   let offset = 0;
   let successCount = 0;
   let errorCount = 0;
@@ -357,8 +357,16 @@ export async function backfillPowerProfileData(
     for (let i = 0; i < activities.length; i++) {
       const activity = activities[i];
       
-      // Skip activities without any data
-      if (!activity.power_time_series && !activity.speed_time_series && !activity.gps_data) {
+      // Skip activities without any data - properly check for empty arrays
+      const hasPowerData = Array.isArray(activity.power_time_series) && activity.power_time_series.length > 0;
+      const hasSpeedData = Array.isArray(activity.speed_time_series) && activity.speed_time_series.length > 0;
+      const hasGpsData = activity.gps_data && 
+        typeof activity.gps_data === 'object' && 
+        'trackPoints' in activity.gps_data && 
+        Array.isArray((activity.gps_data as any).trackPoints) &&
+        (activity.gps_data as any).trackPoints.length > 0;
+      
+      if (!hasPowerData && !hasSpeedData && !hasGpsData) {
         console.log(`⏭️ Skipping ${activity.name} - no power/speed data`);
         totalProcessed++;
         continue;
@@ -390,6 +398,9 @@ export async function backfillPowerProfileData(
       }
       
       totalProcessed++;
+      
+      // Add small delay between activities to prevent "getting too hot" performance issues
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     offset += BATCH_SIZE;
