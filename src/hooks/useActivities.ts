@@ -349,20 +349,29 @@ export function useActivities(filterBySport: boolean = true) {
         console.warn('Failed to update PMC data:', pmcError);
       }
 
-      // Populate power profile data if GPS data is available
-      if (activityData.gps_data) {
-        try {
-          await populatePowerProfileForActivity(
-            user.id,
-            savedActivity.id,
-            activityData.gps_data,
-            activityData.sport_mode,
-            activityData.date
-          );
-          console.log('Power profile data updated successfully');
-        } catch (powerProfileError) {
-          console.warn('Failed to update power profile data:', powerProfileError);
-        }
+      // Populate power profile data if activity has power/speed data
+      if (activityData.power_time_series || activityData.speed_time_series || activityData.gps_data) {
+        // Run in background without blocking response
+        (async () => {
+          try {
+            console.log('Starting background power profile population...');
+            await populatePowerProfileForActivity(
+              user.id,
+              savedActivity.id,
+              activityData,
+              activityData.sport_mode,
+              activityData.date
+            );
+            console.log('Power profile data updated successfully');
+            
+            // Dispatch event to notify power profile components
+            window.dispatchEvent(new CustomEvent('powerProfileUpdated', {
+              detail: { userId: user.id, sportMode: activityData.sport_mode }
+            }));
+          } catch (powerProfileError) {
+            console.warn('Failed to update power profile data:', powerProfileError);
+          }
+        })();
       }
 
       // Process CP test if this is a CP test activity
