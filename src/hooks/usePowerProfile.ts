@@ -127,6 +127,17 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     }
   }, [user, sportMode, dateRangeDays, excludeActivityId]);
 
+  // Listen for activity uploads to refresh power profile
+  useEffect(() => {
+    const handleActivityUpload = () => {
+      console.log('Activity uploaded, refreshing power profile');
+      fetchPowerProfile();
+    };
+
+    window.addEventListener('activity-uploaded', handleActivityUpload);
+    return () => window.removeEventListener('activity-uploaded', handleActivityUpload);
+  }, []);
+
   return {
     powerProfile,
     loading,
