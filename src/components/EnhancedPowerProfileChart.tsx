@@ -86,22 +86,17 @@ export function EnhancedPowerProfileChart({
   };
   const activityBestPowers = useMemo(() => calculateActivityBestPowers(), [activity, isRunning]);
 
-  // Use the already filtered power profile from the hook
-  const filteredPowerProfile = powerProfile;
+  // Use the already filtered power profile from the hook - now showing ALL data points
   const chartData = useMemo(() => {
-    const durations = ['1s', '5s', '10s', '20s', '1min', '5min', '10min', '20min', '60min'];
-    return durations.map((duration, index) => {
-      const profileItem = filteredPowerProfile.find(item => item.duration === duration);
-      const activityItem = activityMeanMax.find(item => item.duration === duration);
-      return {
-        duration,
-        durationLabel: formatDuration([1, 5, 10, 20, 60, 300, 600, 1200, 3600][index]),
-        allTimeBest: profileItem?.best || 0,
-        rangeFiltered: profileItem?.current || 0,
-        activityMeanMax: activityItem?.activityMeanMax || 0
-      };
-    });
-  }, [filteredPowerProfile, activityMeanMax]);
+    if (!powerProfile || powerProfile.length === 0) return [];
+    
+    return powerProfile.map(item => ({
+      duration: item.duration,
+      durationSeconds: item.durationSeconds,
+      allTimeBest: item.best,
+      rangeFiltered: item.current,
+    }));
+  }, [powerProfile]);
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center h-64">
@@ -212,16 +207,21 @@ export function EnhancedPowerProfileChart({
         </CardHeader>
           <CardContent>
             <div className="grid grid-cols-5 gap-4">
-              {activityBestPowers.map(power => <div key={power.duration} className="text-center">
-                  <div className="flex items-center justify-center gap-1 mb-2">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{power.duration}</span>
+              {activityBestPowers.map(power => {
+                const bestFromProfile = powerProfile.find(p => p.durationSeconds === power.durationSeconds);
+                return (
+                  <div key={power.duration} className="text-center">
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{power.duration}</span>
+                    </div>
+                    <div className="text-lg font-bold">{formatValue(power.value)}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Best: {formatValue(bestFromProfile?.best || 0)}
+                    </div>
                   </div>
-                  <div className="text-lg font-bold">{formatValue(power.value)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Best: {formatValue(getBestPowerForDuration(power.duration))}
-                  </div>
-                </div>)}
+                );
+              })}
             </div>
           </CardContent>
         </Card>}
@@ -261,8 +261,18 @@ export function EnhancedPowerProfileChart({
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
-                  dataKey="durationLabel" 
-                  label={{ value: 'Duration', position: 'insideBottom', offset: -5 }}
+                  dataKey="durationSeconds"
+                  type="number"
+                  scale="log"
+                  domain={['dataMin', 'dataMax']}
+                  tickFormatter={(value) => {
+                    if (value < 60) return `${value}s`;
+                    if (value < 3600) return `${Math.floor(value / 60)}m`;
+                    const hours = Math.floor(value / 3600);
+                    const minutes = Math.floor((value % 3600) / 60);
+                    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+                  }}
+                  label={{ value: 'Duration (log scale)', position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis 
                   label={{ 
@@ -273,6 +283,13 @@ export function EnhancedPowerProfileChart({
                 />
                 <Tooltip 
                   formatter={(value: number) => [formatValue(value), '']}
+                  labelFormatter={(value: number) => {
+                    if (value < 60) return `${value}s`;
+                    if (value < 3600) return `${Math.floor(value / 60)}m`;
+                    const hours = Math.floor(value / 3600);
+                    const minutes = Math.floor((value % 3600) / 60);
+                    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+                  }}
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--background))',
                     border: '1px solid hsl(var(--border))',
@@ -289,7 +306,7 @@ export function EnhancedPowerProfileChart({
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   name="All-Time Best"
-                  dot={{ fill: 'hsl(var(--primary))' }}
+                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
                 />
                 <Line
                   type="monotone"
@@ -297,18 +314,8 @@ export function EnhancedPowerProfileChart({
                   stroke="hsl(var(--chart-2))"
                   strokeWidth={2}
                   name={getDateRangeLabel()}
-                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                  dot={{ fill: 'hsl(var(--chart-2))', r: 3 }}
                 />
-                {activity && (
-                  <Line
-                    type="monotone"
-                    dataKey="activityMeanMax"
-                    stroke="hsl(var(--chart-3))"
-                    strokeWidth={2}
-                    name="This Activity"
-                    dot={{ fill: 'hsl(var(--chart-3))' }}
-                  />
-                )}
               </LineChart>
             </ResponsiveContainer>
           </div>

@@ -5,6 +5,7 @@ import { useSportMode } from '@/contexts/SportModeContext';
 
 interface PowerProfileData {
   duration: string;
+  durationSeconds: number;
   current: number;
   best: number;
   date: string;
@@ -17,14 +18,6 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
   const [powerProfile, setPowerProfile] = useState<PowerProfileData[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const durations = [
-    { seconds: 5, label: '5s' },
-    { seconds: 60, label: '1min' },
-    { seconds: 300, label: '5min' },
-    { seconds: 1200, label: '20min' },
-    { seconds: 3600, label: '60min' }
-  ];
-
   const fetchPowerProfile = async () => {
     if (!user) return;
     
@@ -35,8 +28,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         .select('*')
         .eq('user_id', user.id)
         .eq('sport', sportMode)
-        .in('duration_seconds', durations.map(d => d.seconds))
-        .order('date_achieved', { ascending: false });
+        .order('duration_seconds', { ascending: true });
 
       // Add date filter if dateRangeDays is provided
       if (dateRangeDays) {
@@ -54,37 +46,29 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
       if (error) throw error;
 
-      // Group by duration and get best values
+      // Group by duration and get best values (highest power or lowest pace)
       const profileMap = new Map();
       data?.forEach(record => {
-        const duration = durations.find(d => d.seconds === record.duration_seconds);
-        if (!duration) return;
-
-        const existing = profileMap.get(duration.seconds);
+        const durationSeconds = record.duration_seconds;
+        const existing = profileMap.get(durationSeconds);
         const value = isRunning ? record.pace_per_km : record.power_watts;
         
-        if (!existing || (isRunning ? value < existing.best : value > existing.best)) {
-          profileMap.set(duration.seconds, {
-            duration: duration.label,
-            current: value || 0,
-            best: value || 0,
+        if (value && (!existing || (isRunning ? value < existing.best : value > existing.best))) {
+          profileMap.set(durationSeconds, {
+            duration: formatDuration(durationSeconds),
+            durationSeconds: durationSeconds,
+            current: value,
+            best: value,
             date: record.date_achieved,
             unit: isRunning ? 'min/km' : 'W'
           });
         }
       });
 
-      // Fill in missing durations with placeholder data
-      const profile = durations.map(duration => {
-        const existing = profileMap.get(duration.seconds);
-        return existing || {
-          duration: duration.label,
-          current: 0,
-          best: 0,
-          date: new Date().toISOString(),
-          unit: isRunning ? 'min/km' : 'W'
-        };
-      });
+      // Convert map to array and sort by duration
+      const profile = Array.from(profileMap.values()).sort((a, b) => 
+        a.durationSeconds - b.durationSeconds
+      );
 
       setPowerProfile(profile);
     } catch (error) {
@@ -92,6 +76,14 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDuration = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
   };
 
   const addPowerProfileEntry = async (durationSeconds: number, value: number) => {
