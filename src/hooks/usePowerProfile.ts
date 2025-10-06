@@ -28,12 +28,31 @@ export function usePowerProfile(timeWindow: string = '90-day', excludeActivityId
       console.log(`[Power Profile] Fetching for sport: ${sportMode}, timeWindow: ${timeWindow}`);
       
       // Get data for selected time window (primary display)
-      const { data: windowData, error: windowError } = await supabase
+      // Calculate the cutoff date based on the time window
+      let cutoffDate: string | null = null;
+      if (timeWindow !== 'all-time') {
+        const match = timeWindow.match(/^(\d+)-day$/);
+        if (match) {
+          const days = parseInt(match[1]);
+          const date = new Date();
+          date.setDate(date.getDate() - days);
+          cutoffDate = date.toISOString();
+        }
+      }
+
+      const windowQuery = supabase
         .from('power_profile')
         .select('*')
         .eq('user_id', user.id)
         .eq('sport', sportMode)
-        .eq('time_window', timeWindow)
+        .eq('time_window', timeWindow);
+      
+      // Only include records within the actual time window based on date_achieved
+      if (cutoffDate) {
+        windowQuery.gte('date_achieved', cutoffDate);
+      }
+      
+      const { data: windowData, error: windowError } = await windowQuery
         .order('duration_seconds', { ascending: true });
 
       if (windowError) throw windowError;
