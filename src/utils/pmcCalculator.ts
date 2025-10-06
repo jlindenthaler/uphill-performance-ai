@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeSportMode } from './sportModeMapping';
 
 interface TrainingData {
   date: string;
@@ -103,10 +104,16 @@ function fillTrainingDataGaps(trainingData: TrainingData[], endDate?: string): T
 export function calculatePMCMetrics(trainingData: TrainingData[], endDate?: string): PMCData[] {
   if (trainingData.length === 0) return [];
 
+  // Normalize sport modes to primary groups (walking -> running, etc.)
+  const normalizedData = trainingData.map(data => ({
+    ...data,
+    sport: normalizeSportMode(data.sport)
+  }));
+
   // Fill gaps to ensure we have data for every day
-  const completeData = fillTrainingDataGaps(trainingData, endDate);
+  const completeData = fillTrainingDataGaps(normalizedData, endDate);
   
-  // Group by sport for separate PMC calculations
+  // Group by normalized sport for PMC calculations
   const sportGroups = new Map<string, TrainingData[]>();
   completeData.forEach(data => {
     if (!sportGroups.has(data.sport)) {
@@ -175,12 +182,14 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       return;
     }
 
-    // Aggregate activities by date and sport (sum TSS for multiple activities on same day)
+    // Aggregate activities by date and normalized sport (sum TSS for multiple activities on same day)
     const aggregatedMap = new Map<string, TrainingData>();
     
     activities.forEach(activity => {
       const dateStr = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateStr}-${activity.sport_mode}`;
+      // Normalize sport mode (walking -> running, etc.)
+      const normalizedSport = normalizeSportMode(activity.sport_mode);
+      const key = `${dateStr}-${normalizedSport}`;
       
       if (aggregatedMap.has(key)) {
         const existing = aggregatedMap.get(key)!;
@@ -191,7 +200,7 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
           date: dateStr,
           tss: activity.tss || 0,
           duration_minutes: Math.round((activity.duration_seconds || 0) / 60),
-          sport: activity.sport_mode
+          sport: normalizedSport
         });
       }
     });
@@ -253,12 +262,14 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
 
     if (!activities || activities.length === 0) return;
 
-    // Aggregate activities by date and sport
+    // Aggregate activities by date and normalized sport
     const aggregatedMap = new Map<string, TrainingData>();
     
     activities.forEach(activity => {
       const dateStr = new Date(activity.date).toISOString().split('T')[0];
-      const key = `${dateStr}-${activity.sport_mode}`;
+      // Normalize sport mode (walking -> running, etc.)
+      const normalizedSport = normalizeSportMode(activity.sport_mode);
+      const key = `${dateStr}-${normalizedSport}`;
       
       if (aggregatedMap.has(key)) {
         const existing = aggregatedMap.get(key)!;
@@ -269,7 +280,7 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
           date: dateStr,
           tss: activity.tss || 0,
           duration_minutes: Math.round((activity.duration_seconds || 0) / 60),
-          sport: activity.sport_mode
+          sport: normalizedSport
         });
       }
     });

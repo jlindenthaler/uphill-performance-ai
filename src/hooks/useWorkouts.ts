@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { getSportFilterArray } from '@/utils/sportModeMapping';
 
 interface WorkoutStructure {
   warmup: string;
@@ -41,9 +42,10 @@ export function useWorkouts(filterBySport: boolean = true) {
         .select('*')
         .eq('user_id', user.id);
 
-      // Only filter by sport mode if requested
+      // Apply sport filter if enabled - includes all variations (walk, hike, etc. for running)
       if (filterBySport) {
-        query = query.eq('sport_mode', sportMode);
+        const sportVariations = getSportFilterArray(sportMode);
+        query = query.in('sport_mode', sportVariations);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });

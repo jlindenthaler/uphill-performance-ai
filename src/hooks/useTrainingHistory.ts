@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useSupabase';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { getSportFilterArray } from '@/utils/sportModeMapping';
 
 interface TrainingHistoryData {
   date: string;
@@ -26,11 +27,14 @@ export function useTrainingHistory(days: number = 30) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
+      // Get all sport variations for the current sport mode (e.g., running includes walk, hike, etc.)
+      const sportVariations = getSportFilterArray(sportMode);
+
       const { data, error } = await supabase
         .from('training_history')
         .select('*')
         .eq('user_id', user.id)
-        .eq('sport', sportMode)
+        .in('sport', sportVariations)
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: true });
 

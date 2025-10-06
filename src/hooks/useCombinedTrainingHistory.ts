@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useSupabase';
+import { useSportMode } from '@/contexts/SportModeContext';
+import { getSportFilterArray } from '@/utils/sportModeMapping';
 
 interface CombinedTrainingHistoryData {
   date: string;
@@ -13,6 +15,7 @@ interface CombinedTrainingHistoryData {
 
 export function useCombinedTrainingHistory(days: number = 30) {
   const { user } = useAuth();
+  const { sportMode } = useSportMode();
   const [trainingHistory, setTrainingHistory] = useState<CombinedTrainingHistoryData[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -23,12 +26,16 @@ export function useCombinedTrainingHistory(days: number = 30) {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
+      
+      // Get all sport variations for the current sport mode (e.g., running includes walk, hike, etc.)
+      const sportVariations = getSportFilterArray(sportMode);
 
-      // Fetch training history for all sports
+      // Fetch training history filtered by sport group
       const { data, error } = await supabase
         .from('training_history')
         .select('*')
         .eq('user_id', user.id)
+        .in('sport', sportVariations)
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: true });
 
@@ -77,7 +84,7 @@ export function useCombinedTrainingHistory(days: number = 30) {
     if (user) {
       fetchCombinedTrainingHistory();
     }
-  }, [user, days]);
+  }, [user, sportMode, days]);
 
   return {
     trainingHistory,

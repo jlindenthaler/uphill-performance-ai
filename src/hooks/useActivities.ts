@@ -3,6 +3,7 @@ import { useAuth } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { parseFitFile, ParsedActivityData } from '@/utils/fitParser';
+import { getSportFilterArray } from '@/utils/sportModeMapping';
 import { updateTrainingHistoryForDate } from '@/utils/pmcCalculator';
 import { populatePowerProfileForActivity } from '@/utils/powerAnalysis';
 import { useUserTimezone } from './useUserTimezone';
@@ -101,9 +102,10 @@ export function useActivities(filterBySport: boolean = true) {
         `)
         .eq('user_id', user.id);
 
-      // Only filter by sport mode if requested
+      // Apply sport filter if enabled - includes all variations (walk, hike, etc. for running)
       if (filterBySport) {
-        query = query.eq('sport_mode', sportMode);
+        const sportVariations = getSportFilterArray(sportMode);
+        query = query.in('sport_mode', sportVariations);
       }
 
       const { data, error } = await query
