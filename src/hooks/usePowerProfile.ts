@@ -108,7 +108,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
       // Query activities directly with date filter - limit to avoid timeout
       let query = supabase
         .from('activities')
-        .select('id, date, duration_seconds, name, power_time_series, speed_time_series')
+        .select('id, date, duration_seconds, name, power_time_series, speed_time_series, gps_data')
         .eq('user_id', user.id)
         .eq('sport_mode', sportMode)
         .order('date', { ascending: false })
@@ -132,11 +132,29 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
       // Process each activity
       activities?.forEach(activity => {
-        const records = isRunning 
-          ? (activity.speed_time_series as any[] || [])
-          : (activity.power_time_series as any[] || []);
+        let records: any[] = [];
+        
+        // Try to get data from multiple sources
+        if (isRunning) {
+          if (activity.speed_time_series && Array.isArray(activity.speed_time_series)) {
+            records = activity.speed_time_series as any[];
+          } else if (activity.gps_data && typeof activity.gps_data === 'object' && 'trackPoints' in activity.gps_data) {
+            records = (activity.gps_data as any).trackPoints || [];
+          }
+        } else {
+          if (activity.power_time_series && Array.isArray(activity.power_time_series)) {
+            records = activity.power_time_series as any[];
+          } else if (activity.gps_data && typeof activity.gps_data === 'object' && 'trackPoints' in activity.gps_data) {
+            records = (activity.gps_data as any).trackPoints || [];
+          }
+        }
 
-        if (!records || records.length === 0) return;
+        if (!records || records.length === 0) {
+          console.log(`[Power Profile] No data for activity: ${activity.name}`);
+          return;
+        }
+
+        console.log(`[Power Profile] Processing ${activity.name}: ${records.length} data points`);
 
         // Calculate mean max for each duration
         durations.forEach(duration => {
