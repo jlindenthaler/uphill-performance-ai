@@ -58,38 +58,91 @@ export function calculateMeanMaximalPace(records: any[], targetDurationSeconds: 
   return minPerKm;
 }
 
-// Extract power profile data from activity records
+// Extract power profile data from activity records - WKO5 style (all durations)
 export function extractPowerProfileFromActivity(gpsData: any, sportMode: string): Array<{ durationSeconds: number; value: number }> {
   if (!gpsData || !gpsData.trackPoints) return [];
 
   const records = gpsData.trackPoints;
-  const durations = [
-    { seconds: 5, label: '5s' },
-    { seconds: 60, label: '1min' },
-    { seconds: 300, label: '5min' },
-    { seconds: 1200, label: '20min' },
-    { seconds: 3600, label: '60min' }
-  ];
-
-  const powerProfile: Array<{ durationSeconds: number; value: number }> = [];
   const isRunning = sportMode === 'running';
+  const powerProfile: Array<{ durationSeconds: number; value: number }> = [];
 
-  durations.forEach(duration => {
+  // Calculate mean max for every second up to 60s
+  for (let duration = 1; duration <= 60; duration++) {
     let value: number | null = null;
     
     if (isRunning) {
-      value = calculateMeanMaximalPace(records, duration.seconds);
+      value = calculateMeanMaximalPace(records, duration);
     } else {
-      value = calculateMeanMaximalPower(records, duration.seconds);
+      value = calculateMeanMaximalPower(records, duration);
     }
     
     if (value !== null && value > 0) {
-      powerProfile.push({
-        durationSeconds: duration.seconds,
-        value: value
-      });
+      powerProfile.push({ durationSeconds: duration, value });
     }
-  });
+  }
+
+  // Then every 5 seconds from 65s to 300s (5 minutes)
+  for (let duration = 65; duration <= 300; duration += 5) {
+    let value: number | null = null;
+    
+    if (isRunning) {
+      value = calculateMeanMaximalPace(records, duration);
+    } else {
+      value = calculateMeanMaximalPower(records, duration);
+    }
+    
+    if (value !== null && value > 0) {
+      powerProfile.push({ durationSeconds: duration, value });
+    }
+  }
+
+  // Then every 30 seconds from 330s to 1200s (20 minutes)
+  for (let duration = 330; duration <= 1200; duration += 30) {
+    let value: number | null = null;
+    
+    if (isRunning) {
+      value = calculateMeanMaximalPace(records, duration);
+    } else {
+      value = calculateMeanMaximalPower(records, duration);
+    }
+    
+    if (value !== null && value > 0) {
+      powerProfile.push({ durationSeconds: duration, value });
+    }
+  }
+
+  // Then every 60 seconds from 1260s to 3600s (1 hour)
+  for (let duration = 1260; duration <= 3600; duration += 60) {
+    let value: number | null = null;
+    
+    if (isRunning) {
+      value = calculateMeanMaximalPace(records, duration);
+    } else {
+      value = calculateMeanMaximalPower(records, duration);
+    }
+    
+    if (value !== null && value > 0) {
+      powerProfile.push({ durationSeconds: duration, value });
+    }
+  }
+
+  // Then every 5 minutes beyond 1 hour if activity is that long
+  const maxDuration = records.length;
+  if (maxDuration > 3600) {
+    for (let duration = 3900; duration <= maxDuration; duration += 300) {
+      let value: number | null = null;
+      
+      if (isRunning) {
+        value = calculateMeanMaximalPace(records, duration);
+      } else {
+        value = calculateMeanMaximalPower(records, duration);
+      }
+      
+      if (value !== null && value > 0) {
+        powerProfile.push({ durationSeconds: duration, value });
+      }
+    }
+  }
 
   return powerProfile;
 }
