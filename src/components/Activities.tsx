@@ -20,6 +20,7 @@ import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 import { EditActivityModal } from './EditActivityModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Activities() {
   const { 
@@ -47,6 +48,7 @@ export function Activities() {
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [pmcData, setPmcData] = useState<Map<string, { ctl: number; atl: number; tsb: number }>>(new Map());
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Apply deduplication
@@ -419,6 +421,32 @@ export function Activities() {
                   <span className="text-muted-foreground">Effort Ratio</span>
                   <span className="font-medium">{detailedActivity.variability_index.toFixed(2)}</span>
                 </div>
+              )}
+              
+              {pmcData.has(detailedActivity.id) && (
+                <>
+                  <Separator className="my-2" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">CTL (Fitness)</span>
+                      <span className="font-medium">{pmcData.get(detailedActivity.id)?.ctl.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">ATL (Fatigue)</span>
+                      <span className="font-medium">{pmcData.get(detailedActivity.id)?.atl.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">TSB (Form)</span>
+                      <span className={`font-medium ${
+                        (pmcData.get(detailedActivity.id)?.tsb || 0) > 5 ? 'text-green-500' : 
+                        (pmcData.get(detailedActivity.id)?.tsb || 0) < -10 ? 'text-red-500' : 
+                        'text-yellow-500'
+                      }`}>
+                        {pmcData.get(detailedActivity.id)?.tsb.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
