@@ -139,6 +139,28 @@ export function Activities() {
         await fetchActivityDetails(activityId);
       }
       
+      // Fetch PMC data if not already cached
+      if (!pmcData.has(activityId)) {
+        const activity = activities.find(a => a.id === activityId);
+        if (activity) {
+          const { data: pmcRecord } = await supabase
+            .from('training_history')
+            .select('ctl, atl, tsb')
+            .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+            .eq('sport', activity.sport_mode)
+            .eq('date', new Date(activity.date).toISOString().split('T')[0])
+            .single();
+          
+          if (pmcRecord) {
+            setPmcData(prev => new Map(prev).set(activityId, {
+              ctl: pmcRecord.ctl || 0,
+              atl: pmcRecord.atl || 0,
+              tsb: pmcRecord.tsb || 0
+            }));
+          }
+        }
+      }
+      
       // Scroll to top of the expanded activity after a brief delay
       setTimeout(() => {
         const activityElement = document.getElementById(`activity-${activityId}`);
