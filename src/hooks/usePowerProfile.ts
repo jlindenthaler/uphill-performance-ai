@@ -105,54 +105,79 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     
     setLoading(true);
     try {
-      // Query power_profile table with date filter - this is much faster than processing GPS data
+      // Query activities directly with date filter - limit to avoid timeout
       let query = supabase
-        .from('power_profile')
-        .select('duration_seconds, power_watts, pace_per_km, date_achieved, activity_id')
+        .from('activities')
+        .select('id, date, duration_seconds, name, power_time_series, speed_time_series')
         .eq('user_id', user.id)
-        .eq('sport', sportMode)
-        .order('duration_seconds', { ascending: true });
+        .eq('sport_mode', sportMode)
+        .order('date', { ascending: false })
+        .limit(50); // Limit to recent 50 activities to avoid timeout
 
       if (dateRangeDays) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
-        console.log(`[Power Profile] Filtering by date range: last ${dateRangeDays} days (since ${cutoffDate.toISOString()})`);
-        query = query.gte('date_achieved', cutoffDate.toISOString());
+        console.log(`[Power Profile] Querying activities since ${cutoffDate.toISOString().split('T')[0]}`);
+        query = query.gte('date', cutoffDate.toISOString());
       }
 
-      const { data: profileData, error } = await query;
+      const { data: activities, error } = await query;
       if (error) throw error;
 
-      console.log(`[Power Profile] Found ${profileData?.length || 0} records in date range`);
-      
-      // Log unique durations found
-      const uniqueDurations = new Set(profileData?.map(r => r.duration_seconds) || []);
-      console.log(`[Power Profile] Unique durations found:`, Array.from(uniqueDurations).sort((a, b) => a - b));
+      console.log(`[Power Profile] Found ${activities?.length || 0} activities to analyze`);
 
-      // Aggregate by duration - get best value for each duration in the date range
-      const durationMap = new Map<number, number>();
-      profileData?.forEach(record => {
-        const value = isRunning ? record.pace_per_km : record.power_watts;
-        if (!value) return;
+      // Standard durations to calculate (in seconds)
+      const durations = [1, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 600, 900, 1200, 1800, 2400, 3600, 4200, 5400, 7200];
+      const bestValues = new Map<number, { value: number, activityName: string, date: string }>();
 
-        const existing = durationMap.get(record.duration_seconds);
-        if (!existing || (isRunning ? value < existing : value > existing)) {
-          durationMap.set(record.duration_seconds, value);
-        }
+      // Process each activity
+      activities?.forEach(activity => {
+        const records = isRunning 
+          ? (activity.speed_time_series as any[] || [])
+          : (activity.power_time_series as any[] || []);
+
+        if (!records || records.length === 0) return;
+
+        // Calculate mean max for each duration
+        durations.forEach(duration => {
+          if (activity.duration_seconds < duration) return; // Skip if activity too short
+
+          let value: number | null = null;
+          if (isRunning) {
+            value = calculateMeanMaximalPace(records, duration);
+          } else {
+            value = calculateMeanMaximalPower(records, duration);
+          }
+
+          if (value && value > 0) {
+            const existing = bestValues.get(duration);
+            // For running (pace), lower is better; for cycling (power), higher is better
+            if (!existing || (isRunning ? value < existing.value : value > existing.value)) {
+              bestValues.set(duration, {
+                value,
+                activityName: activity.name,
+                date: activity.date
+              });
+            }
+          }
+        });
       });
 
-      console.log(`[Power Profile] Aggregated to ${durationMap.size} unique durations`);
+      console.log(`[Power Profile] Calculated ${bestValues.size} duration bests from ${activities?.length} activities`);
 
-      const profile = Array.from(durationMap.entries()).map(([durationSeconds, value]) => ({
+      // Convert to PowerProfileData format
+      const profile = Array.from(bestValues.entries()).map(([durationSeconds, data]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds,
-        current: value,
-        best: value,
-        date: new Date().toISOString(),
+        current: data.value,
+        best: data.value,
+        date: data.date,
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
-      console.log(`[Power Profile] Final profile:`, profile.map(p => `${p.duration}: ${p.current.toFixed(0)}${p.unit}`));
+      console.log(`[Power Profile] Sample results:`, profile.slice(0, 5).map(p => 
+        `${p.duration}: ${p.current.toFixed(0)}${p.unit}`
+      ));
 
       setRecalculatedProfile(profile);
     } catch (error) {
