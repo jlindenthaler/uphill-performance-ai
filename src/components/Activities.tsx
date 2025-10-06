@@ -454,15 +454,15 @@ export function Activities() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">LTL</span>
-                      <span className="font-medium text-pmc-ltl">{pmcData.get(detailedActivity.id)?.ctl.toFixed(1)}</span>
+                      <span className="font-medium text-ltl">{pmcData.get(detailedActivity.id)?.ctl.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">STL</span>
-                      <span className="font-medium text-pmc-stl">{pmcData.get(detailedActivity.id)?.atl.toFixed(1)}</span>
+                      <span className="font-medium text-stl">{pmcData.get(detailedActivity.id)?.atl.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">FI</span>
-                      <span className="font-medium text-pmc-fi">
+                      <span className="font-medium text-fi">
                         {pmcData.get(detailedActivity.id)?.tsb.toFixed(1)}
                       </span>
                     </div>
