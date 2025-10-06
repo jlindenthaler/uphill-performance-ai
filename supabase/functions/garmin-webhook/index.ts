@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { findAndRemoveDuplicates } from '../_shared/deduplication.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
@@ -192,27 +194,42 @@ serve(async (req)=>{
             : new Date().toISOString();
 
           // Insert activity into database
-          const { error: insertError } = await supabase.from('activities').insert({
-            user_id: userId,
-            garmin_activity_id: garminActivityId,
-            name: activity.activityName || 'Garmin Activity',
-            date: activityDate,
-            duration_seconds: activity.durationInSeconds || 0,
-            distance_meters: activity.distanceInMeters || null,
-            elevation_gain_meters: activity.totalElevationGainInMeters || null,
-            avg_heart_rate: activity.averageHeartRateInBeatsPerMinute || null,
-            max_heart_rate: activity.maxHeartRateInBeatsPerMinute || null,
-            calories: activity.activeKilocalories || null,
-            avg_cadence: activity.averageBikeCadenceInRoundsPerMinute || null,
-            avg_speed_kmh: activity.averageSpeedInMetersPerSecond ? activity.averageSpeedInMetersPerSecond * 3.6 : null,
-            sport_mode: mapGarminSportType(activity.activityType),
-            external_sync_source: 'garmin'
-          });
+          const { data: insertedActivity, error: insertError } = await supabase
+            .from('activities')
+            .insert({
+              user_id: userId,
+              garmin_activity_id: garminActivityId,
+              name: activity.activityName || 'Garmin Activity',
+              date: activityDate,
+              duration_seconds: activity.durationInSeconds || 0,
+              distance_meters: activity.distanceInMeters || null,
+              elevation_gain_meters: activity.totalElevationGainInMeters || null,
+              avg_heart_rate: activity.averageHeartRateInBeatsPerMinute || null,
+              max_heart_rate: activity.maxHeartRateInBeatsPerMinute || null,
+              calories: activity.activeKilocalories || null,
+              avg_cadence: activity.averageBikeCadenceInRoundsPerMinute || null,
+              avg_speed_kmh: activity.averageSpeedInMetersPerSecond ? activity.averageSpeedInMetersPerSecond * 3.6 : null,
+              sport_mode: mapGarminSportType(activity.activityType),
+              external_sync_source: 'garmin'
+            })
+            .select('*')
+            .single();
 
           if (insertError && insertError.code !== '23505') {
             console.error(`Error inserting activity ${garminActivityId}:`, insertError.message);
-          } else {
+          } else if (insertedActivity) {
             console.log(`✅ Inserted activity ${garminActivityId}`);
+            
+            // Check for and remove duplicates
+            const { duplicatesRemoved } = await findAndRemoveDuplicates(
+              supabase,
+              insertedActivity,
+              userId
+            );
+            
+            if (duplicatesRemoved > 0) {
+              console.log(`Removed ${duplicatesRemoved} duplicate(s) for activity ${garminActivityId}`);
+            }
           }
 
           // Enqueue FIT download job for detailed data

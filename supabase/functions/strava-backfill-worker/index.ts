@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { findAndRemoveDuplicates } from '../_shared/deduplication.ts';
 
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3';
 const THROTTLE_MS = 500; // 500ms delay between requests to respect rate limits
@@ -253,15 +254,40 @@ async function processBackfillJob(supabase: any, job: any) {
           const { data: insertedActivities, error: insertError } = await supabase
             .from('activities')
             .insert(mappedActivities)
-            .select('id, strava_activity_id');
+            .select('*');
 
           if (insertError) {
             console.error('Error inserting activities:', insertError);
             throw insertError;
           }
 
-          // Fetch detailed streams for ALL activities
+          // Check for and remove duplicates for each inserted activity
+          let duplicatesRemoved = 0;
+          const activitiesToProcess: any[] = [];
+          
           for (const insertedActivity of insertedActivities || []) {
+            const { duplicatesRemoved: removed, keptActivityId } = await findAndRemoveDuplicates(
+              supabase,
+              insertedActivity,
+              job.user_id
+            );
+            
+            duplicatesRemoved += removed;
+            
+            // Only process further if this activity was kept
+            if (keptActivityId === insertedActivity.id) {
+              activitiesToProcess.push(insertedActivity);
+            } else {
+              console.log(`Activity ${insertedActivity.id} was inferior, skipping stream fetch`);
+            }
+          }
+
+          if (duplicatesRemoved > 0) {
+            console.log(`Removed ${duplicatesRemoved} duplicate(s) during sync`);
+          }
+
+          // Fetch detailed streams for activities that were kept
+          for (const insertedActivity of activitiesToProcess) {
             const originalActivity = newActivities.find(a => a.id.toString() === insertedActivity.strava_activity_id);
             
             if (originalActivity) {

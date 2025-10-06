@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { Stream, Decoder } from "https://esm.sh/@garmin/fitsdk@21.178.0";
+import { findAndRemoveDuplicates } from '../_shared/deduplication.ts';
 
 const GARMIN_API_BASE = "https://apis.garmin.com/wellness-api/rest";
 
@@ -262,6 +263,42 @@ serve(async (req) => {
             .eq("id", job.id);
           failed++;
           continue;
+        }
+
+        // Fetch the updated activity to check for duplicates
+        const { data: updatedActivity } = await supabase
+          .from("activities")
+          .select("*")
+          .eq("garmin_activity_id", job.garmin_activity_id)
+          .eq("user_id", job.user_id)
+          .single();
+
+        if (updatedActivity) {
+          // Check for and remove duplicates
+          const { duplicatesRemoved, keptActivityId } = await findAndRemoveDuplicates(
+            supabase,
+            updatedActivity,
+            job.user_id
+          );
+          
+          if (duplicatesRemoved > 0) {
+            console.log(`Removed ${duplicatesRemoved} duplicate(s) for activity ${job.garmin_activity_id}`);
+          }
+
+          // If this activity was the inferior one, mark job as skipped
+          if (keptActivityId !== updatedActivity.id) {
+            console.log(`Activity ${job.garmin_activity_id} was inferior and removed`);
+            await supabase
+              .from("garmin_fit_jobs")
+              .update({
+                status: "completed",
+                last_error: "Activity was duplicate and removed",
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", job.id);
+            processed++;
+            continue;
+          }
         }
 
         // Mark job as completed
