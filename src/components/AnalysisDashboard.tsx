@@ -25,7 +25,7 @@ export function AnalysisDashboard() {
   const { trainingHistory: combinedHistory, loading: combinedLoading } = useCombinedTrainingHistory(parseInt(dateRange));
   const { isRunning } = useSportMode();
   const { isPopulating } = usePMCPopulation();
-  const { powerProfile, loading: powerLoading } = usePowerProfile(parseInt(dateRange));
+  const { powerProfile, loading: powerLoading } = usePowerProfile(`${dateRange}-day`);
   const { timezone } = useUserTimezone();
 
   // Use appropriate training history based on combined sports setting

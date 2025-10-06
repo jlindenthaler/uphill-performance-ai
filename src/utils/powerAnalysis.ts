@@ -234,13 +234,17 @@ export async function populatePowerProfileForActivity(
     minDuration: Math.min(...powerProfile.map(p => p.durationSeconds))
   });
 
-  // Calculate 90-day cutoff date
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  const cutoffDate = ninetyDaysAgo.toISOString();
-  const isWithin90Days = new Date(activityDate) >= ninetyDaysAgo;
+  // Define all rolling time windows (in days) with cutoff dates
+  const rollingWindows = [
+    { days: 7, key: '7-day' },
+    { days: 14, key: '14-day' },
+    { days: 30, key: '30-day' },
+    { days: 60, key: '60-day' },
+    { days: 90, key: '90-day' },
+    { days: 365, key: '365-day' },
+  ];
 
-  // Fetch existing records for BOTH time windows in ONE query
+  // Fetch existing records for ALL time windows in ONE query
   const { data: existingRecords, error: fetchError } = await supabase
     .from('power_profile')
     .select('duration_seconds, power_watts, pace_per_km, time_window')
@@ -252,17 +256,21 @@ export async function populatePowerProfileForActivity(
     return;
   }
 
-  // Build maps for both time windows: duration -> best existing value
-  const allTimeMap = new Map<number, number>();
-  const ninetyDayMap = new Map<number, number>();
+  // Build maps for each time window: duration -> best existing value
+  const timeWindowMaps = new Map<string, Map<number, number>>();
+  timeWindowMaps.set('all-time', new Map());
+  rollingWindows.forEach(window => {
+    timeWindowMaps.set(window.key, new Map());
+  });
   
   existingRecords?.forEach(record => {
     const value = isRunning ? record.pace_per_km : record.power_watts;
     if (!value) return;
     
-    const targetMap = record.time_window === '90-day' ? ninetyDayMap : allTimeMap;
-    const existing = targetMap.get(record.duration_seconds);
+    const targetMap = timeWindowMaps.get(record.time_window);
+    if (!targetMap) return;
     
+    const existing = targetMap.get(record.duration_seconds);
     if (!existing || (isRunning ? value < existing : value > existing)) {
       targetMap.set(record.duration_seconds, value);
     }
@@ -276,6 +284,7 @@ export async function populatePowerProfileForActivity(
 
   // Prepare records for insertion/update
   const recordsToInsert: any[] = [];
+  const activityDateObj = new Date(activityDate);
 
   powerProfile.forEach(profile => {
     const baseData = {
@@ -291,6 +300,7 @@ export async function populatePowerProfileForActivity(
     };
 
     // Check if this is a new all-time best
+    const allTimeMap = timeWindowMaps.get('all-time')!;
     const allTimeBest = allTimeMap.get(profile.durationSeconds);
     if (isNewBetter(profile.value, allTimeBest)) {
       recordsToInsert.push({
@@ -299,16 +309,23 @@ export async function populatePowerProfileForActivity(
       });
     }
 
-    // Check if this is a new 90-day best (only if activity is within 90 days)
-    if (isWithin90Days) {
-      const ninetyDayBest = ninetyDayMap.get(profile.durationSeconds);
-      if (isNewBetter(profile.value, ninetyDayBest)) {
-        recordsToInsert.push({
-          ...baseData,
-          time_window: '90-day'
-        });
+    // Check each rolling window
+    rollingWindows.forEach(window => {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - window.days);
+      const isWithinWindow = activityDateObj >= cutoffDate;
+      
+      if (isWithinWindow) {
+        const windowMap = timeWindowMaps.get(window.key)!;
+        const windowBest = windowMap.get(profile.durationSeconds);
+        if (isNewBetter(profile.value, windowBest)) {
+          recordsToInsert.push({
+            ...baseData,
+            time_window: window.key
+          });
+        }
       }
-    }
+    });
   });
 
   if (recordsToInsert.length === 0) {

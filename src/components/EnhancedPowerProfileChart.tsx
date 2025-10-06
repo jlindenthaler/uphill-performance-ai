@@ -18,7 +18,7 @@ export function EnhancedPowerProfileChart({
     powerProfile,
     recalculatedProfile,
     loading
-  } = usePowerProfile(90);
+  } = usePowerProfile('90-day');
   const {
     sportMode
   } = useSportMode();

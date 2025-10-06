@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { TrendingUp, Zap, Clock } from 'lucide-react';
 
+const TIME_WINDOWS = [
+  { value: '7-day', label: '7 Days' },
+  { value: '14-day', label: '14 Days' },
+  { value: '30-day', label: '30 Days' },
+  { value: '60-day', label: '60 Days' },
+  { value: '90-day', label: '90 Days' },
+  { value: '365-day', label: '1 Year' },
+  { value: 'all-time', label: 'All-Time' },
+];
+
 export function PowerProfileChart() {
-  const { powerProfile, loading } = usePowerProfile();
+  const [selectedWindow, setSelectedWindow] = useState('90-day');
+  const { powerProfile, loading } = usePowerProfile(selectedWindow);
   const { sportMode } = useSportMode();
   const isRunning = sportMode === 'running';
 
@@ -90,10 +102,24 @@ export function PowerProfileChart() {
       {/* Power/Pace Curve Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-            {isRunning ? 'Pace Profile Curve' : 'Power Profile Curve'}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              {isRunning ? <TrendingUp className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+              {isRunning ? 'Pace Profile Curve' : 'Power Profile Curve'}
+            </CardTitle>
+            <Select value={selectedWindow} onValueChange={setSelectedWindow}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Time window" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_WINDOWS.map(window => (
+                  <SelectItem key={window.value} value={window.value}>
+                    {window.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-64">

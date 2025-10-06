@@ -218,7 +218,7 @@ export function ActivityAnalysisChart({
   };
 
   // Fetch historical power profile data with date range (excluding current activity)
-  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(parseInt(dateRange), activity?.id);
+  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(`${dateRange}-day`, activity?.id);
 
   // Logarithmic interpolation function
   const interpolateValue = (x1: number, y1: number, x2: number, y2: number, x: number): number => {
