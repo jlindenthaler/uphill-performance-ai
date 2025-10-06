@@ -212,7 +212,14 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
 
     // Upsert PMC data (insert or update if exists)
-    const upsertData = pmcData.map(data => ({
+    // Deduplicate by (date, sport) - keep the last entry for each combination
+    const deduplicatedMap = new Map<string, typeof pmcData[0]>();
+    pmcData.forEach(data => {
+      const key = `${data.date}-${data.sport}`;
+      deduplicatedMap.set(key, data);
+    });
+    
+    const upsertData = Array.from(deduplicatedMap.values()).map(data => ({
       user_id: userId,
       date: data.date,
       tss: data.tss,
@@ -222,6 +229,8 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
       duration_minutes: data.duration_minutes,
       sport: data.sport
     }));
+
+    console.log(`Deduplicating: ${pmcData.length} -> ${upsertData.length} unique records`);
 
     const { error: upsertError } = await supabase
       .from('training_history')
@@ -286,20 +295,34 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
 
     // Update or insert training history records from the specified date onwards
-    for (const data of pmcData.filter(d => d.date >= date)) {
+    const filteredData = pmcData.filter(d => d.date >= date);
+    
+    // Deduplicate by (date, sport) - keep the last entry for each combination
+    const deduplicatedMap = new Map<string, typeof pmcData[0]>();
+    filteredData.forEach(data => {
+      const key = `${data.date}-${data.sport}`;
+      deduplicatedMap.set(key, data);
+    });
+    
+    const upsertData = Array.from(deduplicatedMap.values()).map(data => ({
+      user_id: userId,
+      date: data.date,
+      tss: data.tss,
+      ctl: data.ctl,
+      atl: data.atl,
+      tsb: data.tsb,
+      duration_minutes: data.duration_minutes,
+      sport: data.sport
+    }));
+
+    console.log(`Updating ${upsertData.length} unique training history records from ${date}`);
+
+    if (upsertData.length > 0) {
       const { error: upsertError } = await supabase
         .from('training_history')
-        .upsert({
-          user_id: userId,
-          date: data.date,
-          tss: data.tss,
-          ctl: data.ctl,
-          atl: data.atl,
-          tsb: data.tsb,
-          duration_minutes: data.duration_minutes,
-          sport: data.sport
-        }, {
-          onConflict: 'user_id,date,sport'
+        .upsert(upsertData, {
+          onConflict: 'user_id,date,sport',
+          ignoreDuplicates: false
         });
 
       if (upsertError) throw upsertError;
