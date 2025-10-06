@@ -87,32 +87,25 @@ export function useDeduplicatedActivities(
         return group[0];
       }
 
-      // Sort by priority
+      // Sort by priority: data completeness first, then sync source, then most recent
       const sorted = [...group].sort((a, b) => {
-        const aCreatedTime = new Date(a.created_at).getTime();
-        const bCreatedTime = new Date(b.created_at).getTime();
-        const timeDiff = Math.abs(aCreatedTime - bCreatedTime);
-
-        // Priority 1: First sync (earliest created_at)
-        if (timeDiff > 60000) { // More than 1 minute apart
-          return aCreatedTime - bCreatedTime; // Earlier first
-        }
-
-        // Priority 2: Data completeness (if created within 1 minute)
+        // Priority 1: Data completeness (highest priority - keep the activity with most data)
         const aScore = calculateDataCompleteness(a);
         const bScore = calculateDataCompleteness(b);
         if (aScore !== bScore) {
           return bScore - aScore; // Higher score first
         }
 
-        // Priority 3: External sync source preference
+        // Priority 2: External sync source preference (Strava/Garmin over manual)
         const aIsExternal = a.external_sync_source !== null;
         const bIsExternal = b.external_sync_source !== null;
         if (aIsExternal && !bIsExternal) return -1;
         if (!aIsExternal && bIsExternal) return 1;
 
-        // Fallback: earlier created_at
-        return aCreatedTime - bCreatedTime;
+        // Priority 3: Most recent creation time (tiebreaker)
+        const aCreatedTime = new Date(a.created_at).getTime();
+        const bCreatedTime = new Date(b.created_at).getTime();
+        return bCreatedTime - aCreatedTime; // More recent first
       });
 
       const selected = sorted[0];
