@@ -30,7 +30,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
     if (!activity?.gps_data?.trackPoints) return [];
     
     // More granular durations for smoother curve
-    const durations = [1, 2, 3, 4, 5, 6, 7, 8, 9 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 28, 28, 30, 35, 40, 45, 50, 55, 60, 75, 90, 105, 120, 150, 180, 240, 300, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
+    const durations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 28, 28, 30, 35, 40, 45, 50, 55, 60, 75, 90, 105, 120, 150, 180, 240, 300, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
     const trackPoints = activity.gps_data.trackPoints;
     
     return durations.map(duration => {
