@@ -133,7 +133,7 @@ export function Activities() {
 
     return (
       <Badge variant="secondary" className="text-xs">
-        🔗 {sources.join(' + ')}
+        {sources.join(' + ')}
       </Badge>
     );
   };
