@@ -225,6 +225,15 @@ export function AnalysisDashboard() {
                       <Tooltip 
                         labelFormatter={(value) => formatDateInUserTimezone(value, timezone)}
                         formatter={(value, name) => [Math.round(Number(value)), String(name).toUpperCase()]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px'
+                        }}
+                        labelStyle={{ 
+                          color: 'hsl(var(--foreground))',
+                          fontWeight: 600
+                        }}
                       />
                       <Line type="monotone" dataKey="ctl" stroke="hsl(var(--ltl-blue))" strokeWidth={2} name="LTL" />
                       <Line type="monotone" dataKey="atl" stroke="hsl(var(--stl-pink))" strokeWidth={2} name="STL" />
