@@ -59,91 +59,109 @@ export function calculateMeanMaximalPace(records: any[], targetDurationSeconds: 
 }
 
 // Extract power profile data from activity records - WKO5 style (all durations)
-export function extractPowerProfileFromActivity(gpsData: any, sportMode: string): Array<{ durationSeconds: number; value: number }> {
-  if (!gpsData || !gpsData.trackPoints) return [];
-
-  const records = gpsData.trackPoints;
+export function extractPowerProfileFromActivity(activityData: any, sportMode: string): Array<{ durationSeconds: number; value: number }> {
   const isRunning = sportMode === 'running';
   const powerProfile: Array<{ durationSeconds: number; value: number }> = [];
 
-  // Calculate mean max for every second up to 60s
-  for (let duration = 1; duration <= 60; duration++) {
-    let value: number | null = null;
+  // Get power/speed data - check multiple possible locations
+  let dataArray: number[] = [];
+  
+  if (!isRunning) {
+    // For cycling/power sports - check power_time_series first, then gps_data
+    if (activityData.power_time_series && Array.isArray(activityData.power_time_series)) {
+      dataArray = activityData.power_time_series.filter((p: any) => p !== null && p !== undefined && p > 0);
+    } else if (activityData.gps_data?.trackPoints) {
+      dataArray = activityData.gps_data.trackPoints
+        .map((r: any) => unwrapValue(r.power))
+        .filter((p: any) => p !== null && p !== undefined && p > 0);
+    }
+  } else {
+    // For running - get speed data to calculate pace
+    if (activityData.speed_time_series && Array.isArray(activityData.speed_time_series)) {
+      dataArray = activityData.speed_time_series.filter((s: any) => s !== null && s !== undefined && s > 0);
+    } else if (activityData.gps_data?.trackPoints) {
+      dataArray = activityData.gps_data.trackPoints
+        .map((r: any) => unwrapValue(r.speed))
+        .filter((s: any) => s !== null && s !== undefined && s > 0);
+    }
+  }
+
+  if (dataArray.length === 0) {
+    console.log(`No ${isRunning ? 'speed' : 'power'} data found for activity`);
+    return [];
+  }
+
+  console.log(`Found ${dataArray.length} ${isRunning ? 'speed' : 'power'} data points`);
+
+  // Helper to calculate rolling maximum average
+  const calculateMaxAvg = (data: number[], duration: number): number | null => {
+    if (data.length < duration) return null;
     
-    if (isRunning) {
-      value = calculateMeanMaximalPace(records, duration);
-    } else {
-      value = calculateMeanMaximalPower(records, duration);
+    let maxAvg = 0;
+    for (let i = 0; i <= data.length - duration; i++) {
+      const window = data.slice(i, i + duration);
+      const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
+      maxAvg = Math.max(maxAvg, avg);
     }
     
-    if (value !== null && value > 0) {
+    return maxAvg > 0 ? maxAvg : null;
+  };
+
+  // Convert speed to pace for running (min/km)
+  const convertToPace = (speedMps: number): number => {
+    if (speedMps <= 0) return 0;
+    return 1000 / (speedMps * 60); // Convert m/s to min/km
+  };
+
+  // Calculate mean max for every second up to 60s
+  for (let duration = 1; duration <= 60; duration++) {
+    const avgValue = calculateMaxAvg(dataArray, duration);
+    if (avgValue !== null && avgValue > 0) {
+      const value = isRunning ? convertToPace(avgValue) : avgValue;
       powerProfile.push({ durationSeconds: duration, value });
     }
   }
 
   // Then every 5 seconds from 65s to 300s (5 minutes)
   for (let duration = 65; duration <= 300; duration += 5) {
-    let value: number | null = null;
-    
-    if (isRunning) {
-      value = calculateMeanMaximalPace(records, duration);
-    } else {
-      value = calculateMeanMaximalPower(records, duration);
-    }
-    
-    if (value !== null && value > 0) {
+    const avgValue = calculateMaxAvg(dataArray, duration);
+    if (avgValue !== null && avgValue > 0) {
+      const value = isRunning ? convertToPace(avgValue) : avgValue;
       powerProfile.push({ durationSeconds: duration, value });
     }
   }
 
   // Then every 30 seconds from 330s to 1200s (20 minutes)
   for (let duration = 330; duration <= 1200; duration += 30) {
-    let value: number | null = null;
-    
-    if (isRunning) {
-      value = calculateMeanMaximalPace(records, duration);
-    } else {
-      value = calculateMeanMaximalPower(records, duration);
-    }
-    
-    if (value !== null && value > 0) {
+    const avgValue = calculateMaxAvg(dataArray, duration);
+    if (avgValue !== null && avgValue > 0) {
+      const value = isRunning ? convertToPace(avgValue) : avgValue;
       powerProfile.push({ durationSeconds: duration, value });
     }
   }
 
   // Then every 60 seconds from 1260s to 3600s (1 hour)
   for (let duration = 1260; duration <= 3600; duration += 60) {
-    let value: number | null = null;
-    
-    if (isRunning) {
-      value = calculateMeanMaximalPace(records, duration);
-    } else {
-      value = calculateMeanMaximalPower(records, duration);
-    }
-    
-    if (value !== null && value > 0) {
+    const avgValue = calculateMaxAvg(dataArray, duration);
+    if (avgValue !== null && avgValue > 0) {
+      const value = isRunning ? convertToPace(avgValue) : avgValue;
       powerProfile.push({ durationSeconds: duration, value });
     }
   }
 
   // Then every 5 minutes beyond 1 hour if activity is that long
-  const maxDuration = records.length;
+  const maxDuration = dataArray.length;
   if (maxDuration > 3600) {
     for (let duration = 3900; duration <= maxDuration; duration += 300) {
-      let value: number | null = null;
-      
-      if (isRunning) {
-        value = calculateMeanMaximalPace(records, duration);
-      } else {
-        value = calculateMeanMaximalPower(records, duration);
-      }
-      
-      if (value !== null && value > 0) {
+      const avgValue = calculateMaxAvg(dataArray, duration);
+      if (avgValue !== null && avgValue > 0) {
+        const value = isRunning ? convertToPace(avgValue) : avgValue;
         powerProfile.push({ durationSeconds: duration, value });
       }
     }
   }
 
+  console.log(`Extracted ${powerProfile.length} power profile entries (durations: ${powerProfile[0]?.durationSeconds}s to ${powerProfile[powerProfile.length-1]?.durationSeconds}s)`);
   return powerProfile;
 }
 
@@ -151,13 +169,11 @@ export function extractPowerProfileFromActivity(gpsData: any, sportMode: string)
 export async function populatePowerProfileForActivity(
   userId: string,
   activityId: string,
-  gpsData: any,
+  activityData: any,
   sportMode: string,
   activityDate: string
 ): Promise<void> {
-  if (!gpsData || !gpsData.trackPoints) return;
-
-  const powerProfile = extractPowerProfileFromActivity(gpsData, sportMode);
+  const powerProfile = extractPowerProfileFromActivity(activityData, sportMode);
   const isRunning = sportMode === 'running';
 
   if (powerProfile.length === 0) {
@@ -231,10 +247,10 @@ export async function backfillPowerProfileData(
 ): Promise<void> {
   console.log('🚀 Starting power profile backfill for user:', userId);
   
-  // Get all activities with GPS data
+  // Get all activities with GPS data - MUST include power_time_series and speed_time_series
   const { data: activities, error } = await supabase
     .from('activities')
-    .select('id, gps_data, sport_mode, date, name')
+    .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name')
     .eq('user_id', userId)
     .not('gps_data', 'is', null)
     .order('date', { ascending: false });
@@ -261,10 +277,11 @@ export async function backfillPowerProfileData(
     try {
       console.log(`🔄 Processing: ${activity.name} (${i + 1}/${totalActivities})`);
       
+      // Pass the full activity object with power_time_series
       await populatePowerProfileForActivity(
         userId,
         activity.id,
-        activity.gps_data,
+        activity, // Pass full activity object, not just gps_data
         activity.sport_mode,
         activity.date
       );
