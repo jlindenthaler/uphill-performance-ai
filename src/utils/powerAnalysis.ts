@@ -312,11 +312,19 @@ export async function backfillPowerProfileData(
   let errorCount = 0;
   let totalProcessed = 0;
 
-  // First, get the total count
+  // Calculate date 90 days ago
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const cutoffDate = ninetyDaysAgo.toISOString();
+  
+  console.log(`📅 Processing activities from last 90 days (since ${cutoffDate.split('T')[0]})`);
+
+  // First, get the total count (last 90 days only)
   const { count: totalCount, error: countError } = await supabase
     .from('activities')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .gte('date', cutoffDate);
 
   if (countError) {
     console.error('❌ Error counting activities:', countError);
@@ -339,6 +347,7 @@ export async function backfillPowerProfileData(
       .from('activities')
       .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
       .eq('user_id', userId)
+      .gte('date', cutoffDate)
       .order('date', { ascending: false })
       .range(offset, offset + BATCH_SIZE - 1);
 
