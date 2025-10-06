@@ -292,7 +292,13 @@ export function EnhancedPowerProfileChart({
                   }}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [formatValue(value), '']}
+                  formatter={(value: number, name: string) => {
+                    // Only show the rangeFiltered line value
+                    if (name === 'rangeFiltered') {
+                      return [formatValue(value), getDateRangeLabel()];
+                    }
+                    return null;
+                  }}
                   labelFormatter={(value: number) => {
                     if (value < 60) return `${value}s`;
                     if (value < 3600) {
@@ -316,20 +322,10 @@ export function EnhancedPowerProfileChart({
                 />
                 <Line
                   type="monotone"
-                  dataKey="allTimeBest"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  name="All-Time Best"
-                  dot={{ fill: 'hsl(var(--primary))', r: 1 }}
-                  isAnimationActive={false}
-                  connectNulls={false}
-                />
-                <Line
-                  type="monotone"
                   dataKey="rangeFiltered"
                   stroke="hsl(var(--chart-2))"
                   strokeWidth={2}
-                  name={getDateRangeLabel()}
+                  name="rangeFiltered"
                   dot={{ fill: 'hsl(var(--chart-2))', r: 1 }}
                   isAnimationActive={false}
                   connectNulls={false}
