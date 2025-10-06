@@ -33,69 +33,69 @@ export function ActivityAnalysisChart({
       let cumulativeRecordingTime = 0; // Track actual recording time excluding pauses
 
       return trackPoints.map((point: any, index: number) => {
-      let timeElapsed;
-      if (index === 0) {
-        timeElapsed = 0;
-      } else {
-        const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
-
-        // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
-        // Larger gaps indicate pauses and should create natural breaks in the timeline
-        if (timeInterval <= 10) {
-          cumulativeRecordingTime += timeInterval;
+        let timeElapsed;
+        if (index === 0) {
+          timeElapsed = 0;
         } else {
-          // For large gaps, create a null data point to break the line
-          cumulativeRecordingTime += timeInterval;
+          const prevPoint = trackPoints[index - 1];
+          const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+
+          // Only add time if gap is reasonable (less than 10 seconds indicates continuous recording)
+          // Larger gaps indicate pauses and should create natural breaks in the timeline
+          if (timeInterval <= 10) {
+            cumulativeRecordingTime += timeInterval;
+          } else {
+            // For large gaps, create a null data point to break the line
+            cumulativeRecordingTime += timeInterval;
+          }
+          timeElapsed = cumulativeRecordingTime;
         }
-        timeElapsed = cumulativeRecordingTime;
-      }
 
-      // Calculate cumulative distance by integrating speed over time
-      if (index > 0 && point.speed) {
-        const prevPoint = trackPoints[index - 1];
-        const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
+        // Calculate cumulative distance by integrating speed over time
+        if (index > 0 && point.speed) {
+          const prevPoint = trackPoints[index - 1];
+          const timeInterval = point.timestamp && prevPoint.timestamp ? (new Date(point.timestamp).getTime() - new Date(prevPoint.timestamp).getTime()) / 1000 : 1;
 
-        // Use speed (m/s) * time (s) = distance (m)
-        const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
-        cumulativeDistance += avgSpeed * timeInterval;
-      }
-      const hours = Math.floor(timeElapsed / 3600);
-      const minutes = Math.floor(timeElapsed % 3600 / 60);
-      const seconds = Math.floor(timeElapsed % 60);
-      const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
-      const distanceKm = cumulativeDistance / 1000;
-      const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
+          // Use speed (m/s) * time (s) = distance (m)
+          const avgSpeed = ((point.speed || 0) + (prevPoint.speed || 0)) / 2;
+          cumulativeDistance += avgSpeed * timeInterval;
+        }
+        const hours = Math.floor(timeElapsed / 3600);
+        const minutes = Math.floor(timeElapsed % 3600 / 60);
+        const seconds = Math.floor(timeElapsed % 60);
+        const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        const distanceKm = cumulativeDistance / 1000;
+        const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
 
-      // Convert speed from m/s to km/h if needed
-      const speedKmh = point.speed ? point.speed * 3.6 : 0;
+        // Convert speed from m/s to km/h if needed
+        const speedKmh = point.speed ? point.speed * 3.6 : 0;
 
-      // Handle power balance (convert to percentage if available)
-      const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
-      const totalPower = point.power || 0;
-      const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
-      return {
-        time: timeFormatted,
-        distance: distanceFormatted,
-        xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
-        timeSeconds: timeElapsed,
-        distanceMeters: cumulativeDistance,
-        cadence: point.cadence || 0,
-        heartRate: point.heartRate || 0,
-        wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
-        // Left power
-        wr: rPower,
-        // Right power
-        speed: Math.round(speedKmh * 10) / 10,
-        temp: point.temperature || 20,
-        elevation: Math.round((point.altitude || 0) * 10) / 10,
-        power: totalPower,
-        balance: leftRightBalance,
-        rPower: rPower
-      };
-    });
+        // Handle power balance (convert to percentage if available)
+        const leftRightBalance = point.leftRightBalance ? point.leftRightBalance / 255 * 100 : 50;
+        const totalPower = point.power || 0;
+        const rPower = totalPower > 0 && leftRightBalance ? Math.round(totalPower * ((100 - leftRightBalance) / 100)) : 0;
+        return {
+          time: timeFormatted,
+          distance: distanceFormatted,
+          xValue: xAxisMode === 'time' ? timeFormatted : distanceFormatted,
+          timeSeconds: timeElapsed,
+          distanceMeters: cumulativeDistance,
+          cadence: point.cadence || 0,
+          heartRate: point.heartRate || 0,
+          wl: point.power ? Math.round(point.power * (leftRightBalance / 100)) : 0,
+          // Left power
+          wr: rPower,
+          // Right power
+          speed: Math.round(speedKmh * 10) / 10,
+          temp: point.temperature || 20,
+          elevation: Math.round((point.altitude || 0) * 10) / 10,
+          power: totalPower,
+          balance: leftRightBalance,
+          rPower: rPower
+        };
+      });
     }
-    
+
     // Fallback to time-series data if no GPS data available
     if (activity) {
       const timeArray = activity.time_time_series;
@@ -106,7 +106,7 @@ export function ActivityAnalysisChart({
       const tempArray = activity.temperature_time_series;
       const distanceArray = activity.distance_time_series;
       const altitudeArray = activity.altitude_time_series;
-      
+
       // Need at least time series or a way to calculate time
       if (timeArray && Array.isArray(timeArray) && timeArray.length > 0) {
         console.log('Using time-series data for timeline', {
@@ -115,24 +115,16 @@ export function ActivityAnalysisChart({
           hasHR: !!hrArray,
           hasGPS: false
         });
-        
         return timeArray.map((timeSeconds: number, index: number) => {
           const hours = Math.floor(timeSeconds / 3600);
-          const minutes = Math.floor((timeSeconds % 3600) / 60);
+          const minutes = Math.floor(timeSeconds % 3600 / 60);
           const seconds = Math.floor(timeSeconds % 60);
-          const timeFormatted = hours > 0 
-            ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` 
-            : `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          
+          const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
           const distanceMeters = distanceArray?.[index] || 0;
           const distanceKm = distanceMeters / 1000;
-          const distanceFormatted = distanceKm < 10 
-            ? `${distanceKm.toFixed(1)}km` 
-            : `${Math.round(distanceKm)}km`;
-          
+          const distanceFormatted = distanceKm < 10 ? `${distanceKm.toFixed(1)}km` : `${Math.round(distanceKm)}km`;
           const speedMs = speedArray?.[index] || 0;
           const speedKmh = speedMs * 3.6;
-          
           return {
             time: timeFormatted,
             distance: distanceFormatted,
@@ -141,18 +133,20 @@ export function ActivityAnalysisChart({
             distanceMeters: distanceMeters,
             cadence: cadenceArray?.[index] || 0,
             heartRate: hrArray?.[index] || 0,
-            wl: 0, // No L/R power split in basic time series
+            wl: 0,
+            // No L/R power split in basic time series
             wr: 0,
             speed: Math.round(speedKmh * 10) / 10,
             temp: tempArray?.[index] || 20,
             elevation: altitudeArray?.[index] ? Math.round(altitudeArray[index] * 10) / 10 : 0,
             power: powerArray?.[index] || 0,
-            balance: 50, // No balance data in basic time series
+            balance: 50,
+            // No balance data in basic time series
             rPower: 0
           };
         });
       }
-      
+
       // Last resort: generate synthetic timeline from duration
       if (activity.duration_seconds && activity.duration_seconds > 0) {
         console.log('Generating synthetic timeline from duration', {
@@ -160,17 +154,14 @@ export function ActivityAnalysisChart({
           hasPower: !!powerArray,
           hasHR: !!hrArray
         });
-        
+
         // Generate one data point per second
         const dataPoints = [];
         for (let i = 0; i < activity.duration_seconds; i++) {
           const hours = Math.floor(i / 3600);
-          const minutes = Math.floor((i % 3600) / 60);
+          const minutes = Math.floor(i % 3600 / 60);
           const seconds = i % 60;
-          const timeFormatted = hours > 0 
-            ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` 
-            : `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          
+          const timeFormatted = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
           dataPoints.push({
             time: timeFormatted,
             distance: '0km',
@@ -189,11 +180,9 @@ export function ActivityAnalysisChart({
             rPower: 0
           });
         }
-        
         return dataPoints;
       }
     }
-    
     return [];
   }, [activity, xAxisMode]);
 
@@ -218,7 +207,10 @@ export function ActivityAnalysisChart({
   };
 
   // Fetch historical power profile data with date range (excluding current activity)
-  const { powerProfile: historicalData, loading: historicalLoading } = usePowerProfile(`${dateRange}-day`, activity?.id);
+  const {
+    powerProfile: historicalData,
+    loading: historicalLoading
+  } = usePowerProfile(`${dateRange}-day`, activity?.id);
 
   // Logarithmic interpolation function
   const interpolateValue = (x1: number, y1: number, x2: number, y2: number, x: number): number => {
@@ -229,7 +221,6 @@ export function ActivityAnalysisChart({
     const logX1 = Math.log(x1);
     const logX2 = Math.log(x2);
     const logX = Math.log(x);
-    
     const logY = logY1 + (logY2 - logY1) * (logX - logX1) / (logX2 - logX1);
     return Math.exp(logY);
   };
@@ -238,12 +229,11 @@ export function ActivityAnalysisChart({
   const peakPowerData = useMemo(() => {
     // Base duration values for calculation
     const baseDurations = [1, 5, 10, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 3600];
-    
+
     // Calculate base data points
     const baseData = baseDurations.map(seconds => {
       let currentValue = 0;
       let historicalValue = 0;
-
       if (activity?.gps_data?.trackPoints) {
         // Calculate current activity mean max
         if (isRunning) {
@@ -257,23 +247,18 @@ export function ActivityAnalysisChart({
 
       // Find historical best for this duration
       const historicalEntry = historicalData.find(h => {
-        const entrySeconds = h.duration.includes('min') 
-          ? parseInt(h.duration) * 60 
-          : parseInt(h.duration);
+        const entrySeconds = h.duration.includes('min') ? parseInt(h.duration) * 60 : parseInt(h.duration);
         return entrySeconds === seconds;
       });
-
       if (historicalEntry) {
         historicalValue = historicalEntry.best;
       }
-
       return {
         durationSeconds: seconds,
         currentValue,
         historicalValue
       };
     }).filter(data => data.currentValue > 0 || data.historicalValue > 0);
-
     if (baseData.length < 2) {
       // Not enough data for interpolation, return base points only
       return baseDurations.map(seconds => ({
@@ -286,12 +271,12 @@ export function ActivityAnalysisChart({
 
     // Generate interpolated data points for smoother curve
     const interpolatedData: any[] = [];
-    
+
     // Add interpolated points between base durations
     for (let i = 0; i < baseData.length - 1; i++) {
       const current = baseData[i];
       const next = baseData[i + 1];
-      
+
       // Add current base point
       interpolatedData.push({
         duration: formatDurationLabel(current.durationSeconds),
@@ -299,24 +284,17 @@ export function ActivityAnalysisChart({
         comparisonRange: Math.round(current.historicalValue * 100) / 100,
         durationSeconds: current.durationSeconds
       });
-      
+
       // Add interpolated points between current and next
       const logStart = Math.log(current.durationSeconds);
       const logEnd = Math.log(next.durationSeconds);
       const steps = Math.max(2, Math.floor((logEnd - logStart) * 3)); // More steps for bigger gaps
-      
+
       for (let step = 1; step < steps; step++) {
         const logDuration = logStart + (logEnd - logStart) * (step / steps);
         const duration = Math.exp(logDuration);
-        
-        const currentInterp = current.currentValue > 0 && next.currentValue > 0 
-          ? interpolateValue(current.durationSeconds, current.currentValue, next.durationSeconds, next.currentValue, duration)
-          : 0;
-          
-        const historicalInterp = current.historicalValue > 0 && next.historicalValue > 0
-          ? interpolateValue(current.durationSeconds, current.historicalValue, next.durationSeconds, next.historicalValue, duration)
-          : 0;
-        
+        const currentInterp = current.currentValue > 0 && next.currentValue > 0 ? interpolateValue(current.durationSeconds, current.currentValue, next.durationSeconds, next.currentValue, duration) : 0;
+        const historicalInterp = current.historicalValue > 0 && next.historicalValue > 0 ? interpolateValue(current.durationSeconds, current.historicalValue, next.durationSeconds, next.historicalValue, duration) : 0;
         interpolatedData.push({
           duration: formatDurationLabel(Math.round(duration)),
           currentRange: Math.round(currentInterp * 100) / 100,
@@ -325,7 +303,7 @@ export function ActivityAnalysisChart({
         });
       }
     }
-    
+
     // Add the last base point
     const lastPoint = baseData[baseData.length - 1];
     interpolatedData.push({
@@ -334,7 +312,6 @@ export function ActivityAnalysisChart({
       comparisonRange: Math.round(lastPoint.historicalValue * 100) / 100,
       durationSeconds: lastPoint.durationSeconds
     });
-
     return interpolatedData.sort((a, b) => a.durationSeconds - b.durationSeconds);
   }, [activity, historicalData, isRunning]);
 
@@ -383,10 +360,9 @@ export function ActivityAnalysisChart({
   // Calculate intelligent time interval based on activity duration
   const timeInterval = useMemo(() => {
     if (!timelineData.length) return 300; // 5 minutes default
-    
+
     const totalDurationSeconds = timelineData[timelineData.length - 1]?.timeSeconds || 0;
     const totalDurationMinutes = totalDurationSeconds / 60;
-    
     if (totalDurationMinutes < 30) return 300; // 5 minutes
     if (totalDurationMinutes < 120) return 600; // 10 minutes  
     if (totalDurationMinutes < 240) return 900; // 15 minutes
@@ -396,15 +372,13 @@ export function ActivityAnalysisChart({
   // Create custom tick formatter for intelligent time intervals
   const formatTimeAxisTick = (tickItem: string) => {
     if (xAxisMode === 'distance') return tickItem;
-    
+
     // Find the data point for this tick
     const dataPoint = timelineData.find(point => point.time === tickItem);
     if (!dataPoint) return tickItem;
-    
     const timeSeconds = dataPoint.timeSeconds;
     const hours = Math.floor(timeSeconds / 3600);
-    const minutes = Math.floor((timeSeconds % 3600) / 60);
-    
+    const minutes = Math.floor(timeSeconds % 3600 / 60);
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}`;
     }
@@ -414,20 +388,15 @@ export function ActivityAnalysisChart({
   // Generate custom ticks based on time interval
   const getCustomTicks = () => {
     if (xAxisMode === 'distance' || !timelineData.length) return undefined;
-    
     const ticks = [];
     const maxTime = timelineData[timelineData.length - 1]?.timeSeconds || 0;
-    
     for (let time = 0; time <= maxTime; time += timeInterval) {
       // Find closest data point to this time
-      const closestPoint = timelineData.reduce((prev, curr) => 
-        Math.abs(curr.timeSeconds - time) < Math.abs(prev.timeSeconds - time) ? curr : prev
-      );
+      const closestPoint = timelineData.reduce((prev, curr) => Math.abs(curr.timeSeconds - time) < Math.abs(prev.timeSeconds - time) ? curr : prev);
       if (closestPoint) {
         ticks.push(closestPoint.time);
       }
     }
-    
     return ticks;
   };
 
@@ -539,27 +508,17 @@ export function ActivityAnalysisChart({
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart 
-                data={timelineData} 
-                margin={{
-                  top: 20,
-                  right: 80,
-                  bottom: 20,
-                  left: 20
-                }}
-                syncId="activityChart"
-              >
+              <ComposedChart data={timelineData} margin={{
+              top: 20,
+              right: 80,
+              bottom: 20,
+              left: 20
+            }} syncId="activityChart">
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="xValue" 
-                  tick={{
-                    fill: 'hsl(var(--muted-foreground))',
-                    fontSize: 10
-                  }} 
-                  tickFormatter={formatTimeAxisTick}
-                  ticks={getCustomTicks()}
-                  interval={0}
-                />
+                <XAxis dataKey="xValue" tick={{
+                fill: 'hsl(var(--muted-foreground))',
+                fontSize: 10
+              }} tickFormatter={formatTimeAxisTick} ticks={getCustomTicks()} interval={0} />
                 <YAxis yAxisId="power" orientation="left" tick={{
                 fill: 'hsl(var(--muted-foreground))',
                 fontSize: 10
@@ -592,172 +551,7 @@ export function ActivityAnalysisChart({
       </Card>
 
       {/* Peak Power and Heart Rate Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Peak Power/Pace Chart */}
-        <Card className="card-gradient">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {isRunning ? <Heart className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-              {isRunning ? 'Peak Pace' : 'Peak Power'}
-            </CardTitle>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-zone-3 rounded"></div>
-                <span>Current Activity</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-zone-4 rounded opacity-60"></div>
-                <span>Historical Best (Last {dateRange} days)</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={peakPowerData} margin={{
-                top: 10,
-                right: 30,
-                left: 20,
-                bottom: 50
-              }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="durationSeconds"
-                    type="number"
-                    scale="log"
-                    domain={['dataMin', 'dataMax']}
-                    tick={{
-                      fill: 'hsl(var(--muted-foreground))',
-                      fontSize: 10
-                    }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                    tickFormatter={(value) => formatDurationLabel(value)}
-                    ticks={[1, 5, 15, 60, 300, 1200, 3600]}
-                  />
-                  <YAxis 
-                    domain={['dataMin * 0.9', 'dataMax * 1.1']}
-                    tick={{
-                      fill: 'hsl(var(--muted-foreground))',
-                      fontSize: 12
-                    }} 
-                    label={{
-                      value: isRunning ? 'MIN/KM' : 'WATTS',
-                      angle: -90,
-                      position: 'insideLeft',
-                      style: {
-                        textAnchor: 'middle',
-                        fill: 'hsl(var(--muted-foreground))',
-                        fontSize: '12px'
-                      }
-                    }} 
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: 'var(--radius)'
-                    }} 
-                    formatter={(value: number, name: string) => [
-                      isRunning ? `${value.toFixed(2)} min/km` : `${Math.round(value)}W`, 
-                      name === 'currentRange' ? 'Current Activity' : 'Historical Best'
-                    ]}
-                    labelFormatter={(value) => `Duration: ${formatDurationLabel(value)}`}
-                  />
-                  
-                  {/* Historical best filled area */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="comparisonRange" 
-                    stroke="hsl(var(--zone-4))" 
-                    fill="hsl(var(--zone-4))" 
-                    fillOpacity={0.2} 
-                    strokeWidth={1.5} 
-                    name="Historical Best"
-                    dot={false}
-                    connectNulls={false}
-                  />
-                  
-                  {/* Current activity filled area */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="currentRange" 
-                    stroke="hsl(var(--zone-3))" 
-                    fill="hsl(var(--zone-3))" 
-                    fillOpacity={0.4} 
-                    strokeWidth={2.5} 
-                    name="Current Activity"
-                    dot={false}
-                    connectNulls={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Peak Heart Rate Chart */}
-        <Card className="card-gradient">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Heart className="w-5 h-5" />
-              Peak Heart Rate
-            </CardTitle>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-destructive rounded"></div>
-                <span>25/6/2025 - 22/9/2025</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-destructive/60 rounded"></div>
-                <span>22/9/2025</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={peakHeartRateData} margin={{
-                top: 10,
-                right: 30,
-                left: 0,
-                bottom: 0
-              }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="duration" tick={{
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontSize: 12
-                }} />
-                  <YAxis tick={{
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontSize: 12
-                }} label={{
-                  value: 'BPM',
-                  angle: -90,
-                  position: 'insideLeft',
-                  style: {
-                    textAnchor: 'middle',
-                    fill: 'hsl(var(--muted-foreground))'
-                  }
-                }} />
-                  <Tooltip contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)'
-                }} formatter={(value: number) => [`${value} bpm`, '']} />
-                  
-                  {/* Comparison range area */}
-                  <Area type="monotone" dataKey="comparisonRange" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.4} strokeWidth={2} name="Comparison Range" strokeDasharray="5 5" />
-                  
-                  {/* Current range area */}
-                  <Area type="monotone" dataKey="currentRange" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.7} strokeWidth={2} name="Current Range" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       {/* Data Grid Placeholder */}
       <Card className="card-gradient">
