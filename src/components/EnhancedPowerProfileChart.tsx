@@ -293,13 +293,19 @@ export function EnhancedPowerProfileChart({
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => {
-                    // Only show the rangeFiltered line value
+                    // Only show the rangeFiltered line value in blue
                     if (name === 'rangeFiltered') {
-                      return [formatValue(value), getDateRangeLabel()];
+                      return [
+                        <span style={{ color: '#3b82f6', fontWeight: 600 }}>
+                          {formatValue(value)}
+                        </span>,
+                        ''
+                      ];
                     }
                     return null;
                   }}
                   labelFormatter={(value: number) => {
+                    // Show duration without any prefix
                     if (value < 60) return `${value}s`;
                     if (value < 3600) {
                       const minutes = Math.floor(value / 60);
@@ -323,10 +329,10 @@ export function EnhancedPowerProfileChart({
                 <Line
                   type="monotone"
                   dataKey="rangeFiltered"
-                  stroke="hsl(var(--chart-2))"
+                  stroke="#3b82f6"
                   strokeWidth={2}
                   name="rangeFiltered"
-                  dot={{ fill: 'hsl(var(--chart-2))', r: 1 }}
+                  dot={{ fill: '#3b82f6', r: 2 }}
                   isAnimationActive={false}
                   connectNulls={false}
                 />
