@@ -11,11 +11,16 @@ export function PowerProfileBackfill() {
 
   const handleBackfill = async () => {
     setIsBackfilling(true);
+    toast({
+      title: "Analysis Started",
+      description: "Analyzing all activities to populate granular power profile data. This may take a few minutes...",
+    });
+    
     try {
       await backfillPowerProfile();
       toast({
         title: "Power Profile Updated",
-        description: "Successfully analyzed existing activities and populated power profile data.",
+        description: "Successfully analyzed existing activities with granular duration data (1s-1hr+). Your power curve should now display smoothly!",
       });
     } catch (error) {
       console.error('Backfill error:', error);
@@ -34,7 +39,7 @@ export function PowerProfileBackfill() {
       <CardHeader>
         <CardTitle>Power Profile Analysis</CardTitle>
         <CardDescription>
-          Analyze your existing activities to populate power profile best efforts for different durations (5s, 1min, 5min, 20min, 60min).
+          Analyze your existing activities to populate granular power profile data across all durations (1s, 2s, 3s...1hr+). This creates a smooth, continuous power curve like WKO5. Run this after uploading new activities or to update historical data.
         </CardDescription>
       </CardHeader>
       <CardContent>

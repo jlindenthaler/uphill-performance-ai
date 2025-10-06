@@ -259,7 +259,7 @@ export function EnhancedPowerProfileChart({
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <CartesianGrid strokeDasharray="3 3" className="opacity-15" />
                 <XAxis 
                   dataKey="durationSeconds"
                   type="number"
@@ -320,8 +320,9 @@ export function EnhancedPowerProfileChart({
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   name="All-Time Best"
-                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
+                  dot={{ fill: 'hsl(var(--primary))', r: 1 }}
                   isAnimationActive={false}
+                  connectNulls={false}
                 />
                 <Line
                   type="monotone"
@@ -329,8 +330,9 @@ export function EnhancedPowerProfileChart({
                   stroke="hsl(var(--chart-2))"
                   strokeWidth={2}
                   name={getDateRangeLabel()}
-                  dot={{ fill: 'hsl(var(--chart-2))', r: 3 }}
+                  dot={{ fill: 'hsl(var(--chart-2))', r: 1 }}
                   isAnimationActive={false}
+                  connectNulls={false}
                 />
               </LineChart>
             </ResponsiveContainer>
