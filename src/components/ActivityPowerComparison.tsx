@@ -29,7 +29,8 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
   const activityMeanMax = useMemo(() => {
     if (!activity?.gps_data?.trackPoints) return [];
     
-    const durations = [1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    // More granular durations for smoother curve
+    const durations = [1, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
     const trackPoints = activity.gps_data.trackPoints;
     
     return durations.map(duration => {
@@ -253,8 +254,8 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                   stroke="#ef4444"
                   strokeWidth={3}
                   name="activityPower"
-                  dot={{ fill: '#ef4444', r: 3 }}
-                  connectNulls={false}
+                  dot={{ fill: '#ef4444', r: 4 }}
+                  connectNulls={true}
                 />
                 <Line
                   type="monotone"
@@ -262,8 +263,8 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                   stroke="#3b82f6"
                   strokeWidth={2}
                   name="meanMax90Day"
-                  dot={{ fill: '#3b82f6', r: 2 }}
-                  connectNulls={false}
+                  dot={{ fill: '#3b82f6', r: 3 }}
+                  connectNulls={true}
                 />
                 <Line
                   type="monotone"
@@ -272,8 +273,8 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   name="allTimeBest"
-                  dot={{ fill: '#22c55e', r: 2 }}
-                  connectNulls={false}
+                  dot={{ fill: '#22c55e', r: 3 }}
+                  connectNulls={true}
                 />
               </LineChart>
             </ResponsiveContainer>
