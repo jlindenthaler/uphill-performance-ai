@@ -307,12 +307,7 @@ export function Activities() {
           )}
         </div>
 
-        {/* Enhanced Power Profile */}
-        <div className="mt-6">
-          <EnhancedPowerProfileChart activity={detailedActivity} />
-        </div>
-        
-        {/* Activity vs Profile Comparison */}
+        {/* Combined Power Profile & Comparison */}
         {detailedActivity.gps_data?.trackPoints && (
           <div className="mt-6">
             <ActivityPowerComparison activity={detailedActivity} />
