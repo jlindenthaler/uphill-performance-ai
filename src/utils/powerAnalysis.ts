@@ -177,7 +177,12 @@ export async function populatePowerProfileForActivity(
   const isRunning = sportMode === 'running';
 
   if (powerProfile.length === 0) {
-    console.log(`No power profile data extracted for activity ${activityId}`);
+    console.log(`⚠️ No power profile data extracted for activity ${activityId}`);
+    console.log('Activity data keys:', Object.keys(activityData));
+    console.log('Has power_time_series:', !!activityData.power_time_series, 
+                'Length:', activityData.power_time_series?.length);
+    console.log('Has speed_time_series:', !!activityData.speed_time_series,
+                'Length:', activityData.speed_time_series?.length);
     return;
   }
 
@@ -247,13 +252,14 @@ export async function backfillPowerProfileData(
 ): Promise<void> {
   console.log('🚀 Starting power profile backfill for user:', userId);
   
-  // Get all activities with GPS data - MUST include power_time_series and speed_time_series
+  // Get all activities - not requiring GPS data since power_time_series is independent
   const { data: activities, error } = await supabase
     .from('activities')
     .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name')
     .eq('user_id', userId)
-    .not('gps_data', 'is', null)
     .order('date', { ascending: false });
+  
+  console.log('📦 Query result:', { activitiesCount: activities?.length, error });
 
   if (error) {
     console.error('❌ Error fetching activities for backfill:', error);
