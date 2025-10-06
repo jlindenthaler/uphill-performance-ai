@@ -69,20 +69,20 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
   if (!isRunning) {
     // For cycling/power sports - check power_time_series first, then gps_data
     if (activityData.power_time_series && Array.isArray(activityData.power_time_series)) {
-      dataArray = activityData.power_time_series.filter((p: any) => p !== null && p !== undefined && p > 0);
+      dataArray = activityData.power_time_series.filter((p: any) => p !== null && p !== undefined);
     } else if (activityData.gps_data?.trackPoints) {
       dataArray = activityData.gps_data.trackPoints
         .map((r: any) => unwrapValue(r.power))
-        .filter((p: any) => p !== null && p !== undefined && p > 0);
+        .filter((p: any) => p !== null && p !== undefined);
     }
   } else {
     // For running - get speed data to calculate pace
     if (activityData.speed_time_series && Array.isArray(activityData.speed_time_series)) {
-      dataArray = activityData.speed_time_series.filter((s: any) => s !== null && s !== undefined && s > 0);
+      dataArray = activityData.speed_time_series.filter((s: any) => s !== null && s !== undefined);
     } else if (activityData.gps_data?.trackPoints) {
       dataArray = activityData.gps_data.trackPoints
         .map((r: any) => unwrapValue(r.speed))
-        .filter((s: any) => s !== null && s !== undefined && s > 0);
+        .filter((s: any) => s !== null && s !== undefined);
     }
   }
 
