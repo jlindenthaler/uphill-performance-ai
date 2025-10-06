@@ -275,6 +275,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                   name="allTimeBest"
                   dot={{ fill: '#22c55e', r: 3 }}
                   connectNulls={true}
+                  legendType="none"
                 />
               </LineChart>
             </ResponsiveContainer>
