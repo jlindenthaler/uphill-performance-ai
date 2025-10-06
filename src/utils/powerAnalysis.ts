@@ -282,11 +282,14 @@ export async function populatePowerProfileForActivity(
     )
   }));
 
-  console.log(`💾 Attempting to insert ${insertData.length} records...`);
+  console.log(`💾 Attempting to upsert ${insertData.length} records...`);
   
   const { error: insertError } = await supabase
     .from('power_profile')
-    .insert(insertData);
+    .upsert(insertData, {
+      onConflict: 'user_id,duration_seconds,sport',
+      ignoreDuplicates: false // Update existing records with new values
+    });
 
   if (insertError) {
     console.error(`❌ Error inserting power profile for activity ${activityId}:`, insertError);
