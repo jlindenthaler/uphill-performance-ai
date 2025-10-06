@@ -126,8 +126,14 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
 
       console.log(`[Power Profile] Found ${activities?.length || 0} activities to analyze`);
 
-      // Standard durations to calculate (in seconds)
-      const durations = [1, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 600, 900, 1200, 1800, 2400, 3600, 4200, 5400, 7200];
+      // Standard durations to calculate (in seconds) - comprehensive list for smooth curve
+      const durations = [
+        1, 2, 3, 5, 8, 10, 12, 15, 20, 30, // Very short efforts (1s-30s)
+        45, 60, 90, 120, // Short efforts (45s-2min)
+        180, 240, 300, 360, 420, 480, 540, 600, // Medium efforts (3min-10min)
+        720, 900, 1080, 1200, 1500, 1800, // Longer efforts (12min-30min)
+        2400, 3000, 3600, 4200, 4800, 5400, 6000, 6600, 7200 // Long efforts (40min-2hr)
+      ];
       const bestValues = new Map<number, { value: number, activityName: string, date: string }>();
 
       // Process each activity
