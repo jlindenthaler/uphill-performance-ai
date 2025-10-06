@@ -25,7 +25,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     
     setLoading(true);
     try {
-      // Query 1: Get all-time best values
+      // Always get ALL-TIME best values (no date filtering)
       const { data: allTimeData, error: allTimeError } = await supabase
         .from('power_profile')
         .select('*')
@@ -34,30 +34,6 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         .order('duration_seconds', { ascending: true });
 
       if (allTimeError) throw allTimeError;
-
-      // Query 2: Get date-range filtered values
-      let rangeQuery = supabase
-        .from('power_profile')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('sport', sportMode)
-        .order('duration_seconds', { ascending: true });
-
-      // Add date filter if dateRangeDays is provided
-      if (dateRangeDays) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
-        rangeQuery = rangeQuery.gte('date_achieved', cutoffDate.toISOString());
-      }
-
-      // Exclude specific activity if provided
-      if (excludeActivityId) {
-        rangeQuery = rangeQuery.neq('activity_id', excludeActivityId);
-      }
-
-      const { data: rangeData, error: rangeError } = await rangeQuery;
-
-      if (rangeError) throw rangeError;
 
       // Process all-time best data
       const allTimeMap = new Map();
@@ -71,25 +47,12 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         }
       });
 
-      // Process range-filtered data
-      const rangeMap = new Map();
-      rangeData?.forEach(record => {
-        const durationSeconds = record.duration_seconds;
-        const existing = rangeMap.get(durationSeconds);
-        const value = isRunning ? record.pace_per_km : record.power_watts;
-        
-        if (value && (!existing || (isRunning ? value < existing : value > existing))) {
-          rangeMap.set(durationSeconds, value);
-        }
-      });
-
-      // Combine data - use all unique durations
-      const allDurations = new Set([...allTimeMap.keys(), ...rangeMap.keys()]);
-      const profile = Array.from(allDurations).map(durationSeconds => ({
+      // Create profile with all-time bests
+      const profile = Array.from(allTimeMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds: durationSeconds,
-        current: rangeMap.get(durationSeconds) || allTimeMap.get(durationSeconds) || 0,
-        best: allTimeMap.get(durationSeconds) || 0,
+        current: value,
+        best: value,
         date: new Date().toISOString(),
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);

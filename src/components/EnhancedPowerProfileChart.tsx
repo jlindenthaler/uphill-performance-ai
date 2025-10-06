@@ -89,15 +89,27 @@ export function EnhancedPowerProfileChart({
 
   // Use recalculated profile data for the selected timeframe
   const chartData = useMemo(() => {
-    const dataToUse = recalculatedProfile.length > 0 ? recalculatedProfile : powerProfile;
-    if (!dataToUse || dataToUse.length === 0) return [];
+    // Always use recalculated profile for date-filtered data, 
+    // and powerProfile for all-time bests as reference
+    if (recalculatedProfile.length === 0 && powerProfile.length === 0) return [];
     
-    return dataToUse.map(item => ({
-      duration: item.duration,
-      durationSeconds: item.durationSeconds,
-      allTimeBest: item.best,
-      rangeFiltered: item.current,
-    }));
+    // Get all unique durations from both datasets
+    const allDurations = new Set([
+      ...recalculatedProfile.map(p => p.durationSeconds),
+      ...powerProfile.map(p => p.durationSeconds)
+    ]);
+    
+    return Array.from(allDurations).map(durationSeconds => {
+      const rangeData = recalculatedProfile.find(p => p.durationSeconds === durationSeconds);
+      const allTimeData = powerProfile.find(p => p.durationSeconds === durationSeconds);
+      
+      return {
+        duration: rangeData?.duration || allTimeData?.duration || `${durationSeconds}s`,
+        durationSeconds,
+        allTimeBest: allTimeData?.best || 0,
+        rangeFiltered: rangeData?.current || 0,
+      };
+    }).sort((a, b) => a.durationSeconds - b.durationSeconds);
   }, [recalculatedProfile, powerProfile]);
   if (loading) {
     return <Card>
