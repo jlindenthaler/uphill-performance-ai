@@ -605,19 +605,13 @@ export type Database = {
       physiology_data: {
         Row: {
           anaerobic_capacity: number | null
-          body_weight: number | null
           carb_max_rate: number | null
           created_at: string
-          critical_power: number | null
           fat_max_intensity: number | null
           fat_max_rate: number | null
-          ftp: number | null
           hrv_rmssd: number | null
           hydration_target: number | null
           id: string
-          lactate_threshold: number | null
-          lactate_threshold_2: number | null
-          max_hr: number | null
           metabolic_flexibility: number | null
           neuromuscular_power: number | null
           notes: string | null
@@ -625,7 +619,6 @@ export type Database = {
           pace_zones: Json | null
           recovery_methods: string[] | null
           respiratory_exchange_ratio: number | null
-          resting_hr: number | null
           sleep_hours: number | null
           sleep_quality: number | null
           sport_mode: string | null
@@ -633,24 +626,16 @@ export type Database = {
           tags: string[] | null
           updated_at: string
           user_id: string
-          vo2_max: number | null
-          w_prime: number | null
         }
         Insert: {
           anaerobic_capacity?: number | null
-          body_weight?: number | null
           carb_max_rate?: number | null
           created_at?: string
-          critical_power?: number | null
           fat_max_intensity?: number | null
           fat_max_rate?: number | null
-          ftp?: number | null
           hrv_rmssd?: number | null
           hydration_target?: number | null
           id?: string
-          lactate_threshold?: number | null
-          lactate_threshold_2?: number | null
-          max_hr?: number | null
           metabolic_flexibility?: number | null
           neuromuscular_power?: number | null
           notes?: string | null
@@ -658,7 +643,6 @@ export type Database = {
           pace_zones?: Json | null
           recovery_methods?: string[] | null
           respiratory_exchange_ratio?: number | null
-          resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
           sport_mode?: string | null
@@ -666,24 +650,16 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id: string
-          vo2_max?: number | null
-          w_prime?: number | null
         }
         Update: {
           anaerobic_capacity?: number | null
-          body_weight?: number | null
           carb_max_rate?: number | null
           created_at?: string
-          critical_power?: number | null
           fat_max_intensity?: number | null
           fat_max_rate?: number | null
-          ftp?: number | null
           hrv_rmssd?: number | null
           hydration_target?: number | null
           id?: string
-          lactate_threshold?: number | null
-          lactate_threshold_2?: number | null
-          max_hr?: number | null
           metabolic_flexibility?: number | null
           neuromuscular_power?: number | null
           notes?: string | null
@@ -691,7 +667,6 @@ export type Database = {
           pace_zones?: Json | null
           recovery_methods?: string[] | null
           respiratory_exchange_ratio?: number | null
-          resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
           sport_mode?: string | null
@@ -699,8 +674,6 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
-          vo2_max?: number | null
-          w_prime?: number | null
         }
         Relationships: []
       }

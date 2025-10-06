@@ -50,23 +50,7 @@ export async function getUserThresholdPower(
     return { value: Number(labResults.critical_power), source: 'CP (lab)' };
   }
 
-  // 4. Check physiology_data for Critical Power or FTP
-  const { data: physiologyData } = await supabase
-    .from('physiology_data')
-    .select('critical_power, ftp')
-    .eq('user_id', userId)
-    .eq('sport_mode', sportMode)
-    .maybeSingle();
-
-  if (physiologyData?.critical_power) {
-    return { value: Number(physiologyData.critical_power), source: 'CP (physiology)' };
-  }
-
-  if (physiologyData?.ftp) {
-    return { value: Number(physiologyData.ftp), source: 'FTP (physiology)' };
-  }
-
-  // 5. Fallback: Calculate from 20min mean max power if available
+  // 4. Fallback: Calculate from 20min mean max power if available
   const { data: powerProfile } = await supabase
     .from('power_profile')
     .select('power_watts')

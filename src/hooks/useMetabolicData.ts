@@ -26,8 +26,8 @@ export function useMetabolicData() {
       const data = await getPhysiologyData(sportMode);
       setPhysiologyData(data);
       
-      // Use most recent lab result for VO2max, fallback to physiology data or default
-      const vo2maxValue = labResults?.vo2_max || data?.vo2_max || 58;
+      // Use lab result for VO2max (no longer in physiology_data)
+      const vo2maxValue = labResults?.vo2_max || 58;
       
       setMetabolicMetrics({
         vo2max: { value: vo2maxValue, percentile: 75 },
