@@ -231,8 +231,88 @@ export function EnhancedPowerProfileChart({
 
       {/* Enhanced Power/Pace Curve Chart */}
       <Card>
-        
-        
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Mean Maximal {isRunning ? 'Pace' : 'Power'} Profile
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="14">Last 14 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="90">Last 90 days</SelectItem>
+                  <SelectItem value="180">Last 6 months</SelectItem>
+                  <SelectItem value="365">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="durationLabel" 
+                  label={{ value: 'Duration', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  label={{ 
+                    value: isRunning ? 'Pace (min/km)' : 'Power (W)', 
+                    angle: -90, 
+                    position: 'insideLeft' 
+                  }}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [formatValue(value), '']}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px'
+                  }}
+                  labelStyle={{ 
+                    color: 'hsl(var(--foreground))',
+                    fontWeight: 600
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="allTimeBest"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  name="All-Time Best"
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="rangeFiltered"
+                  stroke="hsl(var(--chart-2))"
+                  strokeWidth={2}
+                  name={getDateRangeLabel()}
+                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                />
+                {activity && (
+                  <Line
+                    type="monotone"
+                    dataKey="activityMeanMax"
+                    stroke="hsl(var(--chart-3))"
+                    strokeWidth={2}
+                    name="This Activity"
+                    dot={{ fill: 'hsl(var(--chart-3))' }}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
       </Card>
     </div>;
 }

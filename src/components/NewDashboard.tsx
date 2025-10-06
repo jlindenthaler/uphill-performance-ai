@@ -38,6 +38,7 @@ import { ActivityUploadNew } from './ActivityUploadNew';
 import { RecoverySessionModal } from './RecoverySessionModal';
 import { LabResults } from './LabResults';
 import { AICoachRecommendation } from './AICoachRecommendation';
+import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useAuth } from '@/hooks/useSupabase';
@@ -431,6 +432,13 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* 90-Day Mean Max Power Chart */}
+      <Card>
+        <CardContent className="pt-6">
+          <EnhancedPowerProfileChart />
+        </CardContent>
+      </Card>
 
       {/* Recent Performance Timeline */}
       <Card>
