@@ -135,6 +135,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                 <Zap className="w-5 h-5" />
                 Activity Best Power
               </CardTitle>
+              <Badge variant="secondary">Last 90 days</Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -149,7 +150,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                     </div>
                     <div className="text-lg font-bold">{formatValue(power.value)}</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      90-day: {formatValue(bestFromProfile?.current || 0)}
+                      {formatValue(bestFromProfile?.current || 0)}
                     </div>
                   </div>
                 );
