@@ -453,19 +453,19 @@ export function Activities() {
                   <Separator className="my-2" />
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">CTL (Fitness)</span>
+                      <span className="text-muted-foreground">LTL</span>
                       <span className="font-medium">{pmcData.get(detailedActivity.id)?.ctl.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">ATL (Fatigue)</span>
+                      <span className="text-muted-foreground">STL</span>
                       <span className="font-medium">{pmcData.get(detailedActivity.id)?.atl.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">TSB (Form)</span>
+                      <span className="text-muted-foreground">FI</span>
                       <span className={`font-medium ${
-                        (pmcData.get(detailedActivity.id)?.tsb || 0) > 5 ? 'text-green-500' : 
-                        (pmcData.get(detailedActivity.id)?.tsb || 0) < -10 ? 'text-red-500' : 
-                        'text-yellow-500'
+                        (pmcData.get(detailedActivity.id)?.tsb || 0) > 5 ? 'text-zone-1' : 
+                        (pmcData.get(detailedActivity.id)?.tsb || 0) < -10 ? 'text-destructive' : 
+                        'text-accent'
                       }`}>
                         {pmcData.get(detailedActivity.id)?.tsb.toFixed(1)}
                       </span>
