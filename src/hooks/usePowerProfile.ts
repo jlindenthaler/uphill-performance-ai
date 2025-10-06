@@ -108,19 +108,26 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
       // Query power_profile table with date filter - this is much faster than processing GPS data
       let query = supabase
         .from('power_profile')
-        .select('duration_seconds, power_watts, pace_per_km, date_achieved')
+        .select('duration_seconds, power_watts, pace_per_km, date_achieved, activity_id')
         .eq('user_id', user.id)
         .eq('sport', sportMode)
-        .order('date_achieved', { ascending: false });
+        .order('duration_seconds', { ascending: true });
 
       if (dateRangeDays) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
+        console.log(`[Power Profile] Filtering by date range: last ${dateRangeDays} days (since ${cutoffDate.toISOString()})`);
         query = query.gte('date_achieved', cutoffDate.toISOString());
       }
 
       const { data: profileData, error } = await query;
       if (error) throw error;
+
+      console.log(`[Power Profile] Found ${profileData?.length || 0} records in date range`);
+      
+      // Log unique durations found
+      const uniqueDurations = new Set(profileData?.map(r => r.duration_seconds) || []);
+      console.log(`[Power Profile] Unique durations found:`, Array.from(uniqueDurations).sort((a, b) => a - b));
 
       // Aggregate by duration - get best value for each duration in the date range
       const durationMap = new Map<number, number>();
@@ -134,6 +141,8 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         }
       });
 
+      console.log(`[Power Profile] Aggregated to ${durationMap.size} unique durations`);
+
       const profile = Array.from(durationMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds,
@@ -142,6 +151,8 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         date: new Date().toISOString(),
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
+
+      console.log(`[Power Profile] Final profile:`, profile.map(p => `${p.duration}: ${p.current.toFixed(0)}${p.unit}`));
 
       setRecalculatedProfile(profile);
     } catch (error) {
