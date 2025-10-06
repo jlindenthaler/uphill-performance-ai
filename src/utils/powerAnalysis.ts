@@ -298,7 +298,7 @@ export async function backfillPowerProfileData(
   // Get all activities - not requiring GPS data since power_time_series is independent
   const { data: activities, error } = await supabase
     .from('activities')
-    .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name')
+    .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
     .eq('user_id', userId)
     .order('date', { ascending: false });
   
@@ -323,8 +323,17 @@ export async function backfillPowerProfileData(
   // Process each activity
   for (let i = 0; i < activities.length; i++) {
     const activity = activities[i];
+    
+    // Skip activities without any data
+    if (!activity.power_time_series && !activity.speed_time_series && !activity.gps_data) {
+      console.log(`⏭️ Skipping ${activity.name} - no power/speed data`);
+      continue;
+    }
+    
     try {
-      console.log(`🔄 Processing: ${activity.name} (${i + 1}/${totalActivities})`);
+      console.log(`🔄 [${i + 1}/${totalActivities}] Processing: ${activity.name}`);
+      const powerPoints = Array.isArray(activity.power_time_series) ? activity.power_time_series.length : 0;
+      console.log(`   Power points: ${powerPoints}`);
       
       // Pass the full activity object with power_time_series
       await populatePowerProfileForActivity(
