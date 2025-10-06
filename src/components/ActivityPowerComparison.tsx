@@ -78,23 +78,23 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
   const chartData = useMemo(() => {
     const allDurations = new Set([
       ...activityMeanMax.map(p => p.durationSeconds),
-      ...recalculatedProfile.map(p => p.durationSeconds),
-      ...powerProfile.map(p => p.durationSeconds)
+      ...powerProfile.map(p => p.durationSeconds),
+      ...recalculatedProfile.map(p => p.durationSeconds)
     ]);
     
     return Array.from(allDurations).map(durationSeconds => {
       const activityData = activityMeanMax.find(p => p.durationSeconds === durationSeconds);
-      const rangeData = recalculatedProfile.find(p => p.durationSeconds === durationSeconds);
-      const allTimeData = powerProfile.find(p => p.durationSeconds === durationSeconds);
+      const rangeData = powerProfile.find(p => p.durationSeconds === durationSeconds);
+      const allTimeData = recalculatedProfile.find(p => p.durationSeconds === durationSeconds);
       
       return {
         durationSeconds,
         activityPower: activityData?.activityValue || null,
         meanMax90Day: rangeData?.current || null,
-        allTimeBest: allTimeData?.best || null
+        allTimeBest: allTimeData?.current || null
       };
     }).sort((a, b) => a.durationSeconds - b.durationSeconds);
-  }, [activityMeanMax, recalculatedProfile, powerProfile]);
+  }, [activityMeanMax, powerProfile, recalculatedProfile]);
 
   if (loading) {
     return (
@@ -141,7 +141,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
           <CardContent>
             <div className="grid grid-cols-6 gap-4">
               {activityBestPowers.map(power => {
-                const bestFromProfile = recalculatedProfile.find(p => p.durationSeconds === power.durationSeconds);
+                const bestFromProfile = powerProfile.find(p => p.durationSeconds === power.durationSeconds);
                 return (
                   <div key={power.duration} className="text-center">
                     <div className="flex items-center justify-center gap-1 mb-2">
