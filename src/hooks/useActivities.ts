@@ -596,10 +596,10 @@ export function useActivities(filterBySport: boolean = true) {
       const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
       const { populateTrainingHistory } = await import('@/utils/pmcCalculator');
 
-      // Group activities by sport_mode to fetch threshold per sport
+      // Fetch all activities with date for date-based threshold selection
       const { data: activities, error: fetchError } = await supabase
         .from('activities')
-        .select('id, normalized_power, duration_seconds, sport_mode')
+        .select('id, normalized_power, duration_seconds, sport_mode, date')
         .eq('user_id', user.id)
         .not('normalized_power', 'is', null);
 
@@ -612,28 +612,14 @@ export function useActivities(filterBySport: boolean = true) {
         return;
       }
 
-      // Get unique sport modes
-      const sportModes = [...new Set(activities.map(a => a.sport_mode))];
-      
-      // Fetch threshold for each sport mode
-      const thresholdMap = new Map<string, { value: number; source: string }>();
-      for (const sport of sportModes) {
-        const threshold = await getUserThresholdPower(user.id, sport);
-        if (threshold) {
-          thresholdMap.set(sport, threshold);
-          console.log(`Using ${threshold.source} = ${threshold.value}W for ${sport}`);
-        } else {
-          console.warn(`No threshold found for ${sport}, will skip TSS calculation`);
-        }
-      }
-
       let successCount = 0;
       let errorCount = 0;
       let skippedCount = 0;
 
-      // Process each activity
+      // Process each activity with date-specific threshold
       for (const activity of activities) {
-        const threshold = thresholdMap.get(activity.sport_mode);
+        const activityDate = new Date(activity.date);
+        const threshold = await getUserThresholdPower(user.id, activityDate, activity.sport_mode);
         
         if (!threshold) {
           skippedCount++;

@@ -80,7 +80,7 @@ export function ActivityUpload() {
         
         // Get user's threshold power for accurate TSS calculation
         const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
-        const threshold = await getUserThresholdPower(user.id, sportMode);
+        const threshold = await getUserThresholdPower(user.id, new Date(), sportMode);
         
         if (threshold) {
           console.log(`Using ${threshold.source} = ${threshold.value}W for TSS calculation`);
