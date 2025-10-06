@@ -225,7 +225,10 @@ export async function populatePowerProfileForActivity(
 }
 
 // Backfill power profile data for existing activities
-export async function backfillPowerProfileData(userId: string): Promise<void> {
+export async function backfillPowerProfileData(
+  userId: string,
+  onProgress?: (current: number, total: number, activityName: string) => void
+): Promise<void> {
   console.log('🚀 Starting power profile backfill for user:', userId);
   
   // Get all activities with GPS data
@@ -246,15 +249,18 @@ export async function backfillPowerProfileData(userId: string): Promise<void> {
     return;
   }
 
-  console.log(`📊 Processing ${activities.length} activities for power profile backfill`);
+  const totalActivities = activities.length;
+  console.log(`📊 Processing ${totalActivities} activities for power profile backfill`);
 
   let successCount = 0;
   let errorCount = 0;
 
   // Process each activity
-  for (const activity of activities) {
+  for (let i = 0; i < activities.length; i++) {
+    const activity = activities[i];
     try {
-      console.log(`🔄 Processing: ${activity.name} (${activity.id})`);
+      console.log(`🔄 Processing: ${activity.name} (${i + 1}/${totalActivities})`);
+      
       await populatePowerProfileForActivity(
         userId,
         activity.id,
@@ -262,7 +268,13 @@ export async function backfillPowerProfileData(userId: string): Promise<void> {
         activity.sport_mode,
         activity.date
       );
+      
       successCount++;
+      
+      // Call progress callback
+      if (onProgress) {
+        onProgress(i + 1, totalActivities, activity.name);
+      }
     } catch (error) {
       console.error(`❌ Error processing activity ${activity.name}:`, error);
       errorCount++;

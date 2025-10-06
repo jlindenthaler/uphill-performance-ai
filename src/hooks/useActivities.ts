@@ -469,7 +469,7 @@ export function useActivities(filterBySport: boolean = true) {
     };
   }, [user, filterBySport ? sportMode : null]);
 
-  const backfillPowerProfile = async () => {
+  const backfillPowerProfile = async (onProgress?: (current: number, total: number, activityName: string) => void) => {
     if (!user) return;
     
     setLoading(true);
@@ -477,7 +477,7 @@ export function useActivities(filterBySport: boolean = true) {
     
     try {
       const { backfillPowerProfileData } = await import('@/utils/powerAnalysis');
-      await backfillPowerProfileData(user.id);
+      await backfillPowerProfileData(user.id, onProgress);
       
       // Refresh activities to show updated data
       await fetchActivities(true);
