@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -33,9 +34,21 @@ import { PowerProfileBackfill } from "@/components/PowerProfileBackfill";
 
 export function AppSettings() {
   const { settings, loading, updateSettings } = useAppSettings();
-  const { reprocessActivityTimestamps, recalculateTLIBasedOnLabResults, loading: activitiesLoading } = useActivities();
+  const { reprocessActivityTimestamps, recalculateTSSForAllActivities, loading: activitiesLoading } = useActivities();
   const { signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [isRecalculating, setIsRecalculating] = useState(false);
+
+  const handleRecalculateTSS = async () => {
+    setIsRecalculating(true);
+    try {
+      await recalculateTSSForAllActivities();
+    } catch (error) {
+      // Error already handled in the hook
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
 
   if (!settings) return null;
 
@@ -270,25 +283,25 @@ export function AppSettings() {
           </div>
 
           <Separator />
-
+          
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="flex items-center gap-2">
                 <Calculator className="w-4 h-4" />
-                Recalculate TLI
+                Recalculate TSS
               </Label>
               <p className="text-sm text-muted-foreground">
-                Recalculate Training Load Index using lab results (LT2/GT, VT2)
+                Uses VT2/LT2 from lab results as priority, then CP, then FTP
               </p>
             </div>
             <Button
-              onClick={recalculateTLIBasedOnLabResults}
+              onClick={handleRecalculateTSS}
+              disabled={isRecalculating}
               variant="outline"
               size="sm"
-              disabled={activitiesLoading}
             >
               <Calculator className="w-4 h-4 mr-2" />
-              Recalculate TLI
+              {isRecalculating ? 'Recalculating...' : 'Recalculate TSS'}
             </Button>
           </div>
         </CardContent>

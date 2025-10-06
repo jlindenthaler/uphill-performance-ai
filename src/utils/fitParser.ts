@@ -55,7 +55,11 @@ const SPORT_MAPPING: Record<number, string> = {
   // Add more as needed
 };
 
-export function parseFitFile(file: File, userTimezone?: string): Promise<ParsedActivityData> {
+export async function parseFitFile(
+  file: File, 
+  userTimezone?: string,
+  thresholdPower?: number
+): Promise<ParsedActivityData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -87,7 +91,7 @@ export function parseFitFile(file: File, userTimezone?: string): Promise<ParsedA
         console.log('FIT messages parsed:', Object.keys(messages));
         
         // Extract activity data
-        const activityData = extractActivityData(messages, userTimezone);
+        const activityData = extractActivityData(messages, userTimezone, thresholdPower);
         
         console.log('Extracted activity data:', activityData);
         resolve(activityData);
@@ -106,7 +110,7 @@ export function parseFitFile(file: File, userTimezone?: string): Promise<ParsedA
   });
 }
 
-function extractActivityData(messages: any, userTimezone?: string): ParsedActivityData {
+function extractActivityData(messages: any, userTimezone?: string, thresholdPower?: number): ParsedActivityData {
   console.log('Available message types:', Object.keys(messages));
   
   // Get messages by type - Garmin SDK uses different property names
@@ -182,9 +186,13 @@ function extractActivityData(messages: any, userTimezone?: string): ParsedActivi
   // Lap data
   const lapData = lapMessages.length > 0 ? lapMessages : null;
   
-  // Calculate training metrics
-  const tss = calculateTSS(normalizedPower, duration);
-  const intensityFactor = calculateIntensityFactor(normalizedPower);
+  // Calculate training metrics using threshold power if available
+  const tss = thresholdPower 
+    ? calculateTSSWithCustomFTP(normalizedPower, duration, thresholdPower)
+    : calculateTSS(normalizedPower, duration);
+  const intensityFactor = thresholdPower
+    ? (normalizedPower ? normalizedPower / thresholdPower : null)
+    : calculateIntensityFactor(normalizedPower);
   const variabilityIndex = calculateVariabilityIndex(avgPower, normalizedPower);
   
   // Get activity timestamp and preserve it as full timestamp

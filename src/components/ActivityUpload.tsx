@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useActivities } from '@/hooks/useActivities';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { useAuth } from '@/hooks/useSupabase';
 
 export function ActivityUpload() {
   const [dragActive, setDragActive] = useState(false);
@@ -19,6 +20,7 @@ export function ActivityUpload() {
   const { toast } = useToast();
   const { uploadActivity, loading } = useActivities();
   const { sportMode, setSportMode } = useSportMode();
+  const { user } = useAuth();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -75,7 +77,16 @@ export function ActivityUpload() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         updateProgress(60, 'processing');
-        await uploadActivity(file, activityName || undefined);
+        
+        // Get user's threshold power for accurate TSS calculation
+        const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
+        const threshold = await getUserThresholdPower(user.id, sportMode);
+        
+        if (threshold) {
+          console.log(`Using ${threshold.source} = ${threshold.value}W for TSS calculation`);
+        }
+        
+        await uploadActivity(file, activityName || undefined, notes || undefined);
         
         updateProgress(100, 'complete');
         

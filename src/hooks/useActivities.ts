@@ -237,7 +237,16 @@ export function useActivities(filterBySport: boolean = true) {
       if (isFileType(['.fit'])) {
         try {
           console.log('Parsing FIT file...');
-          const parsedData: ParsedActivityData = await parseFitFile(file, timezone);
+          
+          // Get user's threshold power for accurate TSS calculation
+          const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
+          const threshold = await getUserThresholdPower(user.id, activityData.sport_mode);
+          
+          if (threshold) {
+            console.log(`Using ${threshold.source} = ${threshold.value}W for TSS calculation`);
+          }
+          
+          const parsedData: ParsedActivityData = await parseFitFile(file, timezone, threshold?.value);
           console.log('FIT file parsed successfully:', parsedData);
           console.log('Original activity date (before merge):', activityData.date);
           console.log('Parsed activity date:', parsedData.date);
@@ -579,6 +588,101 @@ export function useActivities(filterBySport: boolean = true) {
     }
   };
 
+  const recalculateTSSForAllActivities = async () => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // Import threshold hierarchy utility
+      const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
+      const { populateTrainingHistory } = await import('@/utils/pmcCalculator');
+
+      // Group activities by sport_mode to fetch threshold per sport
+      const { data: activities, error: fetchError } = await supabase
+        .from('activities')
+        .select('id, normalized_power, duration_seconds, sport_mode')
+        .eq('user_id', user.id)
+        .not('normalized_power', 'is', null);
+
+      if (fetchError) throw fetchError;
+      if (!activities || activities.length === 0) {
+        toast({
+          title: 'No activities with power data found',
+          variant: 'default'
+        });
+        return;
+      }
+
+      // Get unique sport modes
+      const sportModes = [...new Set(activities.map(a => a.sport_mode))];
+      
+      // Fetch threshold for each sport mode
+      const thresholdMap = new Map<string, { value: number; source: string }>();
+      for (const sport of sportModes) {
+        const threshold = await getUserThresholdPower(user.id, sport);
+        if (threshold) {
+          thresholdMap.set(sport, threshold);
+          console.log(`Using ${threshold.source} = ${threshold.value}W for ${sport}`);
+        } else {
+          console.warn(`No threshold found for ${sport}, will skip TSS calculation`);
+        }
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      let skippedCount = 0;
+
+      // Process each activity
+      for (const activity of activities) {
+        const threshold = thresholdMap.get(activity.sport_mode);
+        
+        if (!threshold) {
+          skippedCount++;
+          continue;
+        }
+
+        const { calculateTSSWithThreshold } = await import('@/utils/thresholdHierarchy');
+        const tss = calculateTSSWithThreshold(
+          activity.normalized_power,
+          activity.duration_seconds,
+          threshold.value
+        );
+
+        if (tss !== null) {
+          const { error: updateError } = await supabase
+            .from('activities')
+            .update({ tss: Math.round(tss * 10) / 10 })
+            .eq('id', activity.id);
+
+          if (updateError) {
+            console.error(`Error updating activity ${activity.id}:`, updateError);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        }
+      }
+
+      // Recalculate PMC data after TSS backfill
+      console.log('Recalculating PMC data...');
+      await populateTrainingHistory(user.id);
+
+      toast({
+        title: `TSS recalculated for ${successCount} activities`,
+        description: 
+          `${errorCount > 0 ? ` (${errorCount} errors)` : ''}` +
+          `${skippedCount > 0 ? ` (${skippedCount} skipped - no threshold)` : ''}`
+      });
+      await fetchActivities(); // Refresh activities
+    } catch (error) {
+      console.error('Error recalculating TSS:', error);
+      toast({
+        title: 'Failed to recalculate TSS',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
   const recalculateTLIBasedOnLabResults = async () => {
     if (!user) return;
 
@@ -697,6 +801,7 @@ export function useActivities(filterBySport: boolean = true) {
     updateActivity,
     backfillPowerProfile,
     reprocessActivityTimestamps,
+    recalculateTSSForAllActivities,
     recalculateTLIBasedOnLabResults
   };
 }

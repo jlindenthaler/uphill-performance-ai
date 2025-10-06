@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useActivities } from '@/hooks/useActivities';
 import { CP_PROTOCOLS } from '@/utils/cp-detection';
+import { useAuth } from '@/hooks/useSupabase';
+import { useSportMode } from '@/contexts/SportModeContext';
 
 interface ActivityUploadNewProps {
   onUploadSuccess?: (activityId?: string) => void;
@@ -32,6 +34,8 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
   const { toast } = useToast();
   const { uploadActivity, loading } = useActivities();
   const { timezone } = useUserTimezone();
+  const { user } = useAuth();
+  const { sportMode } = useSportMode();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,6 +107,14 @@ export function ActivityUploadNew({ onUploadSuccess }: ActivityUploadNewProps) {
 
         updateProgress(30, 'uploading');
         await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get user's threshold power for accurate TSS calculation
+        const { getUserThresholdPower } = await import('@/utils/thresholdHierarchy');
+        const threshold = user ? await getUserThresholdPower(user.id, sportMode) : null;
+        
+        if (threshold) {
+          console.log(`Using ${threshold.source} = ${threshold.value}W for TSS calculation`);
+        }
         
         updateProgress(100, 'complete');
         
