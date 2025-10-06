@@ -63,6 +63,16 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
   const isRunning = sportMode === 'running';
   const powerProfile: Array<{ durationSeconds: number; value: number }> = [];
 
+  console.log('🔍 extractPowerProfileFromActivity START', {
+    sportMode,
+    hasPowerTimeSeries: !!activityData.power_time_series,
+    powerTimeSeriesIsArray: Array.isArray(activityData.power_time_series),
+    powerTimeSeriesLength: activityData.power_time_series?.length,
+    hasSpeedTimeSeries: !!activityData.speed_time_series,
+    speedTimeSeriesIsArray: Array.isArray(activityData.speed_time_series),
+    hasGpsData: !!activityData.gps_data?.trackPoints
+  });
+
   // Get power/speed data - check multiple possible locations
   let dataArray: number[] = [];
   
@@ -70,28 +80,43 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
     // For cycling/power sports - check power_time_series first, then gps_data
     if (activityData.power_time_series && Array.isArray(activityData.power_time_series)) {
       dataArray = activityData.power_time_series.filter((p: any) => p !== null && p !== undefined);
+      console.log('📊 Using power_time_series', { 
+        originalLength: activityData.power_time_series.length,
+        filteredLength: dataArray.length,
+        nonZeroCount: dataArray.filter(p => p > 0).length,
+        firstTenValues: dataArray.slice(0, 10),
+        hasZeros: dataArray.some(p => p === 0)
+      });
     } else if (activityData.gps_data?.trackPoints) {
       dataArray = activityData.gps_data.trackPoints
         .map((r: any) => unwrapValue(r.power))
         .filter((p: any) => p !== null && p !== undefined);
+      console.log('📊 Using gps_data.trackPoints for power', { filteredLength: dataArray.length });
     }
   } else {
     // For running - get speed data to calculate pace
     if (activityData.speed_time_series && Array.isArray(activityData.speed_time_series)) {
       dataArray = activityData.speed_time_series.filter((s: any) => s !== null && s !== undefined);
+      console.log('📊 Using speed_time_series', { 
+        originalLength: activityData.speed_time_series.length,
+        filteredLength: dataArray.length,
+        nonZeroCount: dataArray.filter(s => s > 0).length,
+        firstTenValues: dataArray.slice(0, 10)
+      });
     } else if (activityData.gps_data?.trackPoints) {
       dataArray = activityData.gps_data.trackPoints
         .map((r: any) => unwrapValue(r.speed))
         .filter((s: any) => s !== null && s !== undefined);
+      console.log('📊 Using gps_data.trackPoints for speed', { filteredLength: dataArray.length });
     }
   }
 
   if (dataArray.length === 0) {
-    console.log(`No ${isRunning ? 'speed' : 'power'} data found for activity`);
+    console.log(`❌ No ${isRunning ? 'speed' : 'power'} data found for activity`);
     return [];
   }
 
-  console.log(`Found ${dataArray.length} ${isRunning ? 'speed' : 'power'} data points`);
+  console.log(`✅ Found ${dataArray.length} ${isRunning ? 'speed' : 'power'} data points`);
 
   // Helper to calculate rolling maximum average
   const calculateMaxAvg = (data: number[], duration: number): number | null => {
@@ -161,7 +186,13 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
     }
   }
 
-  console.log(`Extracted ${powerProfile.length} power profile entries (durations: ${powerProfile[0]?.durationSeconds}s to ${powerProfile[powerProfile.length-1]?.durationSeconds}s)`);
+  console.log('📈 Power profile extraction COMPLETE', {
+    totalEntries: powerProfile.length,
+    firstDuration: powerProfile[0]?.durationSeconds,
+    lastDuration: powerProfile[powerProfile.length-1]?.durationSeconds,
+    sampleValues: powerProfile.slice(0, 5).map(p => ({ dur: p.durationSeconds, val: p.value }))
+  });
+  
   return powerProfile;
 }
 
@@ -173,6 +204,8 @@ export async function populatePowerProfileForActivity(
   sportMode: string,
   activityDate: string
 ): Promise<void> {
+  console.log('🚀 populatePowerProfileForActivity START', { activityId, sportMode });
+  
   const powerProfile = extractPowerProfileFromActivity(activityData, sportMode);
   const isRunning = sportMode === 'running';
 
@@ -180,11 +213,18 @@ export async function populatePowerProfileForActivity(
     console.log(`⚠️ No power profile data extracted for activity ${activityId}`);
     console.log('Activity data keys:', Object.keys(activityData));
     console.log('Has power_time_series:', !!activityData.power_time_series, 
-                'Length:', activityData.power_time_series?.length);
+                'Length:', activityData.power_time_series?.length,
+                'IsArray:', Array.isArray(activityData.power_time_series));
     console.log('Has speed_time_series:', !!activityData.speed_time_series,
-                'Length:', activityData.speed_time_series?.length);
+                'Length:', activityData.speed_time_series?.length,
+                'IsArray:', Array.isArray(activityData.speed_time_series));
+    if (activityData.power_time_series && activityData.power_time_series.length > 0) {
+      console.log('Sample power values:', activityData.power_time_series.slice(0, 20));
+    }
     return;
   }
+  
+  console.log(`✅ Extracted ${powerProfile.length} entries for activity ${activityId}`);
 
   // Fetch ALL existing power profile records for this user/sport in ONE query
   const { data: existingRecords, error: fetchError } = await supabase
@@ -234,14 +274,17 @@ export async function populatePowerProfileForActivity(
     )
   }));
 
+  console.log(`💾 Attempting to insert ${insertData.length} records...`);
+  
   const { error: insertError } = await supabase
     .from('power_profile')
     .insert(insertData);
 
   if (insertError) {
-    console.error(`Error inserting power profile for activity ${activityId}:`, insertError);
+    console.error(`❌ Error inserting power profile for activity ${activityId}:`, insertError);
+    console.error('Failed insert data sample:', insertData.slice(0, 2));
   } else {
-    console.log(`Inserted ${recordsToInsert.length} power profile records for activity ${activityId}`);
+    console.log(`✅ Successfully inserted ${recordsToInsert.length} power profile records for activity ${activityId}`);
   }
 }
 
