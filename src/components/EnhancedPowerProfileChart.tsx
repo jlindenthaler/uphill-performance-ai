@@ -6,19 +6,19 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { usePowerProfile } from '@/hooks/usePowerProfile';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { calculateMeanMaximalPower, calculateMeanMaximalPace } from '@/utils/powerAnalysis';
-import { TrendingUp, Zap, Clock, Calendar } from 'lucide-react';
+import { TrendingUp, Zap, Clock } from 'lucide-react';
 interface EnhancedPowerProfileChartProps {
   activity?: any;
 }
 export function EnhancedPowerProfileChart({
   activity
 }: EnhancedPowerProfileChartProps) {
-  const [dateRange, setDateRange] = useState('90');
+  // Always use last 90 days - rolling window
   const {
     powerProfile,
     recalculatedProfile,
     loading
-  } = usePowerProfile(parseInt(dateRange));
+  } = usePowerProfile(90);
   const {
     sportMode
   } = useSportMode();
@@ -141,25 +141,6 @@ export function EnhancedPowerProfileChart({
     return chartItem?.rangeFiltered || chartItem?.allTimeBest || 0;
   };
 
-  // Get date range label
-  const getDateRangeLabel = () => {
-    switch (dateRange) {
-      case '7':
-        return 'Last 7 days';
-      case '14':
-        return 'Last 14 days';
-      case '30':
-        return 'Last 30 days';
-      case '90':
-        return 'Last 90 days';
-      case '180':
-        return 'Last 6 months';
-      case '365':
-        return 'Last year';
-      default:
-        return 'Last 90 days';
-    }
-  };
   const bestEfforts = [{
     duration: '5s',
     best: activityBestPowers.find(p => p.duration === '5s')?.value || 0,
@@ -189,7 +170,7 @@ export function EnhancedPowerProfileChart({
           {isRunning ? 'Pace Profile' : 'Power Profile'}
         </h3>
         <p className="text-sm text-muted-foreground">
-          Mean maximal {isRunning ? 'pace' : 'power'} across different durations
+          Mean maximal {isRunning ? 'pace' : 'power'} over the last 90 days
         </p>
       </div>
 
@@ -201,22 +182,6 @@ export function EnhancedPowerProfileChart({
               <Zap className="w-5 h-5" />
               Activity Best Power
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="14">Last 14 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">Last 90 days</SelectItem>
-                  <SelectItem value="180">Last 6 months</SelectItem>
-                  <SelectItem value="365">Last year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardHeader>
           <CardContent>
@@ -246,28 +211,11 @@ export function EnhancedPowerProfileChart({
       {/* Enhanced Power/Pace Curve Chart */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Mean Maximal {isRunning ? 'Pace' : 'Power'} Profile
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="14">Last 14 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">Last 90 days</SelectItem>
-                  <SelectItem value="180">Last 6 months</SelectItem>
-                  <SelectItem value="365">Last year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Mean Maximal {isRunning ? 'Pace' : 'Power'} Profile
+            <Badge variant="secondary" className="ml-2">Last 90 days</Badge>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80">
