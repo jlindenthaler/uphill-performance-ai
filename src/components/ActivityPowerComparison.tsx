@@ -53,8 +53,8 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
   const activityBestPowers = useMemo(() => {
     if (!activity?.gps_data?.trackPoints) return [];
     
-    const targetDurations = [5, 60, 300, 1200, 3600]; // 5s, 1min, 5min, 20min, 60min
-    const targetLabels = ['5s', '1min', '5min', '20min', '60min'];
+    const targetDurations = [1, 5, 60, 300, 1200, 3600]; // 1s, 5s, 1min, 5min, 20min, 60min
+    const targetLabels = ['1s', '5s', '1min', '5min', '20min', '60min'];
     const trackPoints = activity.gps_data.trackPoints;
     
     return targetDurations.map((duration, index) => {
@@ -138,9 +138,9 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-6 gap-4">
               {activityBestPowers.map(power => {
-                const bestFromProfile = powerProfile.find(p => p.durationSeconds === power.durationSeconds);
+                const bestFromProfile = recalculatedProfile.find(p => p.durationSeconds === power.durationSeconds);
                 return (
                   <div key={power.duration} className="text-center">
                     <div className="flex items-center justify-center gap-1 mb-2">
@@ -149,7 +149,7 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                     </div>
                     <div className="text-lg font-bold">{formatValue(power.value)}</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      Best: {formatValue(bestFromProfile?.best || 0)}
+                      90-day: {formatValue(bestFromProfile?.current || 0)}
                     </div>
                   </div>
                 );
