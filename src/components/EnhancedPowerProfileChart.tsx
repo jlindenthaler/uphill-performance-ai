@@ -227,7 +227,7 @@ export function EnhancedPowerProfileChart({
                   type="number"
                   scale="log"
                   domain={['auto', 'auto']}
-                  ticks={[1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600]}
+                  ticks={[1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200, 10800]}
                   tickFormatter={(value) => {
                     if (value === 1) return '1s';
                     if (value === 5) return '5s';
@@ -241,6 +241,9 @@ export function EnhancedPowerProfileChart({
                     if (value === 1200) return '20m';
                     if (value === 1800) return '30m';
                     if (value === 3600) return '1h';
+                    if (value === 5400) return '1h30m';
+                    if (value === 7200) return '2h';
+                    if (value === 10800) return '3h';
                     return `${value}s`;
                   }}
                   label={{ value: 'Duration (log scale)', position: 'insideBottom', offset: -5 }}
