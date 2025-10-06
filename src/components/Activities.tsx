@@ -328,7 +328,7 @@ export function Activities() {
 
         {/* Activity Analysis Chart */}
         <div className="mt-6">
-          <ActivityAnalysisChart activity={//detailedActivity} />
+          <ActivityAnalysisChart activity={detailedActivity} />
         </div>
 
         {/* Detailed Metrics */}
