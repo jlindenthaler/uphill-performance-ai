@@ -204,7 +204,12 @@ export async function populatePowerProfileForActivity(
   sportMode: string,
   activityDate: string
 ): Promise<void> {
-  console.log('🚀 populatePowerProfileForActivity START', { activityId, sportMode });
+  console.log('🚀 populatePowerProfileForActivity START', { 
+    activityId, 
+    sportMode,
+    hasPowerTimeSeries: !!activityData.power_time_series,
+    powerLength: Array.isArray(activityData.power_time_series) ? activityData.power_time_series.length : 0
+  });
   
   const powerProfile = extractPowerProfileFromActivity(activityData, sportMode);
   const isRunning = sportMode === 'running';
@@ -213,18 +218,21 @@ export async function populatePowerProfileForActivity(
     console.log(`⚠️ No power profile data extracted for activity ${activityId}`);
     console.log('Activity data keys:', Object.keys(activityData));
     console.log('Has power_time_series:', !!activityData.power_time_series, 
-                'Length:', activityData.power_time_series?.length,
-                'IsArray:', Array.isArray(activityData.power_time_series));
+                'Length:', Array.isArray(activityData.power_time_series) ? activityData.power_time_series.length : 'N/A',
+                'Type:', typeof activityData.power_time_series);
     console.log('Has speed_time_series:', !!activityData.speed_time_series,
-                'Length:', activityData.speed_time_series?.length,
-                'IsArray:', Array.isArray(activityData.speed_time_series));
-    if (activityData.power_time_series && activityData.power_time_series.length > 0) {
+                'Length:', Array.isArray(activityData.speed_time_series) ? activityData.speed_time_series.length : 'N/A');
+    if (activityData.power_time_series && Array.isArray(activityData.power_time_series) && activityData.power_time_series.length > 0) {
       console.log('Sample power values:', activityData.power_time_series.slice(0, 20));
+      console.log('Sample power values (end):', activityData.power_time_series.slice(-20));
     }
     return;
   }
   
-  console.log(`✅ Extracted ${powerProfile.length} entries for activity ${activityId}`);
+  console.log(`✅ Extracted ${powerProfile.length} entries for activity ${activityId}`, {
+    maxDuration: Math.max(...powerProfile.map(p => p.durationSeconds)),
+    minDuration: Math.min(...powerProfile.map(p => p.durationSeconds))
+  });
 
   // Fetch ALL existing power profile records for this user/sport in ONE query
   const { data: existingRecords, error: fetchError } = await supabase
