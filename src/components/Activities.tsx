@@ -18,6 +18,7 @@ import { useDeduplicatedActivities } from '@/hooks/useDeduplicatedActivities';
 import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
+import { ActivityPowerComparison } from './ActivityPowerComparison';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 import { EditActivityModal } from './EditActivityModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -310,6 +311,13 @@ export function Activities() {
         <div className="mt-6">
           <EnhancedPowerProfileChart activity={detailedActivity} />
         </div>
+        
+        {/* Activity vs Profile Comparison */}
+        {detailedActivity.gps_data?.trackPoints && (
+          <div className="mt-6">
+            <ActivityPowerComparison activity={detailedActivity} />
+          </div>
+        )}
         
         {/* GPS Route Map */}
         {detailedActivity.gps_data && (
