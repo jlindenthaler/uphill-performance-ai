@@ -264,17 +264,27 @@ export function EnhancedPowerProfileChart({
                   dataKey="durationSeconds"
                   type="number"
                   scale="log"
-                  domain={['dataMin', 'dataMax']}
+                  domain={['auto', 'auto']}
+                  ticks={[1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600]}
                   tickFormatter={(value) => {
-                    if (value < 60) return `${value}s`;
-                    if (value < 3600) return `${Math.floor(value / 60)}m`;
-                    const hours = Math.floor(value / 3600);
-                    const minutes = Math.floor((value % 3600) / 60);
-                    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+                    if (value === 1) return '1s';
+                    if (value === 5) return '5s';
+                    if (value === 10) return '10s';
+                    if (value === 15) return '15s';
+                    if (value === 30) return '30s';
+                    if (value === 60) return '1m';
+                    if (value === 120) return '2m';
+                    if (value === 300) return '5m';
+                    if (value === 600) return '10m';
+                    if (value === 1200) return '20m';
+                    if (value === 1800) return '30m';
+                    if (value === 3600) return '1h';
+                    return `${value}s`;
                   }}
                   label={{ value: 'Duration (log scale)', position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis 
+                  domain={[0, 'auto']}
                   label={{ 
                     value: isRunning ? 'Pace (min/km)' : 'Power (W)', 
                     angle: -90, 
@@ -285,7 +295,11 @@ export function EnhancedPowerProfileChart({
                   formatter={(value: number) => [formatValue(value), '']}
                   labelFormatter={(value: number) => {
                     if (value < 60) return `${value}s`;
-                    if (value < 3600) return `${Math.floor(value / 60)}m`;
+                    if (value < 3600) {
+                      const minutes = Math.floor(value / 60);
+                      const seconds = value % 60;
+                      return seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+                    }
                     const hours = Math.floor(value / 3600);
                     const minutes = Math.floor((value % 3600) / 60);
                     return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
@@ -307,6 +321,7 @@ export function EnhancedPowerProfileChart({
                   strokeWidth={2}
                   name="All-Time Best"
                   dot={{ fill: 'hsl(var(--primary))', r: 3 }}
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -315,6 +330,7 @@ export function EnhancedPowerProfileChart({
                   strokeWidth={2}
                   name={getDateRangeLabel()}
                   dot={{ fill: 'hsl(var(--chart-2))', r: 3 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
