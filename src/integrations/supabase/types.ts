@@ -714,6 +714,7 @@ export type Database = {
           pace_per_km: number | null
           power_watts: number | null
           sport: string
+          time_window: string | null
           user_id: string
         }
         Insert: {
@@ -725,6 +726,7 @@ export type Database = {
           pace_per_km?: number | null
           power_watts?: number | null
           sport: string
+          time_window?: string | null
           user_id: string
         }
         Update: {
@@ -736,6 +738,7 @@ export type Database = {
           pace_per_km?: number | null
           power_watts?: number | null
           sport?: string
+          time_window?: string | null
           user_id?: string
         }
         Relationships: [

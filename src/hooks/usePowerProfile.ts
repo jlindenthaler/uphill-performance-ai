@@ -27,37 +27,41 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     try {
       console.log(`[Power Profile] Fetching for sport: ${sportMode}, dateRange: ${dateRangeDays || 'all-time'}`);
       
-      // Get all-time best values from cache
+      // Get 90-day rolling window data (primary display)
+      const { data: ninetyDayData, error: ninetyDayError } = await supabase
+        .from('power_profile')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('sport', sportMode)
+        .eq('time_window', '90-day')
+        .order('duration_seconds', { ascending: true });
+
+      if (ninetyDayError) throw ninetyDayError;
+      console.log(`[Power Profile] Fetched ${ninetyDayData?.length || 0} 90-day records`);
+
+      // Get all-time best values for comparison
       const { data: allTimeData, error: allTimeError } = await supabase
         .from('power_profile')
         .select('*')
         .eq('user_id', user.id)
         .eq('sport', sportMode)
+        .eq('time_window', 'all-time')
         .order('duration_seconds', { ascending: true });
 
       if (allTimeError) throw allTimeError;
       console.log(`[Power Profile] Fetched ${allTimeData?.length || 0} all-time records`);
 
-      // Get date-filtered values if dateRangeDays is specified
-      let dateFilteredData = null;
-      if (dateRangeDays) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - dateRangeDays);
-        console.log(`[Power Profile] Fetching date-filtered data since ${cutoffDate.toISOString()}`);
+      // Process 90-day rolling window data
+      const ninetyDayMap = new Map();
+      ninetyDayData?.forEach(record => {
+        const durationSeconds = record.duration_seconds;
+        const existing = ninetyDayMap.get(durationSeconds);
+        const value = isRunning ? record.pace_per_km : record.power_watts;
         
-        const { data, error } = await supabase
-          .from('power_profile')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('sport', sportMode)
-          .gte('date_achieved', cutoffDate.toISOString())
-          .order('duration_seconds', { ascending: true });
-
-        if (!error) {
-          dateFilteredData = data;
-          console.log(`[Power Profile] Fetched ${dateFilteredData?.length || 0} date-filtered records`);
+        if (value && (!existing || (isRunning ? value < existing : value > existing))) {
+          ninetyDayMap.set(durationSeconds, value);
         }
-      }
+      });
 
       // Process all-time best data
       const allTimeMap = new Map();
@@ -71,24 +75,20 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         }
       });
 
-      // Process date-filtered data if available
-      const dateFilteredMap = new Map();
-      if (dateFilteredData) {
-        dateFilteredData.forEach(record => {
-          const durationSeconds = record.duration_seconds;
-          const existing = dateFilteredMap.get(durationSeconds);
-          const value = isRunning ? record.pace_per_km : record.power_watts;
-          
-          if (value && (!existing || (isRunning ? value < existing : value > existing))) {
-            dateFilteredMap.set(durationSeconds, value);
-          }
-        });
-      }
+      console.log(`[Power Profile] Processed ${ninetyDayMap.size} 90-day durations, ${allTimeMap.size} all-time durations`);
 
-      console.log(`[Power Profile] Processed ${allTimeMap.size} all-time durations, ${dateFilteredMap.size} filtered durations`);
+      // Create 90-day profile for display (primary view)
+      const ninetyDayProfile = Array.from(ninetyDayMap.entries()).map(([durationSeconds, value]) => ({
+        duration: formatDuration(durationSeconds),
+        durationSeconds: durationSeconds,
+        current: value,
+        best: allTimeMap.get(durationSeconds) || value, // Show all-time best for comparison
+        date: new Date().toISOString(),
+        unit: isRunning ? 'min/km' : 'W'
+      })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
-      // Create all-time profile
-      const profile = Array.from(allTimeMap.entries()).map(([durationSeconds, value]) => ({
+      // Create all-time profile (kept for background/reference)
+      const allTimeProfile = Array.from(allTimeMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds: durationSeconds,
         current: value,
@@ -97,22 +97,10 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
-      // Create date-filtered profile (for recalculatedProfile compatibility)
-      // If no date filter or no filtered data, use all-time data for display
-      const filteredProfile = dateFilteredMap.size > 0 
-        ? Array.from(dateFilteredMap.entries()).map(([durationSeconds, value]) => ({
-            duration: formatDuration(durationSeconds),
-            durationSeconds: durationSeconds,
-            current: value,
-            best: allTimeMap.get(durationSeconds) || value,
-            date: new Date().toISOString(),
-            unit: isRunning ? 'min/km' : 'W'
-          })).sort((a, b) => a.durationSeconds - b.durationSeconds)
-        : profile; // Use all-time data when no date filter
-
-      setPowerProfile(profile);
-      setRecalculatedProfile(filteredProfile);
-      console.log(`[Power Profile] Updated: ${profile.length} all-time points, ${filteredProfile.length} filtered points`);
+      // Set 90-day as primary display, all-time as reference
+      setPowerProfile(ninetyDayProfile);
+      setRecalculatedProfile(allTimeProfile);
+      console.log(`[Power Profile] Updated: ${ninetyDayProfile.length} 90-day points, ${allTimeProfile.length} all-time points`);
     } catch (error) {
       console.error('Error fetching power profile:', error);
     } finally {
@@ -132,7 +120,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
     if (!user) return;
 
     try {
-      const insertData = {
+      const baseData = {
         user_id: user.id,
         duration_seconds: durationSeconds,
         sport: sportMode,
@@ -143,6 +131,12 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
           : { power_watts: value }
         )
       };
+
+      // Insert into both time windows
+      const insertData = [
+        { ...baseData, time_window: 'all-time' },
+        { ...baseData, time_window: '90-day' }
+      ];
 
       const { error } = await supabase
         .from('power_profile')

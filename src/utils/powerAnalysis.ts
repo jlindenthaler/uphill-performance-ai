@@ -234,10 +234,16 @@ export async function populatePowerProfileForActivity(
     minDuration: Math.min(...powerProfile.map(p => p.durationSeconds))
   });
 
-  // Fetch ALL existing power profile records for this user/sport in ONE query
+  // Calculate 90-day cutoff date
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const cutoffDate = ninetyDaysAgo.toISOString();
+  const isWithin90Days = new Date(activityDate) >= ninetyDaysAgo;
+
+  // Fetch existing records for BOTH time windows in ONE query
   const { data: existingRecords, error: fetchError } = await supabase
     .from('power_profile')
-    .select('duration_seconds, power_watts, pace_per_km')
+    .select('duration_seconds, power_watts, pace_per_km, time_window')
     .eq('user_id', userId)
     .eq('sport', sportMode);
 
@@ -246,22 +252,63 @@ export async function populatePowerProfileForActivity(
     return;
   }
 
-  // Build a map of duration -> best existing value
-  const existingMap = new Map<number, number>();
+  // Build maps for both time windows: duration -> best existing value
+  const allTimeMap = new Map<number, number>();
+  const ninetyDayMap = new Map<number, number>();
+  
   existingRecords?.forEach(record => {
     const value = isRunning ? record.pace_per_km : record.power_watts;
-    if (value) {
-      const existing = existingMap.get(record.duration_seconds);
-      if (!existing || (isRunning ? value < existing : value > existing)) {
-        existingMap.set(record.duration_seconds, value);
-      }
+    if (!value) return;
+    
+    const targetMap = record.time_window === '90-day' ? ninetyDayMap : allTimeMap;
+    const existing = targetMap.get(record.duration_seconds);
+    
+    if (!existing || (isRunning ? value < existing : value > existing)) {
+      targetMap.set(record.duration_seconds, value);
     }
   });
 
-  // Filter to only records that are better than existing
-  const recordsToInsert = powerProfile.filter(profile => {
-    const existing = existingMap.get(profile.durationSeconds);
-    return !existing || (isRunning ? profile.value < existing : profile.value > existing);
+  // Helper to check if new value is better
+  const isNewBetter = (newValue: number, existingValue: number | undefined): boolean => {
+    if (!existingValue) return true;
+    return isRunning ? newValue < existingValue : newValue > existingValue;
+  };
+
+  // Prepare records for insertion/update
+  const recordsToInsert: any[] = [];
+
+  powerProfile.forEach(profile => {
+    const baseData = {
+      user_id: userId,
+      activity_id: activityId,
+      duration_seconds: profile.durationSeconds,
+      sport: sportMode,
+      date_achieved: activityDate,
+      ...(isRunning 
+        ? { pace_per_km: profile.value } 
+        : { power_watts: profile.value }
+      )
+    };
+
+    // Check if this is a new all-time best
+    const allTimeBest = allTimeMap.get(profile.durationSeconds);
+    if (isNewBetter(profile.value, allTimeBest)) {
+      recordsToInsert.push({
+        ...baseData,
+        time_window: 'all-time'
+      });
+    }
+
+    // Check if this is a new 90-day best (only if activity is within 90 days)
+    if (isWithin90Days) {
+      const ninetyDayBest = ninetyDayMap.get(profile.durationSeconds);
+      if (isNewBetter(profile.value, ninetyDayBest)) {
+        recordsToInsert.push({
+          ...baseData,
+          time_window: '90-day'
+        });
+      }
+    }
   });
 
   if (recordsToInsert.length === 0) {
@@ -269,31 +316,18 @@ export async function populatePowerProfileForActivity(
     return;
   }
 
-  // Batch insert all records at once
-  const insertData = recordsToInsert.map(profile => ({
-    user_id: userId,
-    activity_id: activityId,
-    duration_seconds: profile.durationSeconds,
-    sport: sportMode,
-    date_achieved: activityDate,
-    ...(isRunning 
-      ? { pace_per_km: profile.value } 
-      : { power_watts: profile.value }
-    )
-  }));
-
-  console.log(`💾 Attempting to upsert ${insertData.length} records...`);
+  console.log(`💾 Attempting to upsert ${recordsToInsert.length} records (all-time + 90-day)...`);
   
   const { error: insertError } = await supabase
     .from('power_profile')
-    .upsert(insertData, {
-      onConflict: 'user_id,duration_seconds,sport',
+    .upsert(recordsToInsert, {
+      onConflict: 'user_id,duration_seconds,sport,time_window',
       ignoreDuplicates: false // Update existing records with new values
     });
 
   if (insertError) {
     console.error(`❌ Error inserting power profile for activity ${activityId}:`, insertError);
-    console.error('Failed insert data sample:', insertData.slice(0, 2));
+    console.error('Failed insert data sample:', recordsToInsert.slice(0, 2));
   } else {
     console.log(`✅ Successfully inserted ${recordsToInsert.length} power profile records for activity ${activityId}`);
   }
@@ -312,19 +346,13 @@ export async function backfillPowerProfileData(
   let errorCount = 0;
   let totalProcessed = 0;
 
-  // Calculate date 90 days ago
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  const cutoffDate = ninetyDaysAgo.toISOString();
-  
-  console.log(`📅 Processing activities from last 90 days (since ${cutoffDate.split('T')[0]})`);
+  console.log(`📅 Processing ALL activities for dual time-window power profile (all-time + 90-day)`);
 
-  // First, get the total count (last 90 days only)
+  // First, get the total count (ALL activities)
   const { count: totalCount, error: countError } = await supabase
     .from('activities')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('date', cutoffDate);
+    .eq('user_id', userId);
 
   if (countError) {
     console.error('❌ Error counting activities:', countError);
@@ -347,7 +375,6 @@ export async function backfillPowerProfileData(
       .from('activities')
       .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
       .eq('user_id', userId)
-      .gte('date', cutoffDate)
       .order('date', { ascending: false })
       .range(offset, offset + BATCH_SIZE - 1);
 
