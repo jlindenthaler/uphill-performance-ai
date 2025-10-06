@@ -98,6 +98,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
       // Create date-filtered profile (for recalculatedProfile compatibility)
+      // If no date filter or no filtered data, use all-time data for display
       const filteredProfile = dateFilteredMap.size > 0 
         ? Array.from(dateFilteredMap.entries()).map(([durationSeconds, value]) => ({
             duration: formatDuration(durationSeconds),
@@ -107,7 +108,7 @@ export function usePowerProfile(dateRangeDays?: number, excludeActivityId?: stri
             date: new Date().toISOString(),
             unit: isRunning ? 'min/km' : 'W'
           })).sort((a, b) => a.durationSeconds - b.durationSeconds)
-        : [];
+        : profile; // Use all-time data when no date filter
 
       setPowerProfile(profile);
       setRecalculatedProfile(filteredProfile);
