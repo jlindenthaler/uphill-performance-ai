@@ -160,74 +160,101 @@ export async function populatePowerProfileForActivity(
   const powerProfile = extractPowerProfileFromActivity(gpsData, sportMode);
   const isRunning = sportMode === 'running';
 
-  // Insert power profile entries
-  const insertPromises = powerProfile.map(async (profile) => {
-    const insertData = {
-      user_id: userId,
-      activity_id: activityId,
-      duration_seconds: profile.durationSeconds,
-      sport: sportMode,
-      date_achieved: activityDate,
-      ...(isRunning 
-        ? { pace_per_km: profile.value } 
-        : { power_watts: profile.value }
-      )
-    };
+  if (powerProfile.length === 0) {
+    console.log(`No power profile data extracted for activity ${activityId}`);
+    return;
+  }
 
-    // Check if we already have a better value for this duration
-    const { data: existing } = await supabase
-      .from('power_profile')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('duration_seconds', profile.durationSeconds)
-      .eq('sport', sportMode)
-      .order(isRunning ? 'pace_per_km' : 'power_watts', { ascending: isRunning })
-      .limit(1);
+  // Fetch ALL existing power profile records for this user/sport in ONE query
+  const { data: existingRecords, error: fetchError } = await supabase
+    .from('power_profile')
+    .select('duration_seconds, power_watts, pace_per_km')
+    .eq('user_id', userId)
+    .eq('sport', sportMode);
 
-    const shouldInsert = !existing || existing.length === 0 || 
-      (isRunning ? profile.value < (existing[0].pace_per_km || Infinity) : 
-                   profile.value > (existing[0].power_watts || 0));
+  if (fetchError) {
+    console.error('Error fetching existing power profile:', fetchError);
+    return;
+  }
 
-    if (shouldInsert) {
-      const { error } = await supabase
-        .from('power_profile')
-        .insert(insertData);
-
-      if (error) {
-        console.error('Error inserting power profile entry:', error);
+  // Build a map of duration -> best existing value
+  const existingMap = new Map<number, number>();
+  existingRecords?.forEach(record => {
+    const value = isRunning ? record.pace_per_km : record.power_watts;
+    if (value) {
+      const existing = existingMap.get(record.duration_seconds);
+      if (!existing || (isRunning ? value < existing : value > existing)) {
+        existingMap.set(record.duration_seconds, value);
       }
     }
   });
 
-  await Promise.all(insertPromises);
+  // Filter to only records that are better than existing
+  const recordsToInsert = powerProfile.filter(profile => {
+    const existing = existingMap.get(profile.durationSeconds);
+    return !existing || (isRunning ? profile.value < existing : profile.value > existing);
+  });
+
+  if (recordsToInsert.length === 0) {
+    console.log(`No new best efforts found for activity ${activityId}`);
+    return;
+  }
+
+  // Batch insert all records at once
+  const insertData = recordsToInsert.map(profile => ({
+    user_id: userId,
+    activity_id: activityId,
+    duration_seconds: profile.durationSeconds,
+    sport: sportMode,
+    date_achieved: activityDate,
+    ...(isRunning 
+      ? { pace_per_km: profile.value } 
+      : { power_watts: profile.value }
+    )
+  }));
+
+  const { error: insertError } = await supabase
+    .from('power_profile')
+    .insert(insertData);
+
+  if (insertError) {
+    console.error(`Error inserting power profile for activity ${activityId}:`, insertError);
+  } else {
+    console.log(`Inserted ${recordsToInsert.length} power profile records for activity ${activityId}`);
+  }
 }
 
 // Backfill power profile data for existing activities
 export async function backfillPowerProfileData(userId: string): Promise<void> {
-  console.log('Starting power profile backfill for user:', userId);
+  console.log('🚀 Starting power profile backfill for user:', userId);
   
-  // Get all activities with GPS data that don't have power profile entries yet
+  // Get all activities with GPS data
   const { data: activities, error } = await supabase
     .from('activities')
-    .select('id, gps_data, sport_mode, date')
+    .select('id, gps_data, sport_mode, date, name')
     .eq('user_id', userId)
-    .not('gps_data', 'is', null);
+    .not('gps_data', 'is', null)
+    .order('date', { ascending: false });
 
   if (error) {
-    console.error('Error fetching activities for backfill:', error);
-    return;
+    console.error('❌ Error fetching activities for backfill:', error);
+    throw error;
   }
 
   if (!activities || activities.length === 0) {
-    console.log('No activities with GPS data found for backfill');
+    console.log('ℹ️ No activities with GPS data found for backfill');
     return;
   }
 
-  console.log(`Processing ${activities.length} activities for power profile backfill`);
+  console.log(`📊 Processing ${activities.length} activities for power profile backfill`);
+
+  let successCount = 0;
+  let errorCount = 0;
 
   // Process each activity
   for (const activity of activities) {
     try {
+      console.log(`🔄 Processing: ${activity.name} (${activity.id})`);
       await populatePowerProfileForActivity(
         userId,
         activity.id,
@@ -235,11 +262,12 @@ export async function backfillPowerProfileData(userId: string): Promise<void> {
         activity.sport_mode,
         activity.date
       );
-      console.log(`Processed power profile for activity ${activity.id}`);
+      successCount++;
     } catch (error) {
-      console.error(`Error processing activity ${activity.id}:`, error);
+      console.error(`❌ Error processing activity ${activity.name}:`, error);
+      errorCount++;
     }
   }
 
-  console.log('Power profile backfill completed');
+  console.log(`✅ Power profile backfill completed! Success: ${successCount}, Errors: ${errorCount}`);
 }

@@ -472,12 +472,30 @@ export function useActivities(filterBySport: boolean = true) {
   const backfillPowerProfile = async () => {
     if (!user) return;
     
+    setLoading(true);
+    console.log('🎯 Starting power profile backfill...');
+    
     try {
       const { backfillPowerProfileData } = await import('@/utils/powerAnalysis');
       await backfillPowerProfileData(user.id);
-      console.log('Power profile backfill completed');
+      
+      // Refresh activities to show updated data
+      await fetchActivities(true);
+      
+      // Trigger event to refresh power profile charts
+      window.dispatchEvent(new Event('activity-uploaded'));
+      
+      console.log('✅ Power profile backfill completed successfully');
     } catch (error) {
-      console.error('Error during power profile backfill:', error);
+      console.error('❌ Error during power profile backfill:', error);
+      toast({
+        title: "Backfill Failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
