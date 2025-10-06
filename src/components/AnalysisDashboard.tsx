@@ -121,7 +121,7 @@ export function AnalysisDashboard() {
 
       <Tabs defaultValue="pmc" className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="pmc">PRC Chart</TabsTrigger>
+          <TabsTrigger value="pmc">PMC Chart</TabsTrigger>
           <TabsTrigger value="power">{isRunning ? 'Pace Profile' : 'Power Profile'}</TabsTrigger>
           <TabsTrigger value="activity">Activity Analysis</TabsTrigger>
           <TabsTrigger value="metabolic">Metabolic</TabsTrigger>
