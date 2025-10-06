@@ -19,7 +19,7 @@ import { ActivityUploadNew } from './ActivityUploadNew';
 import { EnhancedMapView } from './EnhancedMapView';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityPowerComparison } from './ActivityPowerComparison';
-// import { ActivityAnalysisChart } from './ActivityAnalysisChart';
+import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 import { EditActivityModal } from './EditActivityModal';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -328,7 +328,7 @@ export function Activities() {
 
         {/* Activity Analysis Chart */}
         <div className="mt-6">
-          <ActivityAnalysisChart activity={detailedActivity} />
+          <ActivityAnalysisChart activity={//detailedActivity} />
         </div>
 
         {/* Detailed Metrics */}
