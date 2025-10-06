@@ -131,45 +131,73 @@ export function AnalysisDashboard() {
 
         <TabsContent value="pmc" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="card-gradient">
+            <Card className="border-[hsl(var(--ltl-blue))] border-l-4">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-ltl" />
-                  Long-Term Load (LTL)
+                  <Activity className="w-4 h-4 text-[hsl(var(--ltl-blue))]" />
+                  LTL (Fitness)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-ltl">{Math.round(currentCTL)}</div>
-                <p className="text-xs text-muted-foreground">Fitness level</p>
+                <div className="text-2xl font-bold text-[hsl(var(--ltl-blue))]">{Math.round(currentCTL)}</div>
+                <p className="text-xs text-muted-foreground">42-day average</p>
               </CardContent>
             </Card>
 
-            <Card className="card-gradient">
+            <Card className="border-[hsl(var(--stl-pink))] border-l-4">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-stl" />
-                  Short-Term Load (STL)
+                  <Zap className="w-4 h-4 text-[hsl(var(--stl-pink))]" />
+                  STL (Fatigue)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-stl">{Math.round(currentATL)}</div>
-                <p className="text-xs text-muted-foreground">Fatigue level</p>
+                <div className="text-2xl font-bold text-[hsl(var(--stl-pink))]">{Math.round(currentATL)}</div>
+                <p className="text-xs text-muted-foreground">7-day average</p>
               </CardContent>
             </Card>
 
-            <Card className="card-gradient">
+            <Card className="border-[hsl(var(--fi-yellow))] border-l-4">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <tsbStatus.icon className="w-4 h-4 text-fi" />
-                  Form Index (FI)
+                  <Target className="w-4 h-4 text-[hsl(var(--fi-yellow))]" />
+                  FI (Form)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-fi">{Math.round(currentTSB)}</div>
+                <div className="text-2xl font-bold text-[hsl(var(--fi-yellow))]">
+                  {currentTSB > 0 ? '+' : ''}{Math.round(currentTSB)}
+                </div>
                 <p className="text-xs text-muted-foreground">{tsbStatus.status}</p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Explanatory section */}
+          <Card className="bg-muted/50">
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-3 text-sm">
+                <div>
+                  <p className="font-semibold text-[hsl(var(--ltl-blue))] mb-2">Long-Term Load (LTL)</p>
+                  <p className="text-muted-foreground">
+                    Represents your fitness built over 42 days using exponentially weighted moving average. Higher values indicate better endurance capacity.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-[hsl(var(--stl-pink))] mb-2">Short-Term Load (STL)</p>
+                  <p className="text-muted-foreground">
+                    Measures recent training stress over 7 days. High values indicate accumulated fatigue from current training.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-[hsl(var(--fi-yellow))] mb-2">Form Index (FI)</p>
+                  <p className="text-muted-foreground">
+                    Calculated as LTL - STL. Positive values mean you're fresh and ready to perform. Negative values indicate training fatigue.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="card-gradient">
             <CardHeader>

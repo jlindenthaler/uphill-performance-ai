@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell, MoreHorizontal, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell, MoreHorizontal, Trash2, Activity, Zap } from "lucide-react";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkouts } from "@/hooks/useWorkouts";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { useCombinedTrainingHistory } from "@/hooks/useCombinedTrainingHistory";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval } from "date-fns";
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
+import { PMCStatusBadge } from './pmc/PMCStatusBadge';
 
 interface CalendarEvent {
   id: string;
@@ -222,10 +224,38 @@ export const TrainingCalendar: React.FC = () => {
   const { goals } = useGoals();
   const { workouts, deleteWorkout } = useWorkouts();
   const { timezone } = useUserTimezone();
+  const { trainingHistory } = useCombinedTrainingHistory(90);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  // Calculate weekly PMC summaries
+  const weeklyPMCSummaries = useMemo(() => {
+    const weeks = eachWeekOfInterval(
+      { start: monthStart, end: monthEnd },
+      { weekStartsOn: 1 }
+    );
+
+    return weeks.map(weekStart => {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const weekData = trainingHistory.filter(day => {
+        const date = new Date(day.date);
+        return date >= weekStart && date <= weekEnd;
+      });
+
+      const endOfWeekData = weekData[weekData.length - 1];
+      
+      return {
+        weekStart,
+        weekEnd,
+        ltl: endOfWeekData?.ctl || 0,
+        stl: endOfWeekData?.atl || 0,
+        fi: endOfWeekData?.tsb || 0,
+        weeklyTSS: weekData.reduce((sum, day) => sum + (day.tss || 0), 0)
+      };
+    });
+  }, [monthStart, monthEnd, trainingHistory]);
 
   // Get events for each day
   const getEventsForDay = (day: Date): CalendarEvent[] => {
@@ -366,6 +396,51 @@ export const TrainingCalendar: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Monthly PMC Summary */}
+      {weeklyPMCSummaries.length > 0 && (
+        <Card className="bg-muted/30">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Month PMC Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Activity className="h-3 w-3 text-[hsl(var(--ltl-blue))]" />
+                  <span className="text-xs text-muted-foreground">LTL Trend</span>
+                </div>
+                <div className="text-lg font-bold text-[hsl(var(--ltl-blue))]">
+                  {weeklyPMCSummaries[0]?.ltl.toFixed(0)} → {weeklyPMCSummaries[weeklyPMCSummaries.length - 1]?.ltl.toFixed(0)}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-3 w-3 text-[hsl(var(--stl-pink))]" />
+                  <span className="text-xs text-muted-foreground">STL Trend</span>
+                </div>
+                <div className="text-lg font-bold text-[hsl(var(--stl-pink))]">
+                  {weeklyPMCSummaries[0]?.stl.toFixed(0)} → {weeklyPMCSummaries[weeklyPMCSummaries.length - 1]?.stl.toFixed(0)}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="h-3 w-3 text-[hsl(var(--fi-yellow))]" />
+                  <span className="text-xs text-muted-foreground">FI Trend</span>
+                </div>
+                <div className="text-lg font-bold text-[hsl(var(--fi-yellow))]">
+                  {weeklyPMCSummaries[0]?.fi > 0 ? '+' : ''}{weeklyPMCSummaries[0]?.fi.toFixed(0)} → 
+                  {weeklyPMCSummaries[weeklyPMCSummaries.length - 1]?.fi > 0 ? '+' : ''}{weeklyPMCSummaries[weeklyPMCSummaries.length - 1]?.fi.toFixed(0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Current Form</div>
+                <PMCStatusBadge fi={weeklyPMCSummaries[weeklyPMCSummaries.length - 1]?.fi || 0} size="sm" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Calendar */}
       <Card>

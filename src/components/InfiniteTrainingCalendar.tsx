@@ -663,16 +663,16 @@ export const InfiniteTrainingCalendar: React.FC = () => {
                     <div className="p-2 bg-muted/5 border-b text-xs space-y-2">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-blue-600">Fitness</span>
-                          <span className="font-bold text-blue-600">{weekSummary.atpFitness}</span>
+                          <span className="text-[hsl(var(--ltl-blue))]">LTL (Fitness)</span>
+                          <span className="font-bold text-[hsl(var(--ltl-blue))]">{weekSummary.atpFitness}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-pink-600">Fatigue</span>
-                          <span className="font-bold text-pink-600">{weekSummary.atpFatigue}</span>
+                          <span className="text-[hsl(var(--stl-pink))]">STL (Fatigue)</span>
+                          <span className="font-bold text-[hsl(var(--stl-pink))]">{weekSummary.atpFatigue}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-orange-600">Form</span>
-                          <span className="font-bold text-orange-600">{weekSummary.atpForm}</span>
+                          <span className="text-[hsl(var(--fi-yellow))]">FI (Form)</span>
+                          <span className="font-bold text-[hsl(var(--fi-yellow))]">{parseInt(weekSummary.atpForm) > 0 ? '+' : ''}{weekSummary.atpForm}</span>
                         </div>
                       </div>
                       

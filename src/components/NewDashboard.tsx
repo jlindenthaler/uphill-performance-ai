@@ -356,16 +356,18 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
             
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-ltl">{Math.round(ctl)}</p>
-                <p className="text-xs text-muted-foreground">Fitness (LTL)</p>
+                <p className="text-2xl font-bold text-[hsl(var(--ltl-blue))]">{Math.round(ctl)}</p>
+                <p className="text-xs text-muted-foreground">LTL (Fitness)</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-stl">{Math.round(atl)}</p>
-                <p className="text-xs text-muted-foreground">Fatigue (STL)</p>
+                <p className="text-2xl font-bold text-[hsl(var(--stl-pink))]">{Math.round(atl)}</p>
+                <p className="text-xs text-muted-foreground">STL (Fatigue)</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-fi">{Math.round(tsb)}</p>
-                <p className="text-xs text-muted-foreground">Form (FI)</p>
+                <p className="text-2xl font-bold text-[hsl(var(--fi-yellow))]">
+                  {tsb > 0 ? '+' : ''}{Math.round(tsb)}
+                </p>
+                <p className="text-xs text-muted-foreground">FI (Form)</p>
               </div>
             </div>
           </CardContent>
