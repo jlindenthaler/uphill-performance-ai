@@ -303,66 +303,94 @@ export async function backfillPowerProfileData(
 ): Promise<void> {
   console.log('🚀 Starting power profile backfill for user:', userId);
   
-  // Get all activities - not requiring GPS data since power_time_series is independent
-  const { data: activities, error } = await supabase
-    .from('activities')
-    .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-  
-  console.log('📦 Query result:', { activitiesCount: activities?.length, error });
+  const BATCH_SIZE = 25; // Process 25 activities at a time to avoid timeout
+  let offset = 0;
+  let successCount = 0;
+  let errorCount = 0;
+  let totalProcessed = 0;
 
-  if (error) {
-    console.error('❌ Error fetching activities for backfill:', error);
-    throw error;
+  // First, get the total count
+  const { count: totalCount, error: countError } = await supabase
+    .from('activities')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (countError) {
+    console.error('❌ Error counting activities:', countError);
+    throw countError;
   }
 
-  if (!activities || activities.length === 0) {
-    console.log('ℹ️ No activities with GPS data found for backfill');
+  const totalActivities = totalCount || 0;
+  console.log(`📊 Found ${totalActivities} total activities to process`);
+
+  if (totalActivities === 0) {
+    console.log('ℹ️ No activities found for backfill');
     return;
   }
 
-  const totalActivities = activities.length;
-  console.log(`📊 Processing ${totalActivities} activities for power profile backfill`);
-
-  let successCount = 0;
-  let errorCount = 0;
-
-  // Process each activity
-  for (let i = 0; i < activities.length; i++) {
-    const activity = activities[i];
+  // Process in batches to avoid timeout
+  while (totalProcessed < totalActivities) {
+    console.log(`📦 Fetching batch: offset ${offset}, limit ${BATCH_SIZE}`);
     
-    // Skip activities without any data
-    if (!activity.power_time_series && !activity.speed_time_series && !activity.gps_data) {
-      console.log(`⏭️ Skipping ${activity.name} - no power/speed data`);
-      continue;
+    const { data: activities, error } = await supabase
+      .from('activities')
+      .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .range(offset, offset + BATCH_SIZE - 1);
+
+    if (error) {
+      console.error('❌ Error fetching activities batch:', error);
+      throw error;
     }
-    
-    try {
-      console.log(`🔄 [${i + 1}/${totalActivities}] Processing: ${activity.name}`);
-      const powerPoints = Array.isArray(activity.power_time_series) ? activity.power_time_series.length : 0;
-      console.log(`   Power points: ${powerPoints}`);
+
+    if (!activities || activities.length === 0) {
+      break;
+    }
+
+    console.log(`🔄 Processing batch of ${activities.length} activities`);
+
+    // Process each activity in this batch
+    for (let i = 0; i < activities.length; i++) {
+      const activity = activities[i];
       
-      // Pass the full activity object with power_time_series
-      await populatePowerProfileForActivity(
-        userId,
-        activity.id,
-        activity, // Pass full activity object, not just gps_data
-        activity.sport_mode,
-        activity.date
-      );
-      
-      successCount++;
-      
-      // Call progress callback
-      if (onProgress) {
-        onProgress(i + 1, totalActivities, activity.name);
+      // Skip activities without any data
+      if (!activity.power_time_series && !activity.speed_time_series && !activity.gps_data) {
+        console.log(`⏭️ Skipping ${activity.name} - no power/speed data`);
+        totalProcessed++;
+        continue;
       }
-    } catch (error) {
-      console.error(`❌ Error processing activity ${activity.name}:`, error);
-      errorCount++;
+      
+      try {
+        console.log(`🔄 [${totalProcessed + 1}/${totalActivities}] Processing: ${activity.name}`);
+        const powerPoints = Array.isArray(activity.power_time_series) ? activity.power_time_series.length : 0;
+        console.log(`   Power points: ${powerPoints}, Duration: ${activity.duration_seconds}s`);
+        
+        // Pass the full activity object with power_time_series
+        await populatePowerProfileForActivity(
+          userId,
+          activity.id,
+          activity,
+          activity.sport_mode,
+          activity.date
+        );
+        
+        successCount++;
+        
+        // Call progress callback
+        if (onProgress) {
+          onProgress(totalProcessed + 1, totalActivities, activity.name);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing activity ${activity.name}:`, error);
+        errorCount++;
+      }
+      
+      totalProcessed++;
     }
+
+    offset += BATCH_SIZE;
   }
 
-  console.log(`✅ Power profile backfill completed! Success: ${successCount}, Errors: ${errorCount}`);
+  console.log(`✅ Power profile backfill completed! Success: ${successCount}, Errors: ${errorCount}, Total: ${totalProcessed}`);
 }
