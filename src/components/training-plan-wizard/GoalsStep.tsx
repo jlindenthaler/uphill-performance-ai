@@ -2,6 +2,7 @@ import { TrainingPlanFormData } from '../AITrainingPlanWizard';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -406,81 +407,93 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Secondary Goals (Optional)</h3>
-          <Button onClick={addSecondaryGoal} variant="outline" size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Secondary Goal
-          </Button>
         </div>
 
-        {formData.secondaryGoals.map((goal) => (
-          <div key={goal.id} className="border rounded-lg p-4 mb-3 space-y-3">
-            <div className="flex justify-between items-start">
-              <Input
-                value={goal.eventName}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    secondaryGoals: formData.secondaryGoals.map((g) =>
-                      g.id === goal.id ? { ...g, eventName: e.target.value } : g
-                    ),
-                  })
-                }
-                placeholder="Event name"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeSecondaryGoal(goal.id)}
-                className="ml-2"
+        {/* Selected Secondary Goals */}
+        {formData.secondaryGoals.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {formData.secondaryGoals.map((goal) => (
+              <div
+                key={goal.id}
+                className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {goal.eventDate ? format(goal.eventDate, 'PP') : 'Pick date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={goal.eventDate || undefined}
-                    onSelect={(date) =>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{goal.eventName}</span>
+                    <Badge variant={goal.priority === 'B' ? 'default' : 'secondary'}>
+                      {goal.priority}
+                    </Badge>
+                  </div>
+                  {goal.eventDate && (
+                    <span className="text-sm text-muted-foreground">
+                      {format(goal.eventDate, 'PPP')}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeSecondaryGoal(goal.id)}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Available Goals to Select */}
+        {activeGoals.filter(g => g.priority === 'B' || g.priority === 'C').length > 0 && (
+          <Card className="p-4 mb-4">
+            <h4 className="font-medium mb-3">Select from Existing Goals</h4>
+            <div className="grid grid-cols-1 gap-2">
+              {activeGoals
+                .filter(g => g.priority === 'B' || g.priority === 'C')
+                .filter(g => !formData.secondaryGoals.some(sg => sg.goalId === g.id))
+                .map((goal) => (
+                  <Card
+                    key={goal.id}
+                    className="p-3 cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => {
                       setFormData({
                         ...formData,
-                        secondaryGoals: formData.secondaryGoals.map((g) =>
-                          g.id === goal.id ? { ...g, eventDate: date || null } : g
-                        ),
-                      })
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
-              <Select
-                value={goal.priority}
-                onValueChange={(value: 'B' | 'C') =>
-                  setFormData({
-                    ...formData,
-                    secondaryGoals: formData.secondaryGoals.map((g) =>
-                      g.id === goal.id ? { ...g, priority: value } : g
-                    ),
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="B">Priority B</SelectItem>
-                  <SelectItem value="C">Priority C</SelectItem>
-                </SelectContent>
-              </Select>
+                        secondaryGoals: [
+                          ...formData.secondaryGoals,
+                          {
+                            id: crypto.randomUUID(),
+                            eventName: goal.name,
+                            eventDate: new Date(goal.event_date),
+                            priority: goal.priority as 'B' | 'C',
+                            goalId: goal.id,
+                          },
+                        ],
+                      });
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{goal.name}</span>
+                          <Badge variant={goal.priority === 'B' ? 'default' : 'secondary'}>
+                            {goal.priority}
+                          </Badge>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(goal.event_date), 'PPP')}
+                        </span>
+                      </div>
+                      <Plus className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </Card>
+                ))}
             </div>
-          </div>
-        ))}
+          </Card>
+        )}
+
+        <Button onClick={addSecondaryGoal} variant="outline" className="w-full">
+          <Plus className="mr-2 h-4 w-4" />
+          Create New Secondary Goal
+        </Button>
       </div>
 
       {/* Constraints */}

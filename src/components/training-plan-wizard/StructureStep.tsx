@@ -59,7 +59,7 @@ export function StructureStep({ formData, setFormData }: StructureStepProps) {
             className="mt-2"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Typical: 3 weeks load + 1 week recovery
+            This is the training load duration (recovery week is added automatically)
           </p>
         </div>
 
@@ -67,14 +67,21 @@ export function StructureStep({ formData, setFormData }: StructureStepProps) {
           <Label>Target Sessions per Week</Label>
           <Input
             type="number"
-            value={formData.sessionsPerWeek}
+            value={formData.sessionsPerWeek || ''}
             onChange={(e) =>
-              setFormData({ ...formData, sessionsPerWeek: parseInt(e.target.value) || 5 })
+              setFormData({
+                ...formData,
+                sessionsPerWeek: e.target.value ? parseInt(e.target.value) : 0,
+              })
             }
+            placeholder="Auto"
             min={3}
             max={14}
             className="mt-2"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Leave blank for AI to determine optimal session count
+          </p>
         </div>
 
         <div>

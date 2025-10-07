@@ -1,8 +1,6 @@
 import { TrainingPlanFormData } from '../AITrainingPlanWizard';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 
@@ -73,56 +71,23 @@ export function AdaptationStep({ formData, setFormData }: AdaptationStepProps) {
       <Card className="p-4">
         <h4 className="font-semibold mb-4">Feedback Sources</h4>
         <p className="text-sm text-muted-foreground mb-4">
-          What data should the AI use to assess your readiness and recovery?
+          The AI will monitor all available data to assess your readiness and recovery. If data is not available, it will be skipped.
         </p>
 
         <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={formData.feedbackSources.hrv}
-              onCheckedChange={(checked) =>
-                setFormData({
-                  ...formData,
-                  feedbackSources: {
-                    ...formData.feedbackSources,
-                    hrv: checked as boolean,
-                  },
-                })
-              }
-            />
-            <Label>HRV / Resting Heart Rate</Label>
+          <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/30">
+            <div className="h-2 w-2 rounded-full bg-primary" />
+            <Label className="font-normal">HRV / Resting Heart Rate</Label>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={formData.feedbackSources.zoneDistribution}
-              onCheckedChange={(checked) =>
-                setFormData({
-                  ...formData,
-                  feedbackSources: {
-                    ...formData.feedbackSources,
-                    zoneDistribution: checked as boolean,
-                  },
-                })
-              }
-            />
-            <Label>Zone Distribution & HR Decoupling</Label>
+          <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/30">
+            <div className="h-2 w-2 rounded-full bg-primary" />
+            <Label className="font-normal">Zone Distribution & HR Decoupling</Label>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={formData.feedbackSources.rpe}
-              onCheckedChange={(checked) =>
-                setFormData({
-                  ...formData,
-                  feedbackSources: {
-                    ...formData.feedbackSources,
-                    rpe: checked as boolean,
-                  },
-                })
-              }
-            />
-            <Label>Manual RPE Check-ins</Label>
+          <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/30">
+            <div className="h-2 w-2 rounded-full bg-primary" />
+            <Label className="font-normal">Manual RPE Check-ins</Label>
           </div>
         </div>
       </Card>

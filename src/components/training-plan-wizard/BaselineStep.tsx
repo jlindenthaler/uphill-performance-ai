@@ -1,10 +1,12 @@
 import { TrainingPlanFormData } from '../AITrainingPlanWizard';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useLabResults } from '@/hooks/useLabResults';
 import { useTrainingHistory } from '@/hooks/useTrainingHistory';
-import { Activity, TrendingUp, Heart, Zap } from 'lucide-react';
+import { Activity, TrendingUp, Heart, Zap, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface BaselineStepProps {
   formData: TrainingPlanFormData;
@@ -14,6 +16,7 @@ interface BaselineStepProps {
 export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
   const { labResults, loading: labLoading } = useLabResults();
   const { trainingHistory } = useTrainingHistory(90);
+  const navigate = useNavigate();
 
   const latestLab = labResults?.[0];
   
@@ -47,13 +50,24 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
               <Zap className="h-5 w-5 text-primary" />
               <h4 className="font-semibold">Thresholds</h4>
             </div>
-            {latestLab && (
-              <Badge variant="outline">
-                {formatDistanceToNow(new Date(latestLab.test_date || latestLab.created_at), {
-                  addSuffix: true,
-                })}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {latestLab && (
+                <Badge variant="outline">
+                  {formatDistanceToNow(new Date(latestLab.test_date || latestLab.created_at), {
+                    addSuffix: true,
+                  })}
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  navigate('/?tab=physiology');
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {labLoading ? (
@@ -86,9 +100,20 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No lab results found. The AI will use activity-derived thresholds.
-            </p>
+            <div>
+              <p className="text-sm text-muted-foreground mb-3">
+                No lab results found. The AI will use activity-derived thresholds.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/?tab=physiology')}
+                className="w-full"
+              >
+                Add Lab Results
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           )}
         </Card>
 
