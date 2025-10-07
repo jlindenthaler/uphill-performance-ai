@@ -6,12 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, X, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Check, Edit, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGoals } from '@/hooks/useGoals';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface GoalsStepProps {
   formData: TrainingPlanFormData;
@@ -37,6 +38,7 @@ const PRIORITY_OPTIONS = [
 export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
   const { goals } = useGoals();
   const [showCreateNew, setShowCreateNew] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const activeGoals = goals.filter(g => g.status === 'active');
 
@@ -55,7 +57,12 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
           goalId: goal.id,
         }
       });
+      setEditMode(false);
     }
+  };
+
+  const handleEditGoal = () => {
+    setEditMode(true);
   };
 
   const addSecondaryGoal = () => {
@@ -105,7 +112,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
   return (
     <div className="space-y-6">
       {/* Existing Goals Selection */}
-      {activeGoals.length > 0 && !showCreateNew && (
+      {activeGoals.length > 0 && !showCreateNew && !editMode && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Select from Existing Goals</h3>
           
@@ -140,9 +147,23 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                       {goal.target_performance && <div>🎯 {goal.target_performance}</div>}
                     </div>
                   </div>
-                  {formData.primaryGoal.goalId === goal.id && (
-                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                  )}
+                  <div className="flex flex-col gap-2">
+                    {formData.primaryGoal.goalId === goal.id && (
+                      <>
+                        <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditGoal();
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
@@ -158,16 +179,21 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
         </div>
       )}
 
-      {/* Create New Goal Form */}
-      {(activeGoals.length === 0 || showCreateNew) && (
+      {/* Create/Edit Goal Form */}
+      {(activeGoals.length === 0 || showCreateNew || editMode) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Define Your Primary Goal</h3>
+            <h3 className="text-lg font-semibold">
+              {editMode ? 'Edit Goal' : 'Define Your Primary Goal'}
+            </h3>
             {activeGoals.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowCreateNew(false)}
+                onClick={() => {
+                  setShowCreateNew(false);
+                  setEditMode(false);
+                }}
               >
                 ← Back to existing goals
               </Button>
@@ -289,6 +315,93 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                 })}
                 placeholder="e.g., Podium Sub 32 mins"
               />
+            </div>
+
+            {/* Course File Upload */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label>Upload Course File (Optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Upload a .gpx, .fit, or .tcx file for course analysis (coming soon)
+              </p>
+              <Input
+                type="file"
+                accept=".gpx,.fit,.tcx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    toast.info('Course file analysis coming soon! File stored for future use.');
+                    setFormData({
+                      ...formData,
+                      primaryGoal: {
+                        ...formData.primaryGoal,
+                        courseFile: file,
+                      },
+                    });
+                  }
+                }}
+              />
+              
+              {formData.primaryGoal.courseFile && (
+                <div className="grid grid-cols-3 gap-4 pt-2 border-t mt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="cda" className="text-xs">CdA (m²)</Label>
+                    <Input
+                      id="cda"
+                      type="number"
+                      step="0.001"
+                      placeholder="0.280"
+                      value={formData.primaryGoal.cda || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          primaryGoal: {
+                            ...formData.primaryGoal,
+                            cda: parseFloat(e.target.value) || undefined,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="weight" className="text-xs">Weight (kg)</Label>
+                    <Input
+                      id="weight"
+                      type="number"
+                      step="0.1"
+                      placeholder="70"
+                      value={formData.primaryGoal.weight || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          primaryGoal: {
+                            ...formData.primaryGoal,
+                            weight: parseFloat(e.target.value) || undefined,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dtLoss" className="text-xs">Drivetrain Loss (%)</Label>
+                    <Input
+                      id="dtLoss"
+                      type="number"
+                      step="0.1"
+                      placeholder="2.5"
+                      value={formData.primaryGoal.drivetrainLoss || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          primaryGoal: {
+                            ...formData.primaryGoal,
+                            drivetrainLoss: parseFloat(e.target.value) || undefined,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
