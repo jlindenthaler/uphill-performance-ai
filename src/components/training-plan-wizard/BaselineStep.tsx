@@ -108,7 +108,7 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
               )}
               {thresholdData && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Glycolytic Threshold (VT2):</span>
+                  <span className="text-muted-foreground">Glycolytic Threshold (GT):</span>
                   <span className="font-medium">
                     {Math.round(thresholdData.value)}W
                     {(latestLab?.vt2_hr || latestLab?.lt2_hr) && ` @ ${latestLab?.vt2_hr || latestLab?.lt2_hr} bpm`}
