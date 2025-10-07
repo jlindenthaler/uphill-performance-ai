@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell, MoreHorizontal, Trash2, Activity, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Target, Dumbbell, MoreHorizontal, Trash2, Activity, Zap, Sparkles } from "lucide-react";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useCombinedTrainingHistory } from "@/hooks/useCombinedTrainingHistory";
@@ -13,6 +13,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
 import { PMCStatusBadge } from './pmc/PMCStatusBadge';
+import { AITrainingPlanWizard } from './AITrainingPlanWizard';
 
 interface CalendarEvent {
   id: string;
@@ -221,6 +222,7 @@ const GoalPopup: React.FC<GoalPopupProps> = ({ goal, onClose }) => {
 export const TrainingCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isAIPlanWizardOpen, setIsAIPlanWizardOpen] = useState(false);
   const { goals } = useGoals();
   const { workouts, deleteWorkout } = useWorkouts();
   const { timezone } = useUserTimezone();
@@ -433,6 +435,11 @@ export const TrainingCalendar: React.FC = () => {
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
+        
+        <Button onClick={() => setIsAIPlanWizardOpen(true)} className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          Create AI Training Plan
+        </Button>
       </div>
 
       {/* Monthly PMC Summary */}
@@ -547,6 +554,12 @@ export const TrainingCalendar: React.FC = () => {
           onClose={() => setSelectedEvent(null)}
         />
       )}
+
+      {/* AI Training Plan Wizard */}
+      <AITrainingPlanWizard
+        open={isAIPlanWizardOpen}
+        onOpenChange={setIsAIPlanWizardOpen}
+      />
     </div>
   );
 };
