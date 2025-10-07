@@ -26,26 +26,20 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('No authorization header');
-    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader
-          }
-        }
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) throw new Error('Authentication failed');
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('No authorization header');
+
+    supabaseClient.auth.setSession({
+      access_token: authHeader.replace('Bearer ', ''),
+      refresh_token: ''
+    });
 
     const { task, context } = await req.json();
-
     const trainingContext = await getTrainingContext(
       supabaseClient,
       context.user_id,
@@ -80,7 +74,10 @@ serve(async (req) => {
       success: true,
       data: aiResponse
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
       status: 200
     });
 
@@ -92,15 +89,18 @@ serve(async (req) => {
       error: errorMessage,
       fallback: getFallbackResponse(req.url.includes('daily_recommendations'))
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
       status: 200
     });
   }
 });
 
-// ==============
-// 🔸 LLM Helper
-// ==============
+// ====================
+// 🔸 Local LLM Helper
+// ====================
 async function callLocalLLM(systemPrompt: string, userPrompt: string, model: string) {
   const response = await fetch(LLM_URL, {
     method: 'POST',
@@ -129,142 +129,79 @@ async function callLocalLLM(systemPrompt: string, userPrompt: string, model: str
   return result?.choices?.[0]?.message?.content ?? "[No response]";
 }
 
-// ==============
+// ====================
 // 🧠 Task Handlers
-// ==============
-async function getDailyRecommendations(context, requestContext) {
-  const { ftp, ftp_source, lab_results, cp_results, physiology_data, sport_mode } = context;
-  
-  const systemPrompt = `You are an elite endurance sports coach with deep expertise in exercise physiology and training science.
+// ====================
 
-ATHLETE PROFILE:
-- Sport: ${sport_mode}
-- Current TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
-${ftp ? `- FTP: ${ftp}W (source: ${ftp_source})` : ''}
+// 🟦 Daily Recommendations (Gemma) — Shortened Prompt
+async function getDailyRecommendations(context: any, requestContext: any) {
+  const systemPrompt = "You are an expert endurance coach. Your job is to give short, actionable daily training recommendations.";
 
-${lab_results ? `
-PHYSIOLOGICAL DATA (Lab Test: ${lab_results.test_date ? new Date(lab_results.test_date).toLocaleDateString() : 'N/A'}):
-- VO2max: ${lab_results.vo2_max || 'N/A'} ml/kg/min
-- VLamax: ${lab_results.vla_max || 'N/A'} mmol/L/s
-- Aerobic Threshold (AeT): ${lab_results.aet || 'N/A'}W @ ${lab_results.aet_hr || 'N/A'} bpm
-- Anaerobic Threshold (AnT/GT): ${lab_results.gt || 'N/A'}W @ ${lab_results.gt_hr || 'N/A'} bpm
-- VT1: ${lab_results.vt1_power || 'N/A'}W @ ${lab_results.vt1_hr || 'N/A'} bpm
-- VT2: ${lab_results.vt2_power || 'N/A'}W @ ${lab_results.vt2_hr || 'N/A'} bpm
-- Max HR: ${lab_results.max_hr || 'N/A'} bpm
-- Resting HR: ${lab_results.resting_hr || 'N/A'} bpm
-- Fat Oxidation: ${lab_results.fat_max || 'N/A'} g/min at ${lab_results.fat_max_intensity || 'N/A'}% intensity
-` : ''}
+  const userPrompt = `
+Athlete Context:
+- TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
+- Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI, ${context.weekly_progress.current_sessions}/${context.weekly_progress.target_sessions} sessions
+- Sport: ${requestContext.sport_mode}
+- Recent Activities: ${context.recent_activities.length} in last 7 days
+- Active Goals: ${context.active_goals.length}${context.active_goals.length > 0 ? ` (Next: ${context.active_goals[0]?.name} on ${context.active_goals[0]?.event_date})` : ''}
 
-${cp_results ? `
-CRITICAL POWER DATA (Test: ${cp_results.test_date ? new Date(cp_results.test_date).toLocaleDateString() : 'N/A'}):
-- CP: ${cp_results.cp_watts}W
-- W': ${Math.round(cp_results.w_prime_joules / 1000)}kJ
-- Protocol: ${cp_results.protocol_used}
-` : ''}
+Task:
+Give a **short daily training recommendation** for this athlete.
 
-${physiology_data ? `
-RECENT PHYSIOLOGY & RECOVERY:
-- HRV (RMSSD): ${physiology_data.hrv_rmssd || 'N/A'}ms
-- Sleep: ${physiology_data.sleep_hours || 'N/A'}hrs (Quality: ${physiology_data.sleep_quality || 'N/A'}/10)
-- Stress Level: ${physiology_data.stress_level || 'N/A'}/10
-- Metabolic Flexibility: ${physiology_data.metabolic_flexibility || 'N/A'}
-` : ''}
+⚠️ Output format & length:
+- ≤150 words
+- Use bullet points or short paragraphs
+- Include only:
+  - Goal of the session
+  - Key session details (e.g., warmup / main set / cooldown)
+  - 1–2 key monitoring or focus points
+- Do NOT include long physiological explanations, essays, or future strategy.
+- Return only the recommendation text, no questions.
 
-TRAINING CONTEXT:
-- Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI
-- Sessions This Week: ${context.weekly_progress.current_sessions}/${context.weekly_progress.target_sessions}
+Recommendation:
+`;
+
+  let text = await callLocalLLM(systemPrompt, userPrompt, MODELS.GEMMA);
+  text = text.split(/\s+/).slice(0, 150).join(" ");
+  return text;
+}
+
+// 🟩 Chat Assistant (Mixtral)
+async function getChatResponse(context: any, requestContext: any) {
+  const systemPrompt = `You are a world-class endurance coach and sports scientist with access to the athlete's current training data.
+
+Current Athlete Context:
+- TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
+- Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI, ${context.weekly_progress.current_sessions}/${context.weekly_progress.target_sessions} sessions
+- Sport: ${requestContext.sport_mode}
 - Recent Activities: ${context.recent_activities.length} in last 7 days
 - Active Goals: ${context.active_goals.length} upcoming
 ${context.active_goals.length > 0 ? `- Next Priority Goal: ${context.active_goals[0]?.name} on ${context.active_goals[0]?.event_date}` : ''}
 
-Provide specific, actionable training recommendations based on this athlete's physiological profile, current training status, and recovery markers.`;
-
-  const userPrompt = `Based on the athlete's comprehensive data above, provide today's training recommendation. Be specific and reference their thresholds, FTP, and current training load.`;
-
-  return await callLocalLLM(systemPrompt, userPrompt, MODELS.GEMMA);
+Use this context to provide personalized, data-driven coaching advice.`;
+  return await callLocalLLM(systemPrompt, requestContext.message, MODELS.MIXTRAL);
 }
 
-async function getChatResponse(context, requestContext) {
-  const { ftp, ftp_source, lab_results, cp_results, sport_mode } = context;
-  
-  const systemPrompt = `You are an AI training coach assistant with access to comprehensive athlete data.
-
-ATHLETE PROFILE:
-- Sport: ${sport_mode}
-- Current TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
-${ftp ? `- FTP: ${ftp}W (${ftp_source})` : ''}
-${lab_results ? `- Lab Tested: VO2max ${lab_results.vo2_max}, Thresholds: ${lab_results.aet}W/${lab_results.gt}W` : ''}
-${cp_results ? `- CP: ${cp_results.cp_watts}W, W': ${Math.round(cp_results.w_prime_joules / 1000)}kJ` : ''}
-
-CURRENT TRAINING:
-- Weekly TLI: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli}
-- Recent Activities: ${context.recent_activities.length} in last 7 days
-
-Use this context to provide specific, personalized coaching advice.`;
-
+// 📊 Activity Analysis (Mixtral)
+async function getActivityAnalysis(context: any, requestContext: any) {
   return await callLocalLLM(
-    systemPrompt,
-    requestContext.message,
+    "You are an expert cycling performance analyst. Provide concise insights.",
+    `Analyse this activity data:\n${JSON.stringify(requestContext.activity_data, null, 2)}`,
     MODELS.MIXTRAL
   );
 }
 
-async function getActivityAnalysis(context, requestContext) {
-  const { ftp, ftp_source, lab_results, sport_mode } = context;
-  
-  const systemPrompt = `You are an expert at analyzing athletic performance data with deep physiological knowledge.
-
-ATHLETE PROFILE:
-- Sport: ${sport_mode}
-- Current TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
-${ftp ? `- FTP: ${ftp}W (${ftp_source})` : ''}
-${lab_results ? `
-- Thresholds: AeT ${lab_results.aet}W @ ${lab_results.aet_hr}bpm, AnT ${lab_results.gt}W @ ${lab_results.gt_hr}bpm
-- VO2max: ${lab_results.vo2_max} ml/kg/min
-` : ''}
-
-Analyze the activity in context of the athlete's physiological profile and current training status.`;
-
+// 📝 Workout Generation (Mixtral)
+async function generateWorkout(context: any, requestContext: any) {
   return await callLocalLLM(
-    systemPrompt,
-    `Analyze this activity: ${JSON.stringify(requestContext.activity_data)}. Provide insights on intensity distribution, threshold adherence, and training adaptation.`,
-    MODELS.MIXTRAL
-  );
-}
-
-async function generateWorkout(context, requestContext) {
-  const { ftp, ftp_source, lab_results, sport_mode } = context;
-  
-  const systemPrompt = `You are an expert workout designer for endurance athletes with deep understanding of training zones and physiology.
-
-ATHLETE PROFILE:
-- Sport: ${sport_mode}
-- Current TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
-${ftp ? `- FTP: ${ftp}W (${ftp_source})` : ''}
-${lab_results ? `
-TRAINING ZONES (from lab):
-- Zone 1 (Recovery): < ${lab_results.aet}W (< ${lab_results.aet_hr}bpm)
-- Zone 2 (Aerobic): ${lab_results.aet}-${lab_results.vt1_power}W (${lab_results.aet_hr}-${lab_results.vt1_hr}bpm)
-- Zone 3 (Tempo): ${lab_results.vt1_power}-${lab_results.vt2_power}W (${lab_results.vt1_hr}-${lab_results.vt2_hr}bpm)
-- Zone 4 (Threshold): ${lab_results.vt2_power}-${lab_results.gt}W (${lab_results.vt2_hr}-${lab_results.gt_hr}bpm)
-- Zone 5 (VO2max): > ${lab_results.gt}W (> ${lab_results.gt_hr}bpm)
-` : ''}
-
-TRAINING STATUS:
-- Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI
-- Recent Load: ${context.recent_activities.length} sessions in 7 days
-
-Design workouts using the athlete's specific zones and current training status.`;
-
-  return await callLocalLLM(
-    systemPrompt,
-    `Generate a workout with these requirements: ${JSON.stringify(requestContext.requirements)}. Use the athlete's specific zones and provide power/HR targets.`,
+    "You are a professional cycling coach.",
+    `Generate a workout based on these requirements:\n${JSON.stringify(requestContext.requirements, null, 2)}`,
     MODELS.MIXTRAL
   );
 }
 
 // 🧮 DeepSeek → Math
-async function runMathAnalysis(context, requestContext) {
+async function runMathAnalysis(context: any, requestContext: any) {
   return await callLocalLLM(
     "You are a mathematical and physiological analysis engine. Perform calculations precisely and explain briefly.",
     JSON.stringify(requestContext.math_payload, null, 2),
@@ -272,220 +209,73 @@ async function runMathAnalysis(context, requestContext) {
   );
 }
 
-// 📊 Gemma → Historical Training Model Classification
-async function runHistoricalAnalysis(context, requestContext) {
+// 📊 Gemma → Historical Analysis
+async function runHistoricalAnalysis(context: any, requestContext: any) {
   const prompt = `Analyse this athlete's historical training data to determine their predominant training intensity distribution (e.g. polarized, pyramidal, threshold-based) and what has worked best for improving performance. Respond concisely.
 
 History Data:
 ${JSON.stringify(requestContext.history_payload, null, 2)}`;
-
-  return await callLocalLLM(
-    "You are an endurance training data analyst.",
-    prompt,
-    MODELS.GEMMA
-  );
+  return await callLocalLLM("You are an endurance training data analyst.", prompt, MODELS.GEMMA);
 }
 
-// ==============
-// 🧠 Context & Helpers
-// ==============
-
-// Helper function to calculate FTP from multiple data sources
-function calculateFTP(labResults: any, cpResults: any, powerProfile90Day: any, sportMode: string) {
-  let ftp = null;
-  let ftpSource = 'none';
-  
-  // Priority hierarchy for FTP calculation:
-  // 1. Lab-based thresholds (most accurate)
-  if (labResults?.lt2_power && labResults.lt2_power > 0) {
-    ftp = Math.round(labResults.lt2_power);
-    ftpSource = 'lab_lt2';
-  } else if (labResults?.vt2_power && labResults.vt2_power > 0) {
-    ftp = Math.round(labResults.vt2_power);
-    ftpSource = 'lab_vt2';
-  } 
-  // 2. Critical Power from CP tests
-  else if (cpResults?.cp_watts && cpResults.cp_watts > 0) {
-    ftp = Math.round(cpResults.cp_watts);
-    ftpSource = 'cp_test';
-  } 
-  // 3. 90-day mean max at 1 hour
-  else if (powerProfile90Day && powerProfile90Day.length > 0) {
-    const oneHourRecord = powerProfile90Day.find((p: any) => p.duration_seconds === 3600);
-    if (oneHourRecord?.power_watts && oneHourRecord.power_watts > 0) {
-      ftp = Math.round(oneHourRecord.power_watts);
-      ftpSource = '90day_1hr_mmp';
-    } else {
-      // Fallback: 95% of 20-minute power
-      const twentyMinRecord = powerProfile90Day.find((p: any) => p.duration_seconds === 1200);
-      if (twentyMinRecord?.power_watts && twentyMinRecord.power_watts > 0) {
-        ftp = Math.round(twentyMinRecord.power_watts * 0.95);
-        ftpSource = '90day_20min_estimated';
-      } else {
-        // Last resort: 90% of 5-minute power
-        const fiveMinRecord = powerProfile90Day.find((p: any) => p.duration_seconds === 300);
-        if (fiveMinRecord?.power_watts && fiveMinRecord.power_watts > 0) {
-          ftp = Math.round(fiveMinRecord.power_watts * 0.90);
-          ftpSource = '90day_5min_estimated';
-        }
-      }
-    }
-  }
-  // 4. MAP from lab results as last resort
-  else if (labResults?.map_value && labResults.map_value > 0) {
-    ftp = Math.round(labResults.map_value * 0.85);
-    ftpSource = 'lab_map_estimated';
-  }
-  
-  console.log(`FTP calculated: ${ftp}W from ${ftpSource}`);
-  return { ftp, ftpSource };
-}
-
-async function getTrainingContext(supabase, userId, sportMode) {
-  console.log('Fetching comprehensive training context for:', { userId, sportMode });
-  
-  // Fetch training history (last 90 days)
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  
+// ====================
+// 📊 Training Context
+// ====================
+async function getTrainingContext(supabase: any, userId: string, sportMode: string) {
   const { data: trainingHistory, error: historyError } = await supabase
     .from('training_history')
     .select('*')
     .eq('user_id', userId)
     .eq('sport', sportMode)
-    .gte('date', ninetyDaysAgo.toISOString().split('T')[0])
+    .gte('date', new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
     .order('date', { ascending: false });
-  
-  console.log('Training history:', {
-    recordCount: trainingHistory?.length || 0,
+
+  console.log('Training history query:', {
+    userId,
+    sportMode,
+    recordCount: trainingHistory?.length,
+    latestRecord: trainingHistory?.[0],
     error: historyError
   });
 
-  // Fetch recent activities (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
   const { data: recentActivities } = await supabase
     .from('activities')
-    .select('name, date, duration_seconds, tss, avg_power, avg_heart_rate')
+    .select('id, name, date, duration_seconds, tss, avg_power, avg_heart_rate')
     .eq('user_id', userId)
     .eq('sport_mode', sportMode)
-    .gte('date', sevenDaysAgo.toISOString())
+    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
     .order('date', { ascending: false });
 
-  // Fetch active goals
   const { data: goals } = await supabase
     .from('goals')
-    .select('name, event_date, event_type, priority, target_performance')
+    .select('*')
     .eq('user_id', userId)
     .eq('status', 'active')
     .gte('event_date', new Date().toISOString().split('T')[0])
-    .order('event_date', { ascending: true })
-    .limit(3);
+    .order('event_date', { ascending: true });
 
-  // Fetch weekly targets
   const { data: weeklyTargets } = await supabase
     .from('weekly_targets')
-    .select('weekly_tli_target, weekly_sessions_target')
+    .select('*')
     .eq('user_id', userId)
     .eq('sport_mode', sportMode)
     .maybeSingle();
 
-  // Calculate current week's progress
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  
-  const { data: weekActivities } = await supabase
-    .from('activities')
+  const currentTSB = trainingHistory?.[0]?.tsb ?? 0;
+
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+
+  const { data: weeklyProgress } = await supabase
+    .from('training_history')
     .select('tss')
     .eq('user_id', userId)
-    .eq('sport_mode', sportMode)
-    .gte('date', startOfWeek.toISOString());
-  
-  const currentTLI = weekActivities?.reduce((sum, a) => sum + (a.tss || 0), 0) || 0;
-  const currentSessions = weekActivities?.length || 0;
-
-  // Get current TSB from most recent training history
-  const currentTSB = trainingHistory?.[0]?.tsb || 0;
-
-  // NEW: Fetch lab results
-  const { data: labResults } = await supabase
-    .from('lab_results')
-    .select(`
-      vo2_max, vla_max, aet, aet_hr, gt, gt_hr, map_value,
-      critical_power, w_prime, vt1_hr, vt1_power, vt2_hr, vt2_power,
-      lt1_hr, lt1_power, lt2_hr, lt2_power, max_hr, resting_hr,
-      fat_max, fat_max_intensity, fat_oxidation_rate, carb_oxidation_rate,
-      metabolic_efficiency, body_weight, test_date, test_type
-    `)
-    .eq('user_id', userId)
-    .eq('sport_mode', sportMode)
-    .order('test_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  console.log('Lab results fetched:', labResults ? 'Yes' : 'No');
-
-  // NEW: Fetch CP results
-  const { data: cpResults } = await supabase
-    .from('cp_results')
-    .select('cp_watts, w_prime_joules, test_date, protocol_used, efforts_used')
-    .eq('user_id', userId)
-    .eq('sport_mode', sportMode)
-    .order('test_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  console.log('CP results fetched:', cpResults ? 'Yes' : 'No');
-
-  // NEW: Fetch 90-day mean max power profile
-  // Note: power_profile table uses 'sport' column, not 'sport_mode'
-  const { data: powerProfile90Day } = await supabase
-    .from('power_profile')
-    .select('power_watts, pace_per_km, duration_seconds, date_achieved')
-    .eq('user_id', userId)
     .eq('sport', sportMode)
-    .eq('time_window', '90-day')
-    .order('duration_seconds', { ascending: true });
+    .gte('date', weekStartStr);
 
-  console.log('90-day power profile entries:', powerProfile90Day?.length || 0);
-
-  // NEW: Fetch physiology data
-  const { data: physiologyData } = await supabase
-    .from('physiology_data')
-    .select(`
-      metabolic_flexibility, hrv_rmssd, sleep_hours, sleep_quality,
-      stress_level, fat_max_rate, fat_max_intensity, carb_max_rate,
-      hydration_target, notes, nutrition_strategy
-    `)
-    .eq('user_id', userId)
-    .eq('sport_mode', sportMode)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  console.log('Physiology data fetched:', physiologyData ? 'Yes' : 'No');
-
-  // Calculate FTP from available data sources
-  const { ftp, ftpSource } = calculateFTP(labResults, cpResults, powerProfile90Day, sportMode);
-
-  // Comprehensive logging
-  console.log('Training Context Summary:', {
-    user_id: userId,
-    sport_mode: sportMode,
-    current_tsb: currentTSB,
-    ftp: ftp,
-    ftp_source: ftpSource,
-    data_availability: {
-      training_history: trainingHistory?.length || 0,
-      recent_activities: recentActivities?.length || 0,
-      goals: goals?.length || 0,
-      lab_results: !!labResults,
-      cp_results: !!cpResults,
-      power_profile_90day: powerProfile90Day?.length || 0,
-      physiology_data: !!physiologyData
-    }
-  });
+  const currentTLI = weeklyProgress?.reduce((sum: number, day: any) => sum + (day.tss || 0), 0) || 0;
+  const currentSessions = recentActivities?.filter((a: any) => new Date(a.date) >= weekStart).length || 0;
 
   return {
     current_tsb: currentTSB,
@@ -496,27 +286,13 @@ async function getTrainingContext(supabase, userId, sportMode) {
       target_tli: weeklyTargets?.weekly_tli_target || 400,
       current_sessions: currentSessions,
       target_sessions: weeklyTargets?.weekly_sessions_target || 12
-    },
-    // Enhanced physiological context
-    lab_results: labResults,
-    cp_results: cpResults,
-    power_profile_90day: powerProfile90Day,
-    physiology_data: physiologyData,
-    ftp: ftp,
-    ftp_source: ftpSource,
-    sport_mode: sportMode,
-    data_completeness: {
-      has_lab_results: !!labResults,
-      has_cp_results: !!cpResults,
-      has_power_profile: !!(powerProfile90Day && powerProfile90Day.length > 0),
-      has_physiology_data: !!physiologyData,
-      has_ftp: !!ftp
     }
   };
 }
 
 function getTSBStatus(tsb: number) {
   if (tsb > 15) return "Fresh";
+  if (tsb >= 10 && tsb <= 15) return "Optimal";
   if (tsb > 5) return "Rested";
   if (tsb > -10) return "Neutral";
   if (tsb > -20) return "Tired";
