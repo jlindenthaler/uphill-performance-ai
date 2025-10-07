@@ -135,7 +135,7 @@ export async function findAndRemoveDuplicates(
   }
 
   // Filter to actual duplicates
-  const actualDuplicates = potentialDuplicates.filter(activity =>
+  const actualDuplicates = potentialDuplicates.filter((activity: any) =>
     areActivitiesDuplicates(newActivity, activity, tolerances)
   );
 

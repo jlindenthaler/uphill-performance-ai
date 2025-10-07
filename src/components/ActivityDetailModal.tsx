@@ -21,6 +21,7 @@ import {
 import { EnhancedMapView } from "./EnhancedMapView";
 import { formatActivityDateTime } from "@/utils/dateFormat";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { AISessionFeedback } from "./AISessionFeedback";
 
 interface Activity {
   id?: string;
@@ -305,6 +306,11 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                     </div>
                   )}
                 </div>
+                
+                <AISessionFeedback 
+                  activity={activity}
+                  workout={undefined}
+                />
               </CardContent>
             </Card>
           )}

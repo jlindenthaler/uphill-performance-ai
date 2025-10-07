@@ -21,14 +21,14 @@ const RECENCY = {
   LAB_MAX_AGE_DAYS: Number(Deno.env.get("LAB_MAX_AGE_DAYS") ?? 120),
   CP_MAX_AGE_DAYS: Number(Deno.env.get("CP_MAX_AGE_DAYS") ?? 60)
 };
-function daysBetween(dateStr) {
+function daysBetween(dateStr: string | null | undefined): number {
   if (!dateStr) return Infinity;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return Infinity;
   return Math.floor((Date.now() - d.getTime()) / 86_400_000);
 }
 // 🔒 Authenticated client (propagates Authorization header for RLS)
-function createAuthedClient(authHeader) {
+function createAuthedClient(authHeader: string) {
   return createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
     global: {
       headers: {
@@ -106,6 +106,13 @@ serve(async (req)=>{
           sport_mode: sportMode
         });
         break;
+      case "session_feedback":
+        aiResponse = await getSessionFeedback(trainingContext, {
+          activity_data: context?.activity_data ?? {},
+          workout_data: context?.workout_data ?? null,
+          sport_mode: sportMode
+        });
+        break;
       default:
         throw new Error(`Invalid task type: ${task}`);
     }
@@ -138,7 +145,7 @@ serve(async (req)=>{
 // ====================
 // 🔸 Local LLM Helper
 // ====================
-async function callLocalLLM(systemPrompt, userPrompt, model) {
+async function callLocalLLM(systemPrompt: string, userPrompt: string, model: string): Promise<string> {
   const res = await fetch(LLM_URL, {
     method: "POST",
     headers: {
@@ -172,7 +179,7 @@ async function callLocalLLM(systemPrompt, userPrompt, model) {
 // ====================
 // 🧮 FTP helper (recency-aware)
 // ====================
-function calculateFTP(lab, cp, mmp90) {
+function calculateFTP(lab: any, cp: any, mmp90: any[]): { ftp: number | null; ftpSource: string; recency: any } {
   const labAge = daysBetween(lab?.test_date);
   const cpAge = daysBetween(cp?.test_date);
   const labFresh = !!lab && labAge <= RECENCY.LAB_MAX_AGE_DAYS;
@@ -192,7 +199,7 @@ function calculateFTP(lab, cp, mmp90) {
   }
   // 3) 90-day MMP (naturally recent)
   if (!ftp && mmp90?.length) {
-    const byDur = (s)=>mmp90.find((p)=>p.duration_seconds === s)?.power_watts;
+    const byDur = (s: number) => mmp90.find((p: any) => p.duration_seconds === s)?.power_watts;
     const oneHour = byDur(3600);
     const twenty = byDur(1200);
     const five = byDur(300);
@@ -254,7 +261,7 @@ function calculateFTP(lab, cp, mmp90) {
 // ====================
 // 🧩 Small helper to surface thresholds concisely
 // ====================
-function compactPhysioSummary(ctx) {
+function compactPhysioSummary(ctx: any): string {
   const lab = ctx.lab_results;
   const cp = ctx.cp_results;
   const parts = [];
@@ -270,7 +277,7 @@ function compactPhysioSummary(ctx) {
 // ====================
 // 📊 Training Context (all sources)
 // ====================
-async function getTrainingContext(supabase, userId, sportMode) {
+async function getTrainingContext(supabase: any, userId: string, sportMode: string): Promise<any> {
   const since42 = new Date(Date.now() - 42 * 86400 * 1000).toISOString().slice(0, 10);
   const since7ISO = new Date(Date.now() - 7 * 86400 * 1000).toISOString();
   const todayDate = new Date().toISOString().slice(0, 10);
@@ -312,8 +319,8 @@ async function getTrainingContext(supabase, userId, sportMode) {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekStartStr = weekStart.toISOString().slice(0, 10);
   const { data: weeklyProgressRows } = await supabase.from("training_history").select("tss").eq("user_id", userId).eq("sport", sportMode).gte("date", weekStartStr);
-  const currentTLI = weeklyProgressRows?.reduce((s, r)=>s + (r.tss || 0), 0) || 0;
-  const currentSessions = recentActivities?.filter((a)=>new Date(a.date) >= weekStart).length || 0;
+  const currentTLI = weeklyProgressRows?.reduce((s: number, r: any) => s + (r.tss || 0), 0) || 0;
+  const currentSessions = recentActivities?.filter((a: any) => new Date(a.date) >= weekStart).length || 0;
   const { ftp, ftpSource, recency } = calculateFTP(lab, cp, mmp90 || []);
   console.log("Context summary:", {
     userId,
@@ -353,7 +360,7 @@ async function getTrainingContext(supabase, userId, sportMode) {
 // 🧠 Task Handlers
 // ====================
 // Daily recs — Mixtral, concise, rationale-first, 4-zone
-async function getDailyRecommendations(ctx, _reqCtx) {
+async function getDailyRecommendations(ctx: any, _reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are a world-class endurance coach.
 ${ZONE_MODEL}
@@ -387,7 +394,7 @@ Give **today's recommendation** in Zones 1–4 with a short rationale.
   return text;
 }
 // Chat — Mixtral with full context (numbers + freshness)
-async function getChatResponse(ctx, reqCtx) {
+async function getChatResponse(ctx: any, reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are a world-class endurance coach and sports scientist.
 ${ZONE_MODEL}
@@ -413,7 +420,7 @@ ${reqCtx.message}
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.MIXTRAL);
 }
 // Activity analysis — Mixtral (use FTP/thresholds for zone mapping)
-async function getActivityAnalysis(ctx, reqCtx) {
+async function getActivityAnalysis(ctx: any, reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are an expert cycling performance analyst.
 ${ZONE_MODEL}
@@ -424,7 +431,7 @@ Provide concise insights: zone distribution, intensity hotspots, and any red fla
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.MIXTRAL);
 }
 // Workout generation — Mixtral
-async function generateWorkout(_ctx, reqCtx) {
+async function generateWorkout(_ctx: any, reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are a professional endurance coach and workout designer.
 ${ZONE_MODEL}
@@ -434,7 +441,7 @@ Generate a concise workout using Zones 1–4. Keep it minimal: goal, brief struc
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.MIXTRAL);
 }
 // Math — DeepSeek
-async function runMathAnalysis(_ctx, reqCtx) {
+async function runMathAnalysis(_ctx: any, reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are a mathematical and physiological analysis engine.
 ${ZONE_MODEL}
@@ -444,7 +451,7 @@ Perform calculations precisely and explain briefly.
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.DEEPSEEK);
 }
 // Historical — Gemma (include FTP/thresholds reference)
-async function runHistoricalAnalysis(ctx, reqCtx) {
+async function runHistoricalAnalysis(ctx: any, reqCtx: any): Promise<string> {
   const systemPrompt = `
 You are an endurance training data analyst.
 ${ZONE_MODEL}
@@ -460,6 +467,46 @@ ${physioLine || ""}
 `.trim();
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.GEMMA);
 }
+
+// Session Feedback — Gemma (planned vs actual or unplanned insights)
+async function getSessionFeedback(ctx: any, reqCtx: any): Promise<string> {
+  const { activity_data, workout_data } = reqCtx;
+  const isPlannedWorkout = !!workout_data;
+  
+  const systemPrompt = `You are an expert endurance coach analyzing a completed training session.
+
+ATHLETE CONTEXT:
+${compactPhysioSummary(ctx)}
+
+${isPlannedWorkout ? `
+SESSION TYPE: Planned Workout
+- Planned: ${workout_data.name}
+- Planned Duration: ${workout_data.duration_minutes}min, TLI: ${workout_data.tss}
+- Actual Duration: ${Math.round(activity_data.duration_seconds/60)}min, TLI: ${Math.round(activity_data.tss || 0)}
+- Completion: ${Math.round(((activity_data.tss || 0) / workout_data.tss) * 100)}%
+
+TASK: Compare planned vs actual execution and explain how completing this workout contributes to the athlete's goal: "${ctx.active_goals[0]?.name || 'general fitness'}".
+` : `
+SESSION TYPE: Unplanned Activity
+- Activity: ${activity_data.name}
+- Duration: ${Math.round(activity_data.duration_seconds/60)}min, TLI: ${Math.round(activity_data.tss || 0)}
+- Intensity: ${activity_data.intensity_factor?.toFixed(2) || 'N/A'}
+
+TASK: Highlight what was effective about this session and how it supports the athlete's goal: "${ctx.active_goals[0]?.name || 'general fitness'}".
+`}
+
+REQUIREMENTS:
+- Maximum 100 words
+- 2-3 bullet points
+- Be specific and constructive
+- Reference physiological adaptations when relevant
+- Avoid generic praise
+
+Return only the feedback text.`;
+
+  return await callLocalLLM(systemPrompt, '', MODELS.GEMMA);
+}
+
 // ====================
 // TSB bands + helpers
 // ====================
@@ -470,7 +517,7 @@ const TSB_BANDS = {
   RESTED: 10,
   RACE_READY: 25
 };
-function getTSBStatus(tsb) {
+function getTSBStatus(tsb: number): string {
   if (tsb >= TSB_BANDS.RACE_READY) return "Fresh";
   if (tsb >= TSB_BANDS.RESTED) return "Race Ready";
   if (tsb >= TSB_BANDS.OPTIMAL) return "Rested";
@@ -478,7 +525,7 @@ function getTSBStatus(tsb) {
   if (tsb >= TSB_BANDS.VERY_TIRED) return "At Risk";
   return "Very Tired";
 }
-function getFallbackResponse(isDaily) {
+function getFallbackResponse(isDaily: boolean): string {
   if (isDaily) {
     return "Focus on consistent training and proper recovery. Listen to your body and adjust intensity based on how you feel today.";
   }

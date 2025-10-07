@@ -21,6 +21,7 @@ import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { ActivityPowerComparison } from './ActivityPowerComparison';
 import { ActivityAnalysisChart } from './ActivityAnalysisChart';
 import { EditActivityModal } from './EditActivityModal';
+import { AISessionFeedback } from './AISessionFeedback';
 import { supabase } from '@/integrations/supabase/client';
 
 export function Activities() {
@@ -469,6 +470,11 @@ export function Activities() {
                   </div>
                 </>
               )}
+              
+              <AISessionFeedback 
+                activity={detailedActivity}
+                workout={undefined}
+              />
             </CardContent>
           </Card>
         </div>

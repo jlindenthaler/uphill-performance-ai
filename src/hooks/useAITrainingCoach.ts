@@ -4,13 +4,14 @@ import { useAuth } from './useSupabase';
 import { useSportMode } from '@/contexts/SportModeContext';
 
 export interface AIRequest {
-  task: 'daily_recommendations' | 'chat_assistant' | 'activity_analysis' | 'workout_generation';
+  task: 'daily_recommendations' | 'chat_assistant' | 'activity_analysis' | 'workout_generation' | 'session_feedback';
   context: {
     user_id: string;
     sport_mode: string;
     training_data?: any;
     message?: string;
     activity_data?: any;
+    workout_data?: any;
     requirements?: any;
   };
 }
@@ -92,12 +93,23 @@ export function useAITrainingCoach() {
     });
   }, [callAI]);
 
+  const getSessionFeedback = useCallback(async (activityData: any, workoutData?: any) => {
+    return await callAI({ 
+      task: 'session_feedback',
+      context: { 
+        activity_data: activityData,
+        workout_data: workoutData 
+      }
+    });
+  }, [callAI]);
+
   return {
     loading,
     error,
     getDailyRecommendation,
     getChatResponse,
     getActivityAnalysis,
-    generateWorkout
+    generateWorkout,
+    getSessionFeedback
   };
 }
