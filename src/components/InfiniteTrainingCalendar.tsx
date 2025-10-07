@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2, Copy, Clipboard } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock, Target, Activity, Zap, X, Dumbbell, MoreHorizontal, Trash2, Copy, Clipboard, Sparkles } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDay, addDays, startOfMonth, addMonths, subMonths } from "date-fns";
 import { useGoals } from '@/hooks/useGoals';
 import { useWorkouts } from '@/hooks/useWorkouts';
@@ -19,6 +19,7 @@ import { formatDateInUserTimezone } from '@/utils/dateFormat';
 import { useWorkoutClipboard } from '@/hooks/useWorkoutClipboard';
 import { useWorkoutDragAndDrop } from '@/hooks/useWorkoutDragAndDrop';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AITrainingPlanWizard } from './AITrainingPlanWizard';
 
 interface CalendarEvent {
   id: string;
@@ -57,6 +58,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { clipboardData, copyWorkout, hasClipboardData, clearClipboard } = useWorkoutClipboard();
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
   const isMobile = useIsMobile();
+  const [isAIPlanWizardOpen, setIsAIPlanWizardOpen] = useState(false);
 
   // Initialize weeks around current week
   useEffect(() => {
@@ -580,6 +582,10 @@ export const InfiniteTrainingCalendar: React.FC = () => {
           <Button variant="outline" size="sm" onClick={handleTodayClick}>
             Today
           </Button>
+          <Button onClick={() => setIsAIPlanWizardOpen(true)} className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Create AI Plan
+          </Button>
         </div>
       </div>
 
@@ -752,6 +758,12 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         activity={selectedActivity}
         open={!!selectedActivity}
         onClose={() => setSelectedActivity(null)}
+      />
+
+      {/* AI Training Plan Wizard */}
+      <AITrainingPlanWizard 
+        open={isAIPlanWizardOpen} 
+        onOpenChange={setIsAIPlanWizardOpen}
       />
     </div>
   );
