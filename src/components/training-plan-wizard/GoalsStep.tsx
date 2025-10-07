@@ -241,7 +241,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                 value={formData.primaryGoal.eventName}
                 onChange={(e) => setFormData({
                   ...formData,
-                  primaryGoal: { ...formData.primaryGoal, eventName: e.target.value, goalId: undefined }
+                  primaryGoal: { ...formData.primaryGoal, eventName: e.target.value, ...(editMode ? {} : { goalId: undefined }) }
                 })}
                 placeholder="e.g., National Championship"
               />
@@ -271,7 +271,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                       selected={formData.primaryGoal.eventDate || undefined}
                       onSelect={(date) => setFormData({
                         ...formData,
-                        primaryGoal: { ...formData.primaryGoal, eventDate: date || null, goalId: undefined }
+                        primaryGoal: { ...formData.primaryGoal, eventDate: date || null, ...(editMode ? {} : { goalId: undefined }) }
                       })}
                       initialFocus
                     />
@@ -286,7 +286,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                   value={formData.primaryGoal.location || ''}
                   onChange={(e) => setFormData({
                     ...formData,
-                    primaryGoal: { ...formData.primaryGoal, location: e.target.value, goalId: undefined }
+                    primaryGoal: { ...formData.primaryGoal, location: e.target.value, ...(editMode ? {} : { goalId: undefined }) }
                   })}
                   placeholder="City, Country"
                 />
@@ -300,7 +300,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                   value={formData.primaryGoal.eventType}
                   onValueChange={(value) => setFormData({
                     ...formData,
-                    primaryGoal: { ...formData.primaryGoal, eventType: value, goalId: undefined }
+                    primaryGoal: { ...formData.primaryGoal, eventType: value, ...(editMode ? {} : { goalId: undefined }) }
                   })}
                 >
                   <SelectTrigger>
@@ -320,7 +320,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                   value={formData.primaryGoal.priority || 'A'}
                   onValueChange={(value: any) => setFormData({
                     ...formData,
-                    primaryGoal: { ...formData.primaryGoal, priority: value, goalId: undefined }
+                    primaryGoal: { ...formData.primaryGoal, priority: value, ...(editMode ? {} : { goalId: undefined }) }
                   })}
                 >
                   <SelectTrigger>
@@ -344,7 +344,7 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
                 value={formData.primaryGoal.targetPerformance || ''}
                 onChange={(e) => setFormData({
                   ...formData,
-                  primaryGoal: { ...formData.primaryGoal, targetPerformance: e.target.value, goalId: undefined }
+                  primaryGoal: { ...formData.primaryGoal, targetPerformance: e.target.value, ...(editMode ? {} : { goalId: undefined }) }
                 })}
                 placeholder="e.g., Podium Sub 32 mins"
               />
