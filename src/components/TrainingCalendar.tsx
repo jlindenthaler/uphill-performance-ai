@@ -246,12 +246,50 @@ export const TrainingCalendar: React.FC = () => {
 
       const endOfWeekData = weekData[weekData.length - 1];
       
+      let ltl = 0;
+      let stl = 0;
+      let fi = 0;
+      
+      if (endOfWeekData) {
+        // We have actual data for this week
+        ltl = endOfWeekData.ctl || 0;
+        stl = endOfWeekData.atl || 0;
+        fi = endOfWeekData.tsb || 0;
+      } else if (trainingHistory.length > 0) {
+        // Project PMC values for future weeks with decay
+        const lastHistoryData = trainingHistory[trainingHistory.length - 1];
+        const lastDate = new Date(lastHistoryData.date);
+        const daysSinceLastData = Math.floor((weekEnd.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceLastData > 0) {
+          // Apply decay for each day without training
+          let projectedCTL = lastHistoryData.ctl || 0;
+          let projectedATL = lastHistoryData.atl || 0;
+          
+          for (let i = 0; i < daysSinceLastData; i++) {
+            // CTL decays with 42-day time constant
+            projectedCTL = projectedCTL * (1 - 1/42);
+            // ATL decays with 7-day time constant
+            projectedATL = projectedATL * (1 - 1/7);
+          }
+          
+          ltl = projectedCTL;
+          stl = projectedATL;
+          fi = ltl - stl;
+        } else {
+          // Use last known values if weekEnd is before last data
+          ltl = lastHistoryData.ctl || 0;
+          stl = lastHistoryData.atl || 0;
+          fi = lastHistoryData.tsb || 0;
+        }
+      }
+      
       return {
         weekStart,
         weekEnd,
-        ltl: endOfWeekData?.ctl || 0,
-        stl: endOfWeekData?.atl || 0,
-        fi: endOfWeekData?.tsb || 0,
+        ltl,
+        stl,
+        fi,
         weeklyTSS: weekData.reduce((sum, day) => sum + (day.tss || 0), 0)
       };
     });

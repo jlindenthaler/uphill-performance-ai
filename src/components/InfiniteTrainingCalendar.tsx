@@ -348,10 +348,45 @@ export const InfiniteTrainingCalendar: React.FC = () => {
 
     // Get PMC values from training history for this week
     const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
-    const weekMetrics = trainingHistory.find(h => h.date === weekEndStr) || trainingHistory[trainingHistory.length - 1];
-    const ctl = weekMetrics?.ctl || 0;
-    const atl = weekMetrics?.atl || 0;
-    const tsb = weekMetrics?.tsb || 0;
+    const weekMetrics = trainingHistory.find(h => h.date === weekEndStr);
+    
+    let ctl = 0;
+    let atl = 0;
+    let tsb = 0;
+    
+    if (weekMetrics) {
+      // We have actual data for this week
+      ctl = weekMetrics.ctl || 0;
+      atl = weekMetrics.atl || 0;
+      tsb = weekMetrics.tsb || 0;
+    } else if (trainingHistory.length > 0) {
+      // Project PMC values for future weeks with decay
+      const lastHistoryData = trainingHistory[trainingHistory.length - 1];
+      const lastDate = new Date(lastHistoryData.date);
+      const daysSinceLastData = Math.floor((weekEnd.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceLastData > 0) {
+        // Apply decay for each day without training
+        let projectedCTL = lastHistoryData.ctl || 0;
+        let projectedATL = lastHistoryData.atl || 0;
+        
+        for (let i = 0; i < daysSinceLastData; i++) {
+          // CTL decays with 42-day time constant
+          projectedCTL = projectedCTL * (1 - 1/42);
+          // ATL decays with 7-day time constant
+          projectedATL = projectedATL * (1 - 1/7);
+        }
+        
+        ctl = projectedCTL;
+        atl = projectedATL;
+        tsb = ctl - atl;
+      } else {
+        // Use last known values if weekEnd is before last data
+        ctl = lastHistoryData.ctl || 0;
+        atl = lastHistoryData.atl || 0;
+        tsb = lastHistoryData.tsb || 0;
+      }
+    }
 
     return {
       duration: `${Math.floor(weekStats.duration / 3600)}:${Math.floor((weekStats.duration % 3600) / 60).toString().padStart(2, '0')}`,
