@@ -168,7 +168,7 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
   try {
     console.log('Populating training history for user:', userId);
 
-    // Fetch all activities for the user
+    // Fetch all activities for the user (only activities with actual training data)
     const { data: activities, error: activitiesError } = await supabase
       .from('activities')
       .select('date, tss, duration_seconds, sport_mode')
@@ -183,12 +183,15 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
     }
 
     // Aggregate activities by date and normalized sport (sum TSS for multiple activities on same day)
+    // IMPORTANT: Only process sports that have actual activities with data
     const aggregatedMap = new Map<string, TrainingData>();
+    const activeSports = new Set<string>();
     
     activities.forEach(activity => {
       const dateStr = new Date(activity.date).toISOString().split('T')[0];
       // Normalize sport mode (walking -> running, etc.)
       const normalizedSport = normalizeSportMode(activity.sport_mode);
+      activeSports.add(normalizedSport);
       const key = `${dateStr}-${normalizedSport}`;
       
       if (aggregatedMap.has(key)) {
@@ -206,6 +209,7 @@ export async function populateTrainingHistory(userId: string): Promise<void> {
     });
 
     const trainingData: TrainingData[] = Array.from(aggregatedMap.values());
+    console.log(`Processing ${activeSports.size} active sports: ${Array.from(activeSports).join(', ')}`);
     console.log('Aggregated training data sample:', trainingData.slice(0, 3));
 
     // Calculate PMC metrics with extended timeline to today for proper decay
@@ -267,12 +271,15 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
     if (!activities || activities.length === 0) return;
 
     // Aggregate activities by date and normalized sport
+    // IMPORTANT: Only process sports that have actual activities
     const aggregatedMap = new Map<string, TrainingData>();
+    const activeSports = new Set<string>();
     
     activities.forEach(activity => {
       const dateStr = new Date(activity.date).toISOString().split('T')[0];
       // Normalize sport mode (walking -> running, etc.)
       const normalizedSport = normalizeSportMode(activity.sport_mode);
+      activeSports.add(normalizedSport);
       const key = `${dateStr}-${normalizedSport}`;
       
       if (aggregatedMap.has(key)) {
@@ -290,6 +297,7 @@ export async function updateTrainingHistoryForDate(userId: string, date: string)
     });
 
     const trainingData: TrainingData[] = Array.from(aggregatedMap.values());
+    console.log(`Updating history from ${date} for sports: ${Array.from(activeSports).join(', ')}`);
 
     // Calculate PMC metrics from the beginning with extended timeline
     const pmcData = calculatePMCMetrics(trainingData, new Date().toISOString().split('T')[0]);
