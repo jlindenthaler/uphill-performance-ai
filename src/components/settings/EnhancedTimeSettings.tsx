@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Clock } from "lucide-react";
 import { useEnhancedTimeAvailability } from "@/hooks/useEnhancedTimeAvailability";
+import { useToast } from "@/hooks/use-toast";
 
 const timeSlots = [
   { value: 'early-morning', label: 'Early Morning (5-7 AM)' },
@@ -29,6 +30,7 @@ const days = [
 
 export function EnhancedTimeSettings() {
   const { weeklyAvailability, loading, saveWeeklyAvailability, updateDayAvailability } = useEnhancedTimeAvailability();
+  const { toast } = useToast();
 
   const handleTrainingHoursChange = (day: any, hours: string) => {
     updateDayAvailability(day, { training_hours: parseFloat(hours) });
@@ -49,8 +51,17 @@ export function EnhancedTimeSettings() {
   const handleSave = async () => {
     try {
       await saveWeeklyAvailability(weeklyAvailability);
+      toast({
+        title: "Settings saved",
+        description: "Your weekly time availability has been updated.",
+      });
     } catch (error) {
       console.error('Error saving weekly availability:', error);
+      toast({
+        title: "Error saving settings",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
