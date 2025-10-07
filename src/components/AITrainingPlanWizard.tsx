@@ -22,19 +22,21 @@ export interface TrainingPlanFormData {
     eventName: string;
     eventDate: Date | null;
     eventType: string;
-    targetObjective: 'completion' | 'time' | 'performance';
-    targetTime?: string;
+    location?: string;
+    priority?: 'A' | 'B' | 'C';
     targetPerformance?: string;
     courseFile?: File;
     cda?: number;
     weight?: number;
     drivetrainLoss?: number;
+    goalId?: string; // Reference to existing goal
   };
   secondaryGoals: Array<{
     id: string;
     eventName: string;
     eventDate: Date | null;
     priority: 'B' | 'C';
+    goalId?: string; // Reference to existing goal
   }>;
   constraints: Array<{
     id: string;
@@ -98,8 +100,8 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
     primaryGoal: {
       eventName: '',
       eventDate: null,
-      eventType: 'road-race',
-      targetObjective: 'completion',
+      eventType: 'road race',
+      priority: 'A',
     },
     secondaryGoals: [],
     constraints: [],
@@ -156,8 +158,8 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
         primaryGoal: {
           eventName: '',
           eventDate: null,
-          eventType: 'road-race',
-          targetObjective: 'completion',
+          eventType: 'road race',
+          priority: 'A',
         },
         secondaryGoals: [],
         constraints: [],

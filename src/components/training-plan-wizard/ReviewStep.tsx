@@ -48,10 +48,12 @@ export function ReviewStep({ formData }: ReviewStepProps) {
             <span className="text-muted-foreground">Type:</span>
             <Badge variant="outline">{formData.primaryGoal.eventType}</Badge>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Objective:</span>
-            <Badge variant="secondary">{formData.primaryGoal.targetObjective}</Badge>
-          </div>
+          {formData.primaryGoal.targetPerformance && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Target:</span>
+              <span className="font-medium">{formData.primaryGoal.targetPerformance}</span>
+            </div>
+          )}
         </div>
       </Card>
 

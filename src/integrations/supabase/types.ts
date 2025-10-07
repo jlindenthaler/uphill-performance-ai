@@ -721,6 +721,45 @@ export type Database = {
           },
         ]
       }
+      plan_goals: {
+        Row: {
+          created_at: string | null
+          goal_id: string
+          id: string
+          is_primary: boolean | null
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          goal_id: string
+          id?: string
+          is_primary?: boolean | null
+          plan_id: string
+        }
+        Update: {
+          created_at?: string | null
+          goal_id?: string
+          id?: string
+          is_primary?: boolean | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_goals_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_goals_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_sessions: {
         Row: {
           block_id: string
@@ -1111,6 +1150,7 @@ export type Database = {
           id: string
           periodization_style: string | null
           plan_name: string
+          primary_goal_id: string | null
           sessions_per_week: number | null
           sport_mode: string
           start_date: string
@@ -1129,6 +1169,7 @@ export type Database = {
           id?: string
           periodization_style?: string | null
           plan_name: string
+          primary_goal_id?: string | null
           sessions_per_week?: number | null
           sport_mode?: string
           start_date: string
@@ -1147,6 +1188,7 @@ export type Database = {
           id?: string
           periodization_style?: string | null
           plan_name?: string
+          primary_goal_id?: string | null
           sessions_per_week?: number | null
           sport_mode?: string
           start_date?: string
@@ -1156,7 +1198,15 @@ export type Database = {
           user_id?: string
           weekly_tli_target?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "training_plans_primary_goal_id_fkey"
+            columns: ["primary_goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_targets: {
         Row: {
