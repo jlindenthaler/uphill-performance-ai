@@ -135,51 +135,31 @@ async function callLocalLLM(systemPrompt: string, userPrompt: string, model: str
 async function getDailyRecommendations(context, requestContext) {
   const { ftp, ftp_source, lab_results, cp_results, physiology_data, sport_mode } = context;
   
-  const systemPrompt = `You are an elite endurance sports coach with deep expertise in exercise physiology and training science.
+  const systemPrompt = `You are an expert AI training coach. Based on the athlete's current data below, recommend today's training session.
 
-ATHLETE PROFILE:
+ATHLETE DATA:
 - Sport: ${sport_mode}
-- Current TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
-${ftp ? `- FTP: ${ftp}W (source: ${ftp_source})` : ''}
-
-${lab_results ? `
-PHYSIOLOGICAL DATA (Lab Test: ${lab_results.test_date ? new Date(lab_results.test_date).toLocaleDateString() : 'N/A'}):
-- VO2max: ${lab_results.vo2_max || 'N/A'} ml/kg/min
-- VLamax: ${lab_results.vla_max || 'N/A'} mmol/L/s
-- Aerobic Threshold (AeT): ${lab_results.aet || 'N/A'}W @ ${lab_results.aet_hr || 'N/A'} bpm
-- Anaerobic Threshold (AnT/GT): ${lab_results.gt || 'N/A'}W @ ${lab_results.gt_hr || 'N/A'} bpm
-- VT1: ${lab_results.vt1_power || 'N/A'}W @ ${lab_results.vt1_hr || 'N/A'} bpm
-- VT2: ${lab_results.vt2_power || 'N/A'}W @ ${lab_results.vt2_hr || 'N/A'} bpm
-- Max HR: ${lab_results.max_hr || 'N/A'} bpm
-- Resting HR: ${lab_results.resting_hr || 'N/A'} bpm
-- Fat Oxidation: ${lab_results.fat_max || 'N/A'} g/min at ${lab_results.fat_max_intensity || 'N/A'}% intensity
-` : ''}
-
-${cp_results ? `
-CRITICAL POWER DATA (Test: ${cp_results.test_date ? new Date(cp_results.test_date).toLocaleDateString() : 'N/A'}):
-- CP: ${cp_results.cp_watts}W
-- W': ${Math.round(cp_results.w_prime_joules / 1000)}kJ
-- Protocol: ${cp_results.protocol_used}
-` : ''}
-
-${physiology_data ? `
-RECENT PHYSIOLOGY & RECOVERY:
-- HRV (RMSSD): ${physiology_data.hrv_rmssd || 'N/A'}ms
-- Sleep: ${physiology_data.sleep_hours || 'N/A'}hrs (Quality: ${physiology_data.sleep_quality || 'N/A'}/10)
-- Stress Level: ${physiology_data.stress_level || 'N/A'}/10
-- Metabolic Flexibility: ${physiology_data.metabolic_flexibility || 'N/A'}
-` : ''}
-
-TRAINING CONTEXT:
+- TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
+${ftp ? `- FTP: ${ftp}W (${ftp_source})` : ''}
+${lab_results ? `- Thresholds: AeT ${lab_results.aet || 'N/A'}W, AnT ${lab_results.gt || 'N/A'}W` : ''}
+${cp_results ? `- CP: ${cp_results.cp_watts}W, W': ${Math.round(cp_results.w_prime_joules / 1000)}kJ` : ''}
+${physiology_data ? `- Recovery: HRV ${physiology_data.hrv_rmssd || 'N/A'}ms, Sleep ${physiology_data.sleep_hours || 'N/A'}hrs (${physiology_data.sleep_quality || 'N/A'}/10)` : ''}
 - Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI
 - Sessions This Week: ${context.weekly_progress.current_sessions}/${context.weekly_progress.target_sessions}
 - Recent Activities: ${context.recent_activities.length} in last 7 days
-- Active Goals: ${context.active_goals.length} upcoming
-${context.active_goals.length > 0 ? `- Next Priority Goal: ${context.active_goals[0]?.name} on ${context.active_goals[0]?.event_date}` : ''}
+${context.active_goals.length > 0 ? `- Next Goal: ${context.active_goals[0]?.name} on ${context.active_goals[0]?.event_date}` : ''}
 
-Provide specific, actionable training recommendations based on this athlete's physiological profile, current training status, and recovery markers.`;
+REQUIREMENTS:
+- Reply in **no more than 150 words**
+- Use **bullet points** or **short paragraphs**
+- Include only: **session goal**, **key session details** (warmup/main/cooldown), and **1-2 monitoring points**
+- Do NOT include long physiological essays, detailed justifications, or future recommendations
+- Be **direct, structured, and actionable**
+- Do NOT ask questions back to the user
 
-  const userPrompt = `Based on the athlete's comprehensive data above, provide today's training recommendation. Be specific and reference their thresholds, FTP, and current training load.`;
+Return only the recommendation text.`;
+
+  const userPrompt = `Provide today's training recommendation for this athlete.`;
 
   return await callLocalLLM(systemPrompt, userPrompt, MODELS.GEMMA);
 }
