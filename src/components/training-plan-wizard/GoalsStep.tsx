@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CalendarIcon, Plus, X, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface GoalsStepProps {
   formData: TrainingPlanFormData;
@@ -214,12 +215,87 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
           <div className="border rounded-lg p-4 space-y-3">
             <Label>Upload Course File (Optional)</Label>
             <p className="text-sm text-muted-foreground">
-              Upload a .gpx, .fit, or .tcx file for course analysis
+              Upload a .gpx, .fit, or .tcx file for course analysis (coming soon)
             </p>
-            <Button variant="outline" className="w-full">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Course File
-            </Button>
+            <Input
+              type="file"
+              accept=".gpx,.fit,.tcx"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  toast.info('Course file analysis coming soon! File stored for future use.');
+                  setFormData({
+                    ...formData,
+                    primaryGoal: {
+                      ...formData.primaryGoal,
+                      courseFile: file,
+                    },
+                  });
+                }
+              }}
+            />
+            
+            {formData.primaryGoal.courseFile && (
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cda" className="text-xs">CdA (m²)</Label>
+                  <Input
+                    id="cda"
+                    type="number"
+                    step="0.001"
+                    placeholder="0.280"
+                    value={formData.primaryGoal.cda || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        primaryGoal: {
+                          ...formData.primaryGoal,
+                          cda: parseFloat(e.target.value) || undefined,
+                        },
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight" className="text-xs">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    step="0.1"
+                    placeholder="70"
+                    value={formData.primaryGoal.weight || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        primaryGoal: {
+                          ...formData.primaryGoal,
+                          weight: parseFloat(e.target.value) || undefined,
+                        },
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dtLoss" className="text-xs">Drivetrain Loss (%)</Label>
+                  <Input
+                    id="dtLoss"
+                    type="number"
+                    step="0.1"
+                    placeholder="2.5"
+                    value={formData.primaryGoal.drivetrainLoss || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        primaryGoal: {
+                          ...formData.primaryGoal,
+                          drivetrainLoss: parseFloat(e.target.value) || undefined,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

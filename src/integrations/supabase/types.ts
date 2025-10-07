@@ -677,6 +677,107 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_blocks: {
+        Row: {
+          block_intent: string | null
+          block_name: string
+          block_order: number | null
+          created_at: string | null
+          end_date: string
+          id: string
+          plan_id: string
+          start_date: string
+          week_count: number | null
+        }
+        Insert: {
+          block_intent?: string | null
+          block_name: string
+          block_order?: number | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          plan_id: string
+          start_date: string
+          week_count?: number | null
+        }
+        Update: {
+          block_intent?: string | null
+          block_name?: string
+          block_order?: number | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          plan_id?: string
+          start_date?: string
+          week_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_blocks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_sessions: {
+        Row: {
+          block_id: string
+          completed: boolean | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          scheduled_date: string
+          session_intent: string | null
+          session_name: string
+          session_structure: Json | null
+          tss_target: number | null
+          workout_id: string | null
+        }
+        Insert: {
+          block_id: string
+          completed?: boolean | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          scheduled_date: string
+          session_intent?: string | null
+          session_name: string
+          session_structure?: Json | null
+          tss_target?: number | null
+          workout_id?: string | null
+        }
+        Update: {
+          block_id?: string
+          completed?: boolean | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          scheduled_date?: string
+          session_intent?: string | null
+          session_name?: string
+          session_structure?: Json | null
+          tss_target?: number | null
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_sessions_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "plan_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sessions_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       power_profile: {
         Row: {
           activity_id: string | null
@@ -997,6 +1098,63 @@ export type Database = {
           tss?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      training_plans: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          goal_event_date: string | null
+          goal_event_name: string | null
+          goal_event_type: string | null
+          id: string
+          periodization_style: string | null
+          plan_name: string
+          sessions_per_week: number | null
+          sport_mode: string
+          start_date: string
+          status: string | null
+          total_weeks: number | null
+          updated_at: string | null
+          user_id: string
+          weekly_tli_target: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          goal_event_date?: string | null
+          goal_event_name?: string | null
+          goal_event_type?: string | null
+          id?: string
+          periodization_style?: string | null
+          plan_name: string
+          sessions_per_week?: number | null
+          sport_mode?: string
+          start_date: string
+          status?: string | null
+          total_weeks?: number | null
+          updated_at?: string | null
+          user_id: string
+          weekly_tli_target?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          goal_event_date?: string | null
+          goal_event_name?: string | null
+          goal_event_type?: string | null
+          id?: string
+          periodization_style?: string | null
+          plan_name?: string
+          sessions_per_week?: number | null
+          sport_mode?: string
+          start_date?: string
+          status?: string | null
+          total_weeks?: number | null
+          updated_at?: string | null
+          user_id?: string
+          weekly_tli_target?: number | null
         }
         Relationships: []
       }

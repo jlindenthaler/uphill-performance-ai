@@ -3,6 +3,9 @@ project_id = "srwuprrcbfuzvkehvgyt"
 [functions.ai-training-coach]
 verify_jwt = true
 
+[functions.generate-ai-plan]
+verify_jwt = true
+
 [functions.get-mapbox-token]
 verify_jwt = true
 

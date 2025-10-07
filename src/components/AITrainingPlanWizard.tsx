@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { GoalsStep } from './training-plan-wizard/GoalsStep';
 import { ScheduleStep } from './training-plan-wizard/ScheduleStep';
 import { BaselineStep } from './training-plan-wizard/BaselineStep';
 import { StructureStep } from './training-plan-wizard/StructureStep';
 import { AdaptationStep } from './training-plan-wizard/AdaptationStep';
 import { ReviewStep } from './training-plan-wizard/ReviewStep';
+import { useTrainingPlan } from '@/hooks/useTrainingPlan';
 
 interface AITrainingPlanWizardProps {
   open: boolean;
@@ -92,6 +93,7 @@ const STEPS = [
 
 export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const { generatePlan, loading } = useTrainingPlan();
   const [formData, setFormData] = useState<TrainingPlanFormData>({
     primaryGoal: {
       eventName: '',
@@ -141,6 +143,51 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleGenerate = async () => {
+    const plan = await generatePlan(formData);
+    if (plan) {
+      setCurrentStep(1);
+      onOpenChange(false);
+      // Reset form
+      setFormData({
+        primaryGoal: {
+          eventName: '',
+          eventDate: null,
+          eventType: 'road-race',
+          targetObjective: 'completion',
+        },
+        secondaryGoals: [],
+        constraints: [],
+        weeklyAvailability: {
+          monday: { available: true, timeSlots: [] },
+          tuesday: { available: true, timeSlots: [] },
+          wednesday: { available: true, timeSlots: [] },
+          thursday: { available: true, timeSlots: [] },
+          friday: { available: true, timeSlots: [] },
+          saturday: { available: true, timeSlots: [] },
+          sunday: { available: true, timeSlots: [] },
+        },
+        longSessionDay: 'saturday',
+        useCurrentBaseline: true,
+        periodizationStyle: 'auto',
+        blockLength: 3,
+        sessionsPerWeek: 5,
+        startWeek: null,
+        blocks: [],
+        deviationTolerance: {
+          tli: 10,
+          duration: 15,
+        },
+        feedbackSources: {
+          hrv: true,
+          zoneDistribution: true,
+          rpe: true,
+        },
+        adjustmentBehavior: 'active',
+      });
     }
   };
 
@@ -202,8 +249,15 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={handleClose}>
-              Generate Plan
+            <Button onClick={handleGenerate} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Plan...
+                </>
+              ) : (
+                'Generate Plan'
+              )}
             </Button>
           )}
         </div>
