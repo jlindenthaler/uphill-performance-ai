@@ -95,16 +95,33 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
 
           {labLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : thresholdData ? (
+          ) : (latestLab || thresholdData) ? (
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Glycolytic Threshold:</span>
-                <span className="font-medium">{Math.round(thresholdData.value)}W ({thresholdData.source})</span>
-              </div>
               {latestLab?.vt1_power && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">VT1 (AeT):</span>
-                  <span className="font-medium">{Math.round(latestLab.vt1_power)}W</span>
+                  <span className="text-muted-foreground">Aerobic Threshold (AeT):</span>
+                  <span className="font-medium">
+                    {Math.round(latestLab.vt1_power)}W
+                    {(latestLab.vt1_hr || latestLab.lt1_hr) && ` @ ${latestLab.vt1_hr || latestLab.lt1_hr} bpm`}
+                  </span>
+                </div>
+              )}
+              {thresholdData && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Glycolytic Threshold (GT):</span>
+                  <span className="font-medium">
+                    {Math.round(thresholdData.value)}W ({thresholdData.source})
+                    {(latestLab?.vt2_hr || latestLab?.lt2_hr) && ` @ ${latestLab?.vt2_hr || latestLab?.lt2_hr} bpm`}
+                  </span>
+                </div>
+              )}
+              {latestLab?.map_value && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">MAP (Maximal Aerobic Power):</span>
+                  <span className="font-medium">
+                    {Math.round(latestLab.map_value)}W
+                    {latestLab.max_hr && ` @ ${latestLab.max_hr} bpm`}
+                  </span>
                 </div>
               )}
               {latestLab?.vo2_max && (
