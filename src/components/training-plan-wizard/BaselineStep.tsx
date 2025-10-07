@@ -7,6 +7,10 @@ import { useTrainingHistory } from '@/hooks/useTrainingHistory';
 import { Activity, TrendingUp, Heart, Zap, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { getUserThresholdPower } from '@/utils/thresholdHierarchy';
+import { useAuth } from '@/hooks/useSupabase';
+import { useSportMode } from '@/contexts/SportModeContext';
+import { useState, useEffect } from 'react';
 
 interface BaselineStepProps {
   formData: TrainingPlanFormData;
@@ -17,8 +21,27 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
   const { labResults, loading: labLoading } = useLabResults();
   const { trainingHistory } = useTrainingHistory(90);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { sportMode } = useSportMode();
+  const [thresholdData, setThresholdData] = useState<{ value: number; source: string } | null>(null);
 
   const latestLab = labResults?.[0];
+
+  // Fetch threshold data using hierarchy
+  useEffect(() => {
+    const fetchThreshold = async () => {
+      if (!user) return;
+      
+      try {
+        const result = await getUserThresholdPower(user.id, new Date(), sportMode);
+        setThresholdData(result);
+      } catch (error) {
+        console.error('Error fetching threshold:', error);
+      }
+    };
+    
+    fetchThreshold();
+  }, [user, sportMode, labResults]);
   
   const recentAvgTSS = trainingHistory.length > 0
     ? Math.round(
@@ -72,27 +95,19 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
 
           {labLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : latestLab ? (
+          ) : thresholdData ? (
             <div className="space-y-2 text-sm">
-              {latestLab.vt1_power && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Glycolytic Threshold:</span>
+                <span className="font-medium">{Math.round(thresholdData.value)}W ({thresholdData.source})</span>
+              </div>
+              {latestLab?.vt1_power && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">VT1 (AeT):</span>
                   <span className="font-medium">{Math.round(latestLab.vt1_power)}W</span>
                 </div>
               )}
-              {latestLab.vt2_power && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">VT2 (GT):</span>
-                  <span className="font-medium">{Math.round(latestLab.vt2_power)}W</span>
-                </div>
-              )}
-              {latestLab.critical_power && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">CP:</span>
-                  <span className="font-medium">{Math.round(latestLab.critical_power)}W</span>
-                </div>
-              )}
-              {latestLab.vo2_max && (
+              {latestLab?.vo2_max && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">VO₂max:</span>
                   <span className="font-medium">{latestLab.vo2_max} ml/kg/min</span>
@@ -157,6 +172,30 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Resting HR:</span>
                   <span className="font-medium">{latestLab.resting_hr} bpm</span>
+                </div>
+              )}
+              {latestLab?.vt1_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">VT1 HR:</span>
+                  <span className="font-medium">{latestLab.vt1_hr} bpm</span>
+                </div>
+              )}
+              {latestLab?.vt2_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">VT2 HR:</span>
+                  <span className="font-medium">{latestLab.vt2_hr} bpm</span>
+                </div>
+              )}
+              {latestLab?.lt1_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">LT1 HR:</span>
+                  <span className="font-medium">{latestLab.lt1_hr} bpm</span>
+                </div>
+              )}
+              {latestLab?.lt2_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">LT2 HR:</span>
+                  <span className="font-medium">{latestLab.lt2_hr} bpm</span>
                 </div>
               )}
             </div>
