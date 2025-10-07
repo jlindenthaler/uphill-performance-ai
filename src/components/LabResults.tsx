@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
 import CPChart from './CPChart';
+import { getUserThresholdPower } from '@/utils/thresholdHierarchy';
+import { useAuth } from '@/hooks/useSupabase';
 
 interface LabResultFormData {
   testDate: Date;
@@ -80,10 +82,12 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const [editingResult, setEditingResult] = useState<LabResults | null>(null);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const [activeTab, setActiveTab] = useState<'lab-tests' | 'cp-tests'>('lab-tests');
+  const [thresholdData, setThresholdData] = useState<{ value: number; source: string } | null>(null);
   const { sportMode } = useSportMode();
   const { labResults, allLabResults, saveLabResults } = useLabResults();
   const { toast } = useToast();
   const { timezone } = useUserTimezone();
+  const { user } = useAuth();
 
   // Open dialog when prop changes
   React.useEffect(() => {
@@ -91,6 +95,22 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
       setIsAddDialogOpen(true);
     }
   }, [openAddDialog]);
+
+  // Fetch threshold data using hierarchy
+  React.useEffect(() => {
+    const fetchThreshold = async () => {
+      if (!user) return;
+      
+      try {
+        const result = await getUserThresholdPower(user.id, new Date(), sportMode);
+        setThresholdData(result);
+      } catch (error) {
+        console.error('Error fetching threshold:', error);
+      }
+    };
+    
+    fetchThreshold();
+  }, [user, sportMode, labResults]);
 
   const handleInputChange = (field: keyof LabResultFormData, value: string | Date) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -643,13 +663,13 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
               <CardContent className="p-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">LT2 Power</p>
+                    <p className="text-sm text-muted-foreground">Glycolytic Threshold</p>
                     <TrendingUp className="w-4 h-4 text-green-500" />
                   </div>
                   <p className="text-2xl font-bold">
-                    {labResults?.lt2_power ? (
+                    {thresholdData ? (
                       <>
-                        {labResults.lt2_power} <span className="text-sm font-normal text-muted-foreground">W</span>
+                        {Math.round(thresholdData.value)} <span className="text-sm font-normal text-muted-foreground">W ({thresholdData.source})</span>
                       </>
                     ) : (
                       <span className="text-muted-foreground">No data</span>
