@@ -141,35 +141,30 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
 
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Activity className="h-5 w-5 text-primary" />
-            <h4 className="font-semibold">Training Model</h4>
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            Current model will be analyzed from your recent training distribution.
-          </p>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
             <Heart className="h-5 w-5 text-primary" />
-            <h4 className="font-semibold">Additional Data</h4>
+            <h4 className="font-semibold">Heart Rate Data</h4>
           </div>
 
-          <div className="space-y-2 text-sm">
-            {latestLab?.max_hr && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Max HR:</span>
-                <span className="font-medium">{latestLab.max_hr} bpm</span>
-              </div>
-            )}
-            {latestLab?.resting_hr && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Resting HR:</span>
-                <span className="font-medium">{latestLab.resting_hr} bpm</span>
-              </div>
-            )}
-          </div>
+          {latestLab?.max_hr || latestLab?.resting_hr ? (
+            <div className="space-y-2 text-sm">
+              {latestLab?.max_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Max HR:</span>
+                  <span className="font-medium">{latestLab.max_hr} bpm</span>
+                </div>
+              )}
+              {latestLab?.resting_hr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Resting HR:</span>
+                  <span className="font-medium">{latestLab.resting_hr} bpm</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No heart rate data available. Add lab results for HR-based training zones.
+            </p>
+          )}
         </Card>
       </div>
 

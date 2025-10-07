@@ -59,7 +59,7 @@ export function StructureStep({ formData, setFormData }: StructureStepProps) {
             className="mt-2"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            This is the training load duration (recovery week is added automatically)
+            Number of progressive loading weeks (excludes recovery week)
           </p>
         </div>
 
@@ -75,12 +75,12 @@ export function StructureStep({ formData, setFormData }: StructureStepProps) {
               })
             }
             placeholder="Auto"
-            min={3}
+            min={0}
             max={14}
             className="mt-2"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Leave blank for AI to determine optimal session count
+            Leave as "Auto" for AI to determine optimal session count, or set a specific number
           </p>
         </div>
 

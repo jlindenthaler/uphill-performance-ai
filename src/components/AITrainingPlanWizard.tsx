@@ -118,12 +118,12 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
     useCurrentBaseline: true,
     periodizationStyle: 'auto',
     blockLength: 3,
-    sessionsPerWeek: 5,
+    sessionsPerWeek: 0,
     startWeek: null,
     blocks: [],
     deviationTolerance: {
-      tli: 10,
-      duration: 15,
+      tli: 20,
+      duration: 20,
     },
     feedbackSources: {
       hrv: true,
@@ -176,12 +176,12 @@ export function AITrainingPlanWizard({ open, onOpenChange }: AITrainingPlanWizar
         useCurrentBaseline: true,
         periodizationStyle: 'auto',
         blockLength: 3,
-        sessionsPerWeek: 5,
+        sessionsPerWeek: 0,
         startWeek: null,
         blocks: [],
         deviationTolerance: {
-          tli: 10,
-          duration: 15,
+          tli: 20,
+          duration: 20,
         },
         feedbackSources: {
           hrv: true,
