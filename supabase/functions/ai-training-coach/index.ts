@@ -206,13 +206,21 @@ ${JSON.stringify(requestContext.history_payload, null, 2)}`;
 // 🧠 Context & Helpers
 // ==============
 async function getTrainingContext(supabase, userId, sportMode) {
-  const { data: trainingHistory } = await supabase
+  const { data: trainingHistory, error: historyError } = await supabase
     .from('training_history')
     .select('*')
     .eq('user_id', userId)
     .eq('sport', sportMode)
     .gte('date', new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
     .order('date', { ascending: false });
+
+  console.log('Training history query:', { 
+    userId, 
+    sportMode, 
+    recordCount: trainingHistory?.length, 
+    latestRecord: trainingHistory?.[0],
+    error: historyError 
+  });
 
   const { data: recentActivities } = await supabase
     .from('activities')
@@ -235,9 +243,10 @@ async function getTrainingContext(supabase, userId, sportMode) {
     .select('*')
     .eq('user_id', userId)
     .eq('sport_mode', sportMode)
-    .single();
+    .maybeSingle();
 
-  const currentTSB = trainingHistory?.[0]?.tsb || 0;
+  const currentTSB = trainingHistory?.[0]?.tsb ?? 0;
+  console.log('Current TSB:', currentTSB, 'from record:', trainingHistory?.[0]);
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
