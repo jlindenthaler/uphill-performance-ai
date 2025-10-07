@@ -144,8 +144,20 @@ Recommendation:`;
 }
 
 async function getChatResponse(context, requestContext) {
+  const systemPrompt = `You are a world-class endurance coach and sports scientist with access to the athlete's current training data.
+
+Current Athlete Context:
+- TSB: ${context.current_tsb} (${getTSBStatus(context.current_tsb)})
+- Weekly Progress: ${context.weekly_progress.current_tli}/${context.weekly_progress.target_tli} TLI, ${context.weekly_progress.current_sessions}/${context.weekly_progress.target_sessions} sessions
+- Sport: ${requestContext.sport_mode}
+- Recent Activities: ${context.recent_activities.length} in last 7 days
+- Active Goals: ${context.active_goals.length} upcoming
+${context.active_goals.length > 0 ? `- Next Priority Goal: ${context.active_goals[0]?.name} on ${context.active_goals[0]?.event_date}` : ''}
+
+Use this context to provide personalized, data-driven coaching advice.`;
+
   return await callLocalLLM(
-    "You are a world-class endurance coach and sports scientist.",
+    systemPrompt,
     requestContext.message,
     MODELS.MIXTRAL
   );
