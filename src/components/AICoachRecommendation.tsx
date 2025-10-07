@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Brain, Plus, RefreshCw } from 'lucide-react';
@@ -31,6 +31,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
   const { getDailyRecommendation, loading, error } = useAITrainingCoach();
   const { user } = useAuth();
   const { sportMode } = useSportMode();
+  const isFetchingRef = useRef(false);
 
   const getCacheKey = () => `${CACHE_KEY_PREFIX}_${user?.id}_${sportMode}`;
 
@@ -66,7 +67,13 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
     }
   };
 
-  const fetchRecommendation = async (forceRefresh = false) => {
+  const fetchRecommendation = useCallback(async (forceRefresh = false) => {
+    // Prevent concurrent requests
+    if (isFetchingRef.current) {
+      console.log('[AI Coach] Skipping - fetch already in progress');
+      return;
+    }
+
     // Check cache first if not forcing refresh
     if (!forceRefresh) {
       const cached = loadFromCache();
@@ -87,6 +94,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
     }
 
     // Fetch new recommendation
+    isFetchingRef.current = true;
     try {
       console.log('[AI Coach] Fetching new recommendation...');
       const response = await getDailyRecommendation();
@@ -100,30 +108,17 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
       saveToCache(fallback);
     } finally {
       setIsInitialLoad(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [user?.id, sportMode, currentTSB, getDailyRecommendation, tsbStatus]);
 
-  // Initial load effect - only runs on mount or when user/sport changes
+  // Single effect for loading recommendations
   useEffect(() => {
-    if (user) {
-      console.log('[AI Coach] Initial load triggered');
-      fetchRecommendation();
-    }
-  }, [user, sportMode]);
-
-  // TSB change effect - invalidates cache if TSB drifts significantly
-  useEffect(() => {
-    if (!user || isInitialLoad) return;
+    if (!user) return;
     
-    const cached = loadFromCache();
-    if (cached) {
-      const tsbChanged = Math.abs(cached.tsb - currentTSB) > 5;
-      if (tsbChanged) {
-        console.log('[AI Coach] TSB drift detected, refreshing...');
-        fetchRecommendation(true);
-      }
-    }
-  }, [currentTSB]);
+    console.log('[AI Coach] Effect triggered:', { user: !!user, sportMode, currentTSB });
+    fetchRecommendation();
+  }, [user?.id, sportMode, fetchRecommendation]);
 
   const getFallbackRecommendation = (tsb: number, status: string): string => {
     if (tsb > 15) {
