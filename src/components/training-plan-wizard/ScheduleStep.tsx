@@ -48,8 +48,8 @@ export function ScheduleStep({ formData, setFormData }: ScheduleStepProps) {
             <div className="space-y-3">
               {DAYS.map(day => {
                 const dayAvailability = weeklyAvailability[day.label.toLowerCase() as keyof typeof weeklyAvailability];
-                const hasTraining = dayAvailability?.training_hours > 0;
-                const hasRecovery = dayAvailability?.recovery_hours > 0;
+                const hasTraining = dayAvailability?.training_hours && dayAvailability.training_hours > 0;
+                const hasRecovery = dayAvailability?.recovery_hours && dayAvailability.recovery_hours > 0;
                 
                 return (
                   <div key={day.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -60,7 +60,7 @@ export function ScheduleStep({ formData, setFormData }: ScheduleStepProps) {
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-primary" />
                             <span className="text-muted-foreground">
-                              Training: {dayAvailability.training_hours}h
+                              Training: {dayAvailability.training_hours.toFixed(1)}h
                             </span>
                           </div>
                         )}
@@ -68,7 +68,7 @@ export function ScheduleStep({ formData, setFormData }: ScheduleStepProps) {
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-secondary" />
                             <span className="text-muted-foreground">
-                              Recovery: {dayAvailability.recovery_hours}h
+                              Recovery: {dayAvailability.recovery_hours.toFixed(1)}h
                             </span>
                           </div>
                         )}
