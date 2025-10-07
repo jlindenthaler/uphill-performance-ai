@@ -25,7 +25,7 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
   const { sportMode } = useSportMode();
   const [thresholdData, setThresholdData] = useState<{ value: number; source: string } | null>(null);
 
-  const latestLab = labResults?.[0];
+  const latestLab = labResults;
 
   // Fetch threshold data using hierarchy
   useEffect(() => {
