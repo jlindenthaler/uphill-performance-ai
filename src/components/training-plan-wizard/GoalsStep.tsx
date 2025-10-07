@@ -36,9 +36,10 @@ const PRIORITY_OPTIONS = [
 ];
 
 export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
-  const { goals } = useGoals();
+  const { goals, updateGoal } = useGoals();
   const [showCreateNew, setShowCreateNew] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const activeGoals = goals.filter(g => g.status === 'active');
 
@@ -63,6 +64,28 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
 
   const handleEditGoal = () => {
     setEditMode(true);
+  };
+
+  const handleSaveGoal = async () => {
+    if (!formData.primaryGoal.goalId) return;
+    
+    setSaving(true);
+    try {
+      await updateGoal(formData.primaryGoal.goalId, {
+        name: formData.primaryGoal.eventName,
+        event_date: formData.primaryGoal.eventDate?.toISOString().split('T')[0] || '',
+        event_type: formData.primaryGoal.eventType,
+        location: formData.primaryGoal.location,
+        priority: formData.primaryGoal.priority || 'A',
+        target_performance: formData.primaryGoal.targetPerformance,
+      });
+      toast.success('Goal updated successfully');
+      setEditMode(false);
+    } catch (error) {
+      toast.error('Failed to update goal');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addSecondaryGoal = () => {
@@ -186,18 +209,28 @@ export function GoalsStep({ formData, setFormData }: GoalsStepProps) {
             <h3 className="text-lg font-semibold">
               {editMode ? 'Edit Goal' : 'Define Your Primary Goal'}
             </h3>
-            {activeGoals.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowCreateNew(false);
-                  setEditMode(false);
-                }}
-              >
-                ← Back to existing goals
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {editMode && (
+                <Button
+                  onClick={handleSaveGoal}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Goal'}
+                </Button>
+              )}
+              {activeGoals.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowCreateNew(false);
+                    setEditMode(false);
+                  }}
+                >
+                  ← Back to existing goals
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4">
