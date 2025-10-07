@@ -89,6 +89,8 @@ export function useEnhancedTimeAvailability() {
         user_id: user.id,
         training_hours_per_day: avgTrainingHours,
         recovery_hours_per_day: avgRecoveryHours,
+      }, {
+        onConflict: 'user_id'
       });
 
     if (error) throw error;
