@@ -27,6 +27,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
   tsbStatus
 }) => {
   const [recommendation, setRecommendation] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { getDailyRecommendation, loading, error } = useAITrainingCoach();
   const { user } = useAuth();
   const { sportMode } = useSportMode();
@@ -36,9 +37,17 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
   const loadFromCache = (): CachedRecommendation | null => {
     try {
       const cached = localStorage.getItem(getCacheKey());
-      if (!cached) return null;
-      return JSON.parse(cached);
-    } catch {
+      if (!cached) {
+        console.log('[AI Coach Cache] Miss: No cached data found');
+        return null;
+      }
+      const parsed = JSON.parse(cached);
+      const ageMinutes = Math.round((Date.now() - parsed.timestamp) / 1000 / 60);
+      const tsbDrift = Math.abs(parsed.tsb - currentTSB);
+      console.log('[AI Coach Cache] Hit:', { ageMinutes, tsbDrift, currentTSB, cachedTSB: parsed.tsb });
+      return parsed;
+    } catch (err) {
+      console.error('[AI Coach Cache] Parse error:', err);
       return null;
     }
   };
@@ -51,8 +60,9 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
         tsb: currentTSB
       };
       localStorage.setItem(getCacheKey(), JSON.stringify(cached));
+      console.log('[AI Coach Cache] Saved:', { tsb: currentTSB, length: rec.length });
     } catch (err) {
-      console.error('Failed to cache recommendation:', err);
+      console.error('[AI Coach Cache] Failed to save:', err);
     }
   };
 
@@ -66,30 +76,54 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
         
         // Use cache if fresh and TSB hasn't changed significantly
         if (age < CACHE_DURATION_MS && !tsbChanged) {
+          console.log('[AI Coach Cache] Using cached recommendation');
           setRecommendation(cached.recommendation);
+          setIsInitialLoad(false);
           return;
+        } else {
+          console.log('[AI Coach Cache] Invalidated:', { ageExpired: age >= CACHE_DURATION_MS, tsbChanged });
         }
       }
     }
 
     // Fetch new recommendation
     try {
+      console.log('[AI Coach] Fetching new recommendation...');
       const response = await getDailyRecommendation();
+      console.log('[AI Coach] Received response:', response?.substring(0, 100));
       setRecommendation(response);
       saveToCache(response);
     } catch (err) {
-      console.error('Failed to get AI recommendation:', err);
+      console.error('[AI Coach] Failed to get recommendation:', err);
       const fallback = getFallbackRecommendation(currentTSB, tsbStatus);
       setRecommendation(fallback);
       saveToCache(fallback);
+    } finally {
+      setIsInitialLoad(false);
     }
   };
 
+  // Initial load effect - only runs on mount or when user/sport changes
   useEffect(() => {
     if (user) {
+      console.log('[AI Coach] Initial load triggered');
       fetchRecommendation();
     }
-  }, [currentTSB, user, sportMode]);
+  }, [user, sportMode]);
+
+  // TSB change effect - invalidates cache if TSB drifts significantly
+  useEffect(() => {
+    if (!user || isInitialLoad) return;
+    
+    const cached = loadFromCache();
+    if (cached) {
+      const tsbChanged = Math.abs(cached.tsb - currentTSB) > 5;
+      if (tsbChanged) {
+        console.log('[AI Coach] TSB drift detected, refreshing...');
+        fetchRecommendation(true);
+      }
+    }
+  }, [currentTSB]);
 
   const getFallbackRecommendation = (tsb: number, status: string): string => {
     if (tsb > 15) {
@@ -123,7 +157,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
         </Button>
       </div>
       
-      {loading ? (
+      {(loading || isInitialLoad) && !recommendation ? (
         <div className="space-y-2">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
@@ -134,15 +168,10 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button size="sm" onClick={() => onNavigate('workouts')}>
-          <Plus className="w-4 h-4 mr-1" />
-          Plan Session
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => fetchRecommendation(true)} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh Advice'}
-        </Button>
-      </div>
+      <Button size="sm" onClick={() => onNavigate('workouts')}>
+        <Plus className="w-4 h-4 mr-1" />
+        Plan Session
+      </Button>
 
       {error && (
         <p className="text-xs text-destructive mt-2">

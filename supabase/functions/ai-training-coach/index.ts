@@ -116,6 +116,15 @@ serve(async (req)=>{
       default:
         throw new Error(`Invalid task type: ${task}`);
     }
+    
+    console.log("AI response generated:", {
+      task,
+      userId,
+      sportMode,
+      responseLength: aiResponse?.length || 0,
+      responsePreview: aiResponse?.substring(0, 100)
+    });
+    
     return new Response(JSON.stringify({
       success: true,
       data: aiResponse
