@@ -669,7 +669,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
                   <p className="text-2xl font-bold">
                     {thresholdData ? (
                       <>
-                        {Math.round(thresholdData.value)} <span className="text-sm font-normal text-muted-foreground">W ({thresholdData.source})</span>
+                        {Math.round(thresholdData.value)} <span className="text-sm font-normal text-muted-foreground">W</span>
                       </>
                     ) : (
                       <span className="text-muted-foreground">No data</span>
