@@ -1079,6 +1079,7 @@ export type Database = {
           training_hours_per_day: number
           updated_at: string
           user_id: string
+          weekly_schedule: Json | null
         }
         Insert: {
           created_at?: string
@@ -1087,6 +1088,7 @@ export type Database = {
           training_hours_per_day?: number
           updated_at?: string
           user_id: string
+          weekly_schedule?: Json | null
         }
         Update: {
           created_at?: string
@@ -1095,6 +1097,7 @@ export type Database = {
           training_hours_per_day?: number
           updated_at?: string
           user_id?: string
+          weekly_schedule?: Json | null
         }
         Relationships: []
       }

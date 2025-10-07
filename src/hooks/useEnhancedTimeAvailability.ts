@@ -54,20 +54,25 @@ export function useEnhancedTimeAvailability() {
 
       if (error) throw error;
       
-      // For now, convert old format to new format if data exists
       if (data) {
-        const trainingHours = data.training_hours_per_day || 1;
-        const recoveryHours = data.recovery_hours_per_day || 0.5;
-        
-        setWeeklyAvailability({
-          monday: { ...defaultDayAvailability, day: 'monday', training_hours: trainingHours, recovery_hours: recoveryHours },
-          tuesday: { ...defaultDayAvailability, day: 'tuesday', training_hours: trainingHours, recovery_hours: recoveryHours },
-          wednesday: { ...defaultDayAvailability, day: 'wednesday', training_hours: trainingHours, recovery_hours: recoveryHours },
-          thursday: { ...defaultDayAvailability, day: 'thursday', training_hours: trainingHours, recovery_hours: recoveryHours },
-          friday: { ...defaultDayAvailability, day: 'friday', training_hours: trainingHours, recovery_hours: recoveryHours },
-          saturday: { ...defaultDayAvailability, day: 'saturday', training_hours: trainingHours * 1.5, recovery_hours: recoveryHours * 1.5 },
-          sunday: { ...defaultDayAvailability, day: 'sunday', training_hours: trainingHours * 1.5, recovery_hours: recoveryHours * 1.5 }
-        });
+        // Use the new weekly_schedule if available
+        if (data.weekly_schedule) {
+          setWeeklyAvailability(data.weekly_schedule as unknown as WeeklyTimeAvailability);
+        } else {
+          // Fallback to old format for backwards compatibility
+          const trainingHours = data.training_hours_per_day || 1;
+          const recoveryHours = data.recovery_hours_per_day || 0.5;
+          
+          setWeeklyAvailability({
+            monday: { ...defaultDayAvailability, day: 'monday', training_hours: trainingHours, recovery_hours: recoveryHours },
+            tuesday: { ...defaultDayAvailability, day: 'tuesday', training_hours: trainingHours, recovery_hours: recoveryHours },
+            wednesday: { ...defaultDayAvailability, day: 'wednesday', training_hours: trainingHours, recovery_hours: recoveryHours },
+            thursday: { ...defaultDayAvailability, day: 'thursday', training_hours: trainingHours, recovery_hours: recoveryHours },
+            friday: { ...defaultDayAvailability, day: 'friday', training_hours: trainingHours, recovery_hours: recoveryHours },
+            saturday: { ...defaultDayAvailability, day: 'saturday', training_hours: trainingHours * 1.5, recovery_hours: recoveryHours * 1.5 },
+            sunday: { ...defaultDayAvailability, day: 'sunday', training_hours: trainingHours * 1.5, recovery_hours: recoveryHours * 1.5 }
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching weekly availability:', error);
@@ -79,17 +84,18 @@ export function useEnhancedTimeAvailability() {
   const saveWeeklyAvailability = async (availability: WeeklyTimeAvailability) => {
     if (!user) throw new Error('User not authenticated');
 
-    // Convert to simple format for now (we can enhance the DB structure later)
+    // Calculate averages for backwards compatibility
     const avgTrainingHours = Object.values(availability).reduce((sum, day) => sum + day.training_hours, 0) / 7;
     const avgRecoveryHours = Object.values(availability).reduce((sum, day) => sum + day.recovery_hours, 0) / 7;
 
     const { error } = await supabase
       .from('time_availability')
-      .upsert({
+      .upsert([{
         user_id: user.id,
         training_hours_per_day: avgTrainingHours,
         recovery_hours_per_day: avgRecoveryHours,
-      }, {
+        weekly_schedule: availability as any,
+      }], {
         onConflict: 'user_id'
       });
 
