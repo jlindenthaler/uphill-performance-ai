@@ -251,20 +251,20 @@ export function ActivityPowerComparison({ activity }: ActivityPowerComparisonPro
                 />
                 <Line
                   type="monotone"
-                  dataKey="activityPower"
-                  stroke="#ef4444"
-                  strokeWidth={3}
-                  name="activityPower"
-                  dot={{ fill: '#ef4444', r: 4 }}
-                  connectNulls={true}
-                />
-                <Line
-                  type="monotone"
                   dataKey="meanMax90Day"
                   stroke="#3b82f6"
                   strokeWidth={2}
                   name="meanMax90Day"
                   dot={{ fill: '#3b82f6', r: 3 }}
+                  connectNulls={true}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="activityPower"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  name="activityPower"
+                  dot={{ fill: '#ef4444', r: 4 }}
                   connectNulls={true}
                 />
                 <Line
