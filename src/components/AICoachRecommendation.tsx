@@ -3,11 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Brain, Plus, RefreshCw } from 'lucide-react';
 import { useAITrainingCoach } from '@/hooks/useAITrainingCoach';
+import { useAuth } from '@/hooks/useSupabase';
+import { useSportMode } from '@/contexts/SportModeContext';
 
 interface AICoachRecommendationProps {
   onNavigate: (section: string) => void;
   currentTSB: number;
   tsbStatus: string;
+}
+
+const CACHE_KEY_PREFIX = 'ai_coach_recommendation';
+const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+
+interface CachedRecommendation {
+  recommendation: string;
+  timestamp: number;
+  tsb: number;
 }
 
 export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
@@ -17,22 +28,68 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
 }) => {
   const [recommendation, setRecommendation] = useState<string>('');
   const { getDailyRecommendation, loading, error } = useAITrainingCoach();
+  const { user } = useAuth();
+  const { sportMode } = useSportMode();
 
-  const fetchRecommendation = async () => {
+  const getCacheKey = () => `${CACHE_KEY_PREFIX}_${user?.id}_${sportMode}`;
+
+  const loadFromCache = (): CachedRecommendation | null => {
+    try {
+      const cached = localStorage.getItem(getCacheKey());
+      if (!cached) return null;
+      return JSON.parse(cached);
+    } catch {
+      return null;
+    }
+  };
+
+  const saveToCache = (rec: string) => {
+    try {
+      const cached: CachedRecommendation = {
+        recommendation: rec,
+        timestamp: Date.now(),
+        tsb: currentTSB
+      };
+      localStorage.setItem(getCacheKey(), JSON.stringify(cached));
+    } catch (err) {
+      console.error('Failed to cache recommendation:', err);
+    }
+  };
+
+  const fetchRecommendation = async (forceRefresh = false) => {
+    // Check cache first if not forcing refresh
+    if (!forceRefresh) {
+      const cached = loadFromCache();
+      if (cached) {
+        const age = Date.now() - cached.timestamp;
+        const tsbChanged = Math.abs(cached.tsb - currentTSB) > 5;
+        
+        // Use cache if fresh and TSB hasn't changed significantly
+        if (age < CACHE_DURATION_MS && !tsbChanged) {
+          setRecommendation(cached.recommendation);
+          return;
+        }
+      }
+    }
+
+    // Fetch new recommendation
     try {
       const response = await getDailyRecommendation();
       setRecommendation(response);
+      saveToCache(response);
     } catch (err) {
       console.error('Failed to get AI recommendation:', err);
-      // Fallback recommendation based on TSB
       const fallback = getFallbackRecommendation(currentTSB, tsbStatus);
       setRecommendation(fallback);
+      saveToCache(fallback);
     }
   };
 
   useEffect(() => {
-    fetchRecommendation();
-  }, [currentTSB]);
+    if (user) {
+      fetchRecommendation();
+    }
+  }, [currentTSB, user, sportMode]);
 
   const getFallbackRecommendation = (tsb: number, status: string): string => {
     if (tsb > 15) {
@@ -58,7 +115,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={fetchRecommendation}
+          onClick={() => fetchRecommendation(true)}
           disabled={loading}
           className="h-8 w-8 p-0"
         >
@@ -82,7 +139,7 @@ export const AICoachRecommendation: React.FC<AICoachRecommendationProps> = ({
           <Plus className="w-4 h-4 mr-1" />
           Plan Session
         </Button>
-        <Button variant="outline" size="sm" onClick={fetchRecommendation} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => fetchRecommendation(true)} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh Advice'}
         </Button>
       </div>
