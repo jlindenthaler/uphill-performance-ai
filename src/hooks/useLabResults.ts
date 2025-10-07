@@ -59,6 +59,8 @@ export function useLabResults() {
         .select('*')
         .eq('user_id', user.id)
         .eq('sport_mode', sportMode)
+        .order('test_date', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -95,12 +97,10 @@ export function useLabResults() {
 
     const { error } = await supabase
       .from('lab_results')
-      .upsert({
+      .insert({
         user_id: user.id,
         sport_mode: sportMode,
         ...results,
-      }, {
-        onConflict: 'user_id,sport_mode'
       });
 
     if (error) throw error;
