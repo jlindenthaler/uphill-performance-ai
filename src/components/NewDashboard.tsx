@@ -38,6 +38,7 @@ import { ActivityUploadNew } from './ActivityUploadNew';
 import { RecoverySessionModal } from './RecoverySessionModal';
 import { LabResults } from './LabResults';
 import { AICoachRecommendation } from './AICoachRecommendation';
+import { AIChatBox } from './AIChatBox';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
@@ -433,12 +434,16 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
         </Card>
       </div>
 
-      {/* 90-Day Mean Max Power Chart */}
-      <Card>
-        <CardContent className="pt-6">
-          <EnhancedPowerProfileChart />
-        </CardContent>
-      </Card>
+      {/* 90-Day Mean Max Power Chart and AI Chat */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardContent className="pt-6">
+            <EnhancedPowerProfileChart />
+          </CardContent>
+        </Card>
+        
+        <AIChatBox />
+      </div>
 
       {/* Recent Performance Timeline */}
       <Card>
