@@ -90,7 +90,9 @@ export function ReviewStep({ formData }: ReviewStepProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Target Sessions:</span>
-            <span className="font-medium">{formData.sessionsPerWeek}/week</span>
+            <span className="font-medium">
+              {formData.sessionsPerWeek > 0 ? `${formData.sessionsPerWeek}/week` : 'Auto'}
+            </span>
           </div>
         </div>
       </Card>
@@ -112,12 +114,10 @@ export function ReviewStep({ formData }: ReviewStepProps) {
             <span className="text-muted-foreground">Block Length:</span>
             <span className="font-medium">{formData.blockLength} weeks</span>
           </div>
-          {formData.weeklyTLI && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Target Weekly TLI:</span>
-              <span className="font-medium">{formData.weeklyTLI}</span>
-            </div>
-          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Target Weekly TLI:</span>
+            <span className="font-medium">{formData.weeklyTLI || 'Auto'}</span>
+          </div>
           {formData.startWeek && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Start Date:</span>

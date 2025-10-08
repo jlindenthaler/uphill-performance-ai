@@ -3,6 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { EnhancedTimeSettings } from '@/components/settings/EnhancedTimeSettings';
 import { useEnhancedTimeAvailability } from '@/hooks/useEnhancedTimeAvailability';
@@ -89,6 +91,32 @@ export function ScheduleStep({ formData, setFormData }: ScheduleStepProps) {
             ℹ️ The AI will analyze your available time windows and create sessions that fit your schedule while maximizing training effectiveness.
           </p>
         </div>
+
+        <Card className="p-4">
+          <Label htmlFor="longSessionDay" className="text-base font-semibold">Long Session Day</Label>
+          <p className="text-sm text-muted-foreground mb-3">
+            Choose the day for your longest training session each week
+          </p>
+          <Select
+            value={formData.longSessionDay}
+            onValueChange={(value) =>
+              setFormData({ ...formData, longSessionDay: value })
+            }
+          >
+            <SelectTrigger id="longSessionDay">
+              <SelectValue placeholder="Select a day" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="monday">Monday</SelectItem>
+              <SelectItem value="tuesday">Tuesday</SelectItem>
+              <SelectItem value="wednesday">Wednesday</SelectItem>
+              <SelectItem value="thursday">Thursday</SelectItem>
+              <SelectItem value="friday">Friday</SelectItem>
+              <SelectItem value="saturday">Saturday</SelectItem>
+              <SelectItem value="sunday">Sunday</SelectItem>
+            </SelectContent>
+          </Select>
+        </Card>
 
         <div className="border-t pt-4">
           <Button 
