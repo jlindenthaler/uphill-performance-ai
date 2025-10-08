@@ -109,6 +109,20 @@ export function useLabResults() {
     await fetchAllLabResults();
   };
 
+  const deleteLabResult = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('lab_results')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    await fetchLabResults();
+    await fetchAllLabResults();
+  };
+
   useEffect(() => {
     if (user) {
       fetchLabResults();
@@ -121,6 +135,7 @@ export function useLabResults() {
     allLabResults,
     loading,
     saveLabResults,
+    deleteLabResult,
     fetchLabResults,
     fetchAllLabResults
   };

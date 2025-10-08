@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarIcon, Plus, FlaskConical, TrendingUp, Activity, Edit, BarChart3 } from "lucide-react";
+import { CalendarIcon, Plus, FlaskConical, TrendingUp, Activity, Edit, BarChart3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSportMode } from "@/contexts/SportModeContext";
@@ -79,12 +80,14 @@ interface LabResultsProps {
 export function LabResults({ openAddDialog = false, formOnly = false, onFormSubmit }: LabResultsProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(openAddDialog);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingResult, setEditingResult] = useState<LabResults | null>(null);
   const [formData, setFormData] = useState<LabResultFormData>(initialFormData);
   const [activeTab, setActiveTab] = useState<'lab-tests' | 'cp-tests'>('lab-tests');
   const [thresholdData, setThresholdData] = useState<{ value: number; source: string } | null>(null);
   const { sportMode } = useSportMode();
-  const { labResults, allLabResults, saveLabResults } = useLabResults();
+  const { labResults, allLabResults, saveLabResults, deleteLabResult } = useLabResults();
   const { toast } = useToast();
   const { timezone } = useUserTimezone();
   const { user } = useAuth();
@@ -238,6 +241,31 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
       toast({
         title: "Error",
         description: "Failed to update lab results. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
+
+    try {
+      await deleteLabResult(deletingId);
+      toast({
+        title: "Lab Result Deleted",
+        description: "The lab test result has been deleted successfully.",
+      });
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete lab result. Please try again.",
         variant: "destructive",
       });
     }
@@ -618,6 +646,24 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
             {formContent(true)}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Lab Result</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this lab test result? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeletingId(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Tabs for Lab Tests vs CP Tests */}
@@ -777,6 +823,10 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
                           <Edit 
                             className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-primary" 
                             onClick={() => handleEdit(test)}
+                          />
+                          <Trash2
+                            className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-destructive"
+                            onClick={() => handleDeleteClick(test.id!)}
                           />
                         </div>
                         <div className="flex gap-2">
