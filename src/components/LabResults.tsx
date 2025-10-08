@@ -87,7 +87,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
   const [activeTab, setActiveTab] = useState<'lab-tests' | 'cp-tests'>('lab-tests');
   const [thresholdData, setThresholdData] = useState<{ value: number; source: string } | null>(null);
   const { sportMode } = useSportMode();
-  const { labResults, allLabResults, saveLabResults, deleteLabResult } = useLabResults();
+  const { labResults, allLabResults, saveLabResults, updateLabResults, deleteLabResult } = useLabResults();
   const { toast } = useToast();
   const { timezone } = useUserTimezone();
   const { user } = useAuth();
@@ -227,7 +227,7 @@ export function LabResults({ openAddDialog = false, formOnly = false, onFormSubm
         notes: formData.notes || undefined,
       };
 
-      await saveLabResults(labData);
+      await updateLabResults(editingResult.id!, labData);
       
       toast({
         title: "Lab Result Updated",

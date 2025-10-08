@@ -109,6 +109,20 @@ export function useLabResults() {
     await fetchAllLabResults();
   };
 
+  const updateLabResults = async (id: string, results: Partial<LabResults>) => {
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('lab_results')
+      .update(results)
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    await fetchLabResults();
+    await fetchAllLabResults();
+  };
+
   const deleteLabResult = async (id: string) => {
     if (!user) throw new Error('User not authenticated');
 
@@ -135,6 +149,7 @@ export function useLabResults() {
     allLabResults,
     loading,
     saveLabResults,
+    updateLabResults,
     deleteLabResult,
     fetchLabResults,
     fetchAllLabResults
