@@ -60,7 +60,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
   const isMobile = useIsMobile();
   const [isAIPlanWizardOpen, setIsAIPlanWizardOpen] = useState(false);
-  const { getPlanSessions } = useTrainingPlan();
+  const { getPlanSessions, deletePlanSession } = useTrainingPlan();
   const [planSessions, setPlanSessions] = useState<any[]>([]);
 
   // Fetch plan sessions when wizard closes (to refresh after new plan creation)
@@ -532,16 +532,16 @@ export const InfiniteTrainingCalendar: React.FC = () => {
             <span className="ml-auto text-xs font-medium">{Math.round(event.data.tss_target)} TSS</span>
           )}
         </div>
-        {(event.type === 'workout' || event.type === 'activity') && (
+        {(event.type === 'workout' || event.type === 'activity' || event.type === 'plan_session') && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                className="h-5 w-5 p-0 opacity-50 group-hover:opacity-100 hover:bg-accent transition-all ml-1 flex-shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-3 w-3" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover border border-border">
@@ -564,25 +564,36 @@ export const InfiniteTrainingCalendar: React.FC = () => {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <Trash2 className="h-3 w-3 mr-2" />
-                    Delete {event.type === 'workout' ? 'Workout' : 'Activity'}
+                    Delete {event.type === 'plan_session' ? 'Plan Session' : event.type === 'workout' ? 'Workout' : 'Activity'}
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="bg-background border border-border">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the {event.type} "{event.title}".
+                      This action cannot be undone. This will permanently delete the {event.type === 'plan_session' ? 'plan session' : event.type} "{event.title}".
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction 
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => {
+                      onClick={async () => {
                         if (event.type === 'workout') {
                           deleteWorkout(event.id);
                         } else if (event.type === 'activity') {
                           deleteActivity(event.id);
+                        } else if (event.type === 'plan_session') {
+                          const success = await deletePlanSession(event.id);
+                          if (success) {
+                            // Refresh plan sessions
+                            if (weeks.length > 0) {
+                              const startDate = weeks[0];
+                              const endDate = addWeeks(weeks[weeks.length - 1], 1);
+                              const sessions = await getPlanSessions(startDate, endDate);
+                              setPlanSessions(sessions || []);
+                            }
+                          }
                         }
                       }}
                     >

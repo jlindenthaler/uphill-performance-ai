@@ -137,12 +137,36 @@ export function useTrainingPlan() {
     return updatePlanSession(sessionId, { completed: true });
   };
 
+  const deletePlanSession = async (sessionId: string) => {
+    if (!user) {
+      toast.error('Please sign in to delete sessions');
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('plan_sessions')
+        .delete()
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      
+      toast.success('Plan session deleted');
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete session';
+      toast.error(message);
+      return false;
+    }
+  };
+
   return {
     generatePlan,
     getActivePlan,
     getPlanSessions,
     updatePlanSession,
     markSessionComplete,
+    deletePlanSession,
     loading,
     error,
   };

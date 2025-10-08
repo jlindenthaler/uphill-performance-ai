@@ -371,10 +371,10 @@ export const TrainingCalendar: React.FC = () => {
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                className="h-5 w-5 p-0 opacity-50 group-hover:opacity-100 hover:bg-accent transition-all ml-1 flex-shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-3 w-3" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover border border-border">
