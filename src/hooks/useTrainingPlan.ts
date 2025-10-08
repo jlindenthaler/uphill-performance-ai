@@ -160,6 +160,57 @@ export function useTrainingPlan() {
     }
   };
 
+  const deletePlan = async (planId: string) => {
+    if (!user) {
+      toast.error('Please sign in to delete plans');
+      return false;
+    }
+
+    try {
+      // Delete all plan sessions first
+      const { data: blocks } = await supabase
+        .from('plan_blocks')
+        .select('id')
+        .eq('plan_id', planId);
+
+      if (blocks && blocks.length > 0) {
+        const blockIds = blocks.map(b => b.id);
+        
+        // Delete all sessions for these blocks
+        const { error: sessionsError } = await supabase
+          .from('plan_sessions')
+          .delete()
+          .in('block_id', blockIds);
+
+        if (sessionsError) throw sessionsError;
+      }
+
+      // Delete all plan blocks
+      const { error: blocksError } = await supabase
+        .from('plan_blocks')
+        .delete()
+        .eq('plan_id', planId);
+
+      if (blocksError) throw blocksError;
+
+      // Delete the plan itself
+      const { error: planError } = await supabase
+        .from('training_plans')
+        .delete()
+        .eq('id', planId)
+        .eq('user_id', user.id);
+
+      if (planError) throw planError;
+      
+      toast.success('Training plan deleted');
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete plan';
+      toast.error(message);
+      return false;
+    }
+  };
+
   return {
     generatePlan,
     getActivePlan,
@@ -167,6 +218,7 @@ export function useTrainingPlan() {
     updatePlanSession,
     markSessionComplete,
     deletePlanSession,
+    deletePlan,
     loading,
     error,
   };

@@ -60,8 +60,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
   const isMobile = useIsMobile();
   const [isAIPlanWizardOpen, setIsAIPlanWizardOpen] = useState(false);
-  const { getPlanSessions, deletePlanSession } = useTrainingPlan();
+  const { getPlanSessions, deletePlanSession, deletePlan, getActivePlan } = useTrainingPlan();
   const [planSessions, setPlanSessions] = useState<any[]>([]);
+  const [activePlan, setActivePlan] = useState<any>(null);
 
   // Fetch plan sessions when wizard closes (to refresh after new plan creation)
   const handleWizardClose = useCallback(async (wasOpen: boolean) => {
@@ -88,9 +89,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     setCurrentWeek(weekStart);
   }, []);
 
-  // Fetch plan sessions for visible weeks
+  // Fetch plan sessions and active plan for visible weeks
   useEffect(() => {
-    const fetchPlanSessions = async () => {
+    const fetchPlanData = async () => {
       if (weeks.length === 0) return;
       
       const startDate = weeks[0];
@@ -98,10 +99,13 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       
       const sessions = await getPlanSessions(startDate, endDate);
       setPlanSessions(sessions || []);
+      
+      const plan = await getActivePlan();
+      setActivePlan(plan);
     };
-    
-    fetchPlanSessions();
-  }, [weeks, getPlanSessions]);
+
+    fetchPlanData();
+  }, [weeks, getPlanSessions, getActivePlan]);
 
   // Center the current week in viewport on initial load
   useEffect(() => {
@@ -649,6 +653,41 @@ export const InfiniteTrainingCalendar: React.FC = () => {
           <Button variant="outline" size="sm" onClick={handleTodayClick}>
             Today
           </Button>
+          
+          {activePlan && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete Plan
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-background border border-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Training Plan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete "{activePlan.plan_name}" and all {planSessions.length} associated sessions. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      const success = await deletePlan(activePlan.id);
+                      if (success) {
+                        setPlanSessions([]);
+                        setActivePlan(null);
+                      }
+                    }}
+                  >
+                    Delete Plan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          
           <Button onClick={() => setIsAIPlanWizardOpen(true)} className="gap-2">
             <Sparkles className="h-4 w-4" />
             Create AI Plan
