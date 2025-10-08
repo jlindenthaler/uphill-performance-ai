@@ -97,11 +97,13 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : (latestLab || thresholdData) ? (
             <div className="space-y-2 text-sm">
-              {latestLab?.vt1_power && (
+              {(latestLab?.vt1_power || latestLab?.lt1_power) && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Aerobic Threshold (AeT):</span>
+                  <span className="text-muted-foreground">
+                    Aerobic Threshold ({latestLab?.vt1_power ? 'VT1' : 'LT1'}):
+                  </span>
                   <span className="font-medium">
-                    {Math.round(latestLab.vt1_power)}W
+                    {Math.round(latestLab?.vt1_power || latestLab?.lt1_power)}W
                     {(latestLab.vt1_hr || latestLab.lt1_hr) && ` @ ${latestLab.vt1_hr || latestLab.lt1_hr} bpm`}
                   </span>
                 </div>
