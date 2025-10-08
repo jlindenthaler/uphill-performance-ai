@@ -106,65 +106,55 @@ serve(async (req) => {
     // Generate blocks structure
     const blocks = generateBlockStructure(totalWeeks, formData.periodizationStyle || 'auto');
 
-    // Build AI prompt
-    const prompt = `You are a world-class endurance training plan architect specializing in scientific periodization.
+    // Format weekly schedule from formData
+    const weeklySchedule = formData.weeklySchedule || [];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const scheduleText = weeklySchedule.length > 0
+      ? weeklySchedule
+          .map((s: any) => `- ${dayNames[s.day]}: ${s.availableHours || 0} hours`)
+          .join('\n')
+      : `- ${formData.longSessionDay || 'Saturday'}: ${Math.floor((formData.weeklyTLI || 400) / 100)} hours (long session)\n- Other days: 1-2 hours each`;
 
-Generate a structured ${totalWeeks}-week training plan for the following athlete:
+    // Build AI prompt with structured data
+    const prompt = `Generate a ${totalWeeks}-week training plan for this athlete.
 
-**Athlete Context:**
+**ATHLETE CONTEXT:**
 - Sport: ${formData.sportMode || 'cycling'}
 - Current FTP/Threshold: ${ftp}W (source: ${ftpSource})
-- Current CTL: ${recentCTL.toFixed(1)}
-- Current TSB: ${recentTSB.toFixed(1)}
-- Recent weekly TSS: ${avgWeeklyTSS.toFixed(0)}
-- Thresholds: AeT ${lab?.aet || 'N/A'}W, GT ${lab?.gt || 'N/A'}W, MAP ${lab?.map_value || 'N/A'}W
+- Current CTL (Chronic Training Load): ${recentCTL.toFixed(1)}
+- Current TSB (Training Stress Balance): ${recentTSB.toFixed(1)}
+- Recent average weekly TSS: ${avgWeeklyTSS.toFixed(0)}
+- Lab Thresholds: AeT ${lab?.aet || 'N/A'}W, GT ${lab?.gt || 'N/A'}W, MAP ${lab?.map_value || 'N/A'}W
 
-**Goal:**
-- Event: ${formData.primaryGoal.eventName || 'Peak Performance'}
-- Date: ${eventDate.toLocaleDateString()}
-- Type: ${formData.primaryGoal.eventType || 'endurance'}
-- Target: ${formData.primaryGoal.targetObjective || 'performance'}
+**GOAL:**
+- Event Name: ${formData.primaryGoal.eventName || 'Peak Performance'}
+- Event Date: ${eventDate.toLocaleDateString()}
+- Event Type: ${formData.primaryGoal.eventType || 'endurance'}
+- Target Objective: ${formData.primaryGoal.targetObjective || 'performance improvement'}
 
-**Availability:**
-- Days per week: ${formData.sessionsPerWeek || 5}
-- Target weekly TLI: ${formData.weeklyTLI || 400}
-- Long session day: ${formData.longSessionDay || 'Saturday'}
+**WEEKLY AVAILABILITY SCHEDULE:**
+${scheduleText}
 
-**Plan Structure:**
-Use ${formData.periodizationStyle || 'polarized'} approach with these blocks:
-${blocks.map(b => `- ${b.name} (${b.weeks} weeks): ${b.intent}`).join('\n')}
+Total sessions per week: ${formData.sessionsPerWeek || 5}
+Target weekly TLI: ${formData.weeklyTLI || 400}
 
-**Requirements:**
-1. Respect ${formData.deviationTolerance?.tli || 10}% TLI tolerance
-2. Balance intensity distribution based on periodization style
-3. Build progressively from current fitness
-4. Include proper recovery weeks
-5. Taper appropriately for event date
+**IMPORTANT:** Respect these daily time limits when assigning session durations. Do not schedule sessions longer than the available hours for each day.
 
-Generate ONLY valid JSON in this exact format:
-{
-  "blocks": [
-    {
-      "name": "Base",
-      "intent": "Aerobic foundation and muscular endurance",
-      "weeks": 4,
-      "sessions": [
-        {
-          "name": "Long Endurance",
-          "day": "Saturday",
-          "duration": 180,
-          "tss": 150,
-          "structure": {
-            "intervals": [
-              { "duration": 180, "target": "65%", "zone": "Z2" }
-            ]
-          },
-          "intent": "Build aerobic base"
-        }
-      ]
-    }
-  ]
-}`;
+**PERIODIZATION STRUCTURE:**
+Style: ${formData.periodizationStyle || 'polarized'}
+
+Blocks (JSON format):
+${JSON.stringify(blocks, null, 2)}
+
+**REQUIREMENTS:**
+1. Respect ±${formData.deviationTolerance?.tli || 10}% TLI tolerance per week
+2. Balance intensity distribution: ${formData.periodizationStyle === 'polarized' ? '80% Zone 1-2, 20% Zone 4-6' : formData.periodizationStyle === 'pyramidal' ? '70% Z1-2, 20% Z3, 10% Z4-6' : 'threshold-focused'}
+3. Build progressively from current CTL (${recentCTL.toFixed(1)}) to peak
+4. Include recovery weeks (reduce load by 40-50%) every 3-4 weeks
+5. Taper appropriately: 2 weeks for events <4h, 3 weeks for events >4h
+6. Assign sessions to specific days based on weekly availability schedule above
+
+You must generate sessions that fit within the daily time constraints provided.`;
 
     console.log('Calling LOCAL LLM with prompt length:', prompt.length);
     console.log('LLM Endpoint:', LLM_URL);
@@ -184,7 +174,59 @@ Generate ONLY valid JSON in this exact format:
         body: JSON.stringify({
           model: LLM_MODEL,
           messages: [
-            { role: 'system', content: 'You are a world-class endurance training coach and plan architect. Analyze the athlete data deeply and generate a progressive, personalized training plan. Output ONLY valid JSON, no markdown, no explanations.' },
+            { 
+              role: 'system', 
+              content: `You are an elite endurance training plan architect with expertise in periodization and exercise physiology.
+
+**YOUR TASK:**
+Generate a scientifically structured, progressive training plan based on the athlete's physiological data, goals, and time availability.
+
+**CRITICAL OUTPUT REQUIREMENTS:**
+1. Output ONLY valid JSON - no markdown code fences, no explanations, no extra text
+2. Do NOT wrap output in \`\`\`json or \`\`\` tags
+3. Do NOT include any fields not specified in the schema below
+4. Do NOT generate microcycles, sessionTemplates, or other extra structures
+5. Use the EXACT schema structure provided below
+
+**REQUIRED JSON SCHEMA:**
+{
+  "blocks": [
+    {
+      "name": string (e.g., "Base", "Build", "Peak", "Taper"),
+      "intent": string (clear purpose of this block),
+      "weeks": integer (number of weeks in this block),
+      "sessions": [
+        {
+          "name": string (descriptive session name),
+          "day": string (day of week: "Monday", "Tuesday", etc.),
+          "duration": integer (minutes),
+          "tss": number (training stress score),
+          "structure": {
+            "intervals": [
+              {
+                "duration": integer (minutes),
+                "target": string (e.g., "65%", "Sweet Spot", "Z2"),
+                "zone": string (e.g., "Z1", "Z2", "Z3", "Threshold")
+              }
+            ]
+          },
+          "intent": string (purpose of this session)
+        }
+      ]
+    }
+  ]
+}
+
+**PLANNING PRINCIPLES:**
+- Honor the athlete's weekly availability schedule - do not exceed daily time limits
+- Progress load gradually (5-10% CTL increase per week max)
+- Balance intensity based on periodization style
+- Schedule hard sessions with adequate recovery (48h minimum)
+- Place longest sessions on days with most availability
+- Include recovery weeks to prevent overtraining
+
+Output only the JSON object with the structure above. Nothing else.`
+            },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
