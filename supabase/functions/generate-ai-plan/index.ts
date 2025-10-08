@@ -173,11 +173,12 @@ Generate ONLY valid JSON in this exact format:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: 'You are a training plan generator. Output ONLY valid JSON, no markdown, no explanations.' },
+            { role: 'system', content: 'You are a world-class endurance training coach and plan architect. Analyze the athlete data deeply and generate a progressive, personalized training plan. Output ONLY valid JSON, no markdown, no explanations.' },
             { role: 'user', content: prompt }
           ],
+          temperature: 0.7,
         }),
       });
 
@@ -201,6 +202,7 @@ Generate ONLY valid JSON in this exact format:
       aiResponse = JSON.parse(cleanContent);
     } else {
       // Fallback: generate simple plan structure
+      console.warn('LOVABLE_API_KEY not found - using fallback plan (not AI-generated)');
       aiResponse = generateFallbackPlan(blocks, formData);
     }
 
