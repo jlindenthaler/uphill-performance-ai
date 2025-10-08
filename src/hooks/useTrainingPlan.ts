@@ -4,6 +4,7 @@ import { useAuth } from './useSupabase';
 import { useSportMode } from '@/contexts/SportModeContext';
 import { toast } from 'sonner';
 import type { TrainingPlanFormData } from '@/components/AITrainingPlanWizard';
+import { logger } from '@/utils/logger';
 
 export function useTrainingPlan() {
   const { user } = useAuth();
@@ -100,6 +101,14 @@ export function useTrainingPlan() {
         .eq('plan_blocks.training_plans.status', 'active');
 
       if (error) throw error;
+      
+      logger.info('[Plan Sessions] Fetched:', {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        count: data?.length || 0,
+        sportMode
+      });
+      
       return data || [];
     } catch (err) {
       console.error('Error fetching plan sessions:', err);

@@ -20,10 +20,11 @@ import { useWorkoutClipboard } from '@/hooks/useWorkoutClipboard';
 import { useWorkoutDragAndDrop } from '@/hooks/useWorkoutDragAndDrop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AITrainingPlanWizard } from './AITrainingPlanWizard';
+import { useTrainingPlan } from '@/hooks/useTrainingPlan';
 
 interface CalendarEvent {
   id: string;
-  type: 'workout' | 'goal' | 'activity';
+  type: 'workout' | 'goal' | 'activity' | 'plan_session';
   title: string;
   date: Date;
   data: any;
@@ -59,6 +60,21 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
   const isMobile = useIsMobile();
   const [isAIPlanWizardOpen, setIsAIPlanWizardOpen] = useState(false);
+  const { getPlanSessions } = useTrainingPlan();
+  const [planSessions, setPlanSessions] = useState<any[]>([]);
+
+  // Fetch plan sessions when wizard closes (to refresh after new plan creation)
+  const handleWizardClose = useCallback(async (wasOpen: boolean) => {
+    setIsAIPlanWizardOpen(wasOpen);
+    
+    if (!wasOpen && weeks.length > 0) {
+      // Wizard was closed, refresh plan sessions
+      const startDate = weeks[0];
+      const endDate = addWeeks(weeks[weeks.length - 1], 1);
+      const sessions = await getPlanSessions(startDate, endDate);
+      setPlanSessions(sessions || []);
+    }
+  }, [weeks, getPlanSessions]);
 
   // Initialize weeks around current week
   useEffect(() => {
@@ -71,6 +87,21 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     setWeeks(initialWeeks);
     setCurrentWeek(weekStart);
   }, []);
+
+  // Fetch plan sessions for visible weeks
+  useEffect(() => {
+    const fetchPlanSessions = async () => {
+      if (weeks.length === 0) return;
+      
+      const startDate = weeks[0];
+      const endDate = addWeeks(weeks[weeks.length - 1], 1);
+      
+      const sessions = await getPlanSessions(startDate, endDate);
+      setPlanSessions(sessions || []);
+    };
+    
+    fetchPlanSessions();
+  }, [weeks, getPlanSessions]);
 
   // Center the current week in viewport on initial load
   useEffect(() => {
@@ -286,6 +317,22 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const getEventsForDay = (day: Date): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
 
+    // Add plan sessions
+    planSessions.forEach(session => {
+      if (session.scheduled_date) {
+        const sessionDate = new Date(session.scheduled_date);
+        if (isSameDay(sessionDate, day)) {
+          events.push({
+            id: session.id,
+            type: 'plan_session',
+            title: session.session_name || 'Training Session',
+            date: day,
+            data: session
+          });
+        }
+      }
+    });
+
     // Add scheduled workouts
     workouts.forEach(workout => {
       if (workout.scheduled_date) {
@@ -429,6 +476,11 @@ export const InfiniteTrainingCalendar: React.FC = () => {
     let icon = null;
 
     switch (event.type) {
+      case 'plan_session':
+        bgColor = 'bg-purple-100';
+        textColor = 'text-purple-800';
+        icon = <Sparkles className="w-3 h-3" />;
+        break;
       case 'workout':
         bgColor = 'bg-blue-100';
         textColor = 'text-blue-800';
@@ -453,6 +505,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       } else if (event.type === 'activity') {
         setSelectedActivity(event.data);
       }
+      // For plan_session, we could open a detail modal in the future
     };
 
     return (
@@ -474,6 +527,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
           <span className="truncate text-xs">{event.title}</span>
           {event.type === 'activity' && event.data.tss && (
             <span className="ml-auto text-xs font-medium">{Math.round(event.data.tss)}</span>
+          )}
+          {event.type === 'plan_session' && event.data.tss_target && (
+            <span className="ml-auto text-xs font-medium">{Math.round(event.data.tss_target)} TSS</span>
           )}
         </div>
         {(event.type === 'workout' || event.type === 'activity') && (
@@ -763,7 +819,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       {/* AI Training Plan Wizard */}
       <AITrainingPlanWizard 
         open={isAIPlanWizardOpen} 
-        onOpenChange={setIsAIPlanWizardOpen}
+        onOpenChange={handleWizardClose}
       />
     </div>
   );
