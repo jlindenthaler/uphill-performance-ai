@@ -6,6 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 🌐 Local LLM endpoint (must match ai-training-coach)
+const LLM_URL = "https://exactingly-brookless-krysta.ngrok-free.dev/v1/chat/completions";
+const LLM_API_KEY = Deno.env.get("LLM_API_KEY") || "placeholder_key";
+const LLM_MODEL = "mixtral-8x7b-instruct-v0.1";
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -161,34 +166,62 @@ Generate ONLY valid JSON in this exact format:
   ]
 }`;
 
-    console.log('Calling AI with prompt length:', prompt.length);
+    console.log('Calling LOCAL LLM with prompt length:', prompt.length);
+    console.log('LLM Endpoint:', LLM_URL);
 
-    // Call AI to generate plan
+    // Call LOCAL LLM to generate plan (NO FALLBACK)
     let aiResponse;
-    if (lovableApiKey) {
-      const aiResult = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    try {
+      const llmStartTime = Date.now();
+      console.log('🚀 Sending request to local LLM...');
+      
+      const aiResult = await fetch(LLM_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
+          'Authorization': `Bearer ${LLM_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-pro',
+          model: LLM_MODEL,
           messages: [
             { role: 'system', content: 'You are a world-class endurance training coach and plan architect. Analyze the athlete data deeply and generate a progressive, personalized training plan. Output ONLY valid JSON, no markdown, no explanations.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
+          max_tokens: -1,
+          stream: false,
         }),
       });
 
+      const llmDuration = Date.now() - llmStartTime;
+      console.log(`⏱️ LLM responded in ${llmDuration}ms with status:`, aiResult.status);
+
       if (!aiResult.ok) {
-        console.error('AI API error:', aiResult.status, await aiResult.text());
-        throw new Error('AI generation failed');
+        const errorText = await aiResult.text();
+        console.error('❌ LLM API error:', {
+          status: aiResult.status,
+          statusText: aiResult.statusText,
+          error: errorText,
+          url: LLM_URL,
+          model: LLM_MODEL,
+        });
+        
+        // Return user-friendly error - NO FALLBACK
+        return new Response(
+          JSON.stringify({ 
+            error: 'I am currently unavailable, please try again later',
+            details: 'AI service connection failed',
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       const aiData = await aiResult.json();
       const content = aiData.choices?.[0]?.message?.content || '{}';
+      console.log('✅ AI response received, length:', content.length);
       console.log('AI response preview:', content.substring(0, 200));
       
       // Clean up markdown if present
@@ -200,10 +233,26 @@ Generate ONLY valid JSON in this exact format:
       }
       
       aiResponse = JSON.parse(cleanContent);
-    } else {
-      // Fallback: generate simple plan structure
-      console.warn('LOVABLE_API_KEY not found - using fallback plan (not AI-generated)');
-      aiResponse = generateFallbackPlan(blocks, formData);
+      console.log('✅ Parsed AI response, blocks:', aiResponse.blocks?.length || 0);
+      
+    } catch (llmError) {
+      console.error('❌ LLM call failed:', {
+        error: llmError instanceof Error ? llmError.message : String(llmError),
+        stack: llmError instanceof Error ? llmError.stack : undefined,
+        url: LLM_URL,
+      });
+      
+      // Return user-friendly error - NO FALLBACK
+      return new Response(
+        JSON.stringify({ 
+          error: 'I am currently unavailable, please try again later',
+          details: llmError instanceof Error ? llmError.message : 'Unknown error',
+        }),
+        {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('Generated blocks:', aiResponse.blocks?.length || 0);
@@ -360,30 +409,4 @@ function generateBlockStructure(totalWeeks: number, style: string) {
   }
 }
 
-function generateFallbackPlan(blocks: any[], formData: any) {
-  return {
-    blocks: blocks.map((block, idx) => ({
-      name: block.name,
-      intent: block.intent,
-      weeks: block.weeks,
-      sessions: [
-        {
-          name: 'Endurance',
-          day: formData.longSessionDay || 'Saturday',
-          duration: 120,
-          tss: 100,
-          structure: { intervals: [{ duration: 120, target: '65%', zone: 'Z2' }] },
-          intent: 'Aerobic endurance',
-        },
-        {
-          name: 'Threshold',
-          day: 'Wednesday',
-          duration: 90,
-          tss: 80,
-          structure: { intervals: [{ duration: 20, target: '95%', zone: 'Z4', repeat: 3, rest: 5 }] },
-          intent: 'Lactate threshold',
-        },
-      ],
-    })),
-  };
-}
+// Fallback plan generation removed - user wants error message only if LLM fails
