@@ -81,6 +81,7 @@ export function useLabResults() {
         .select('*')
         .eq('user_id', user.id)
         .eq('sport_mode', sportMode)
+        .order('test_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
