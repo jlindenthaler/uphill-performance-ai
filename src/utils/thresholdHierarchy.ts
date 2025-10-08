@@ -43,20 +43,21 @@ export async function getUserThresholdPower(
   const cpTestDate = cpResults?.test_date ? new Date(cpResults.test_date) : null;
 
   // Determine which threshold to use based on hierarchy and dates
-  if (labResults?.vt2_power) {
-    // Check if CP is more recent than VT2
-    if (cpResults?.cp_watts && cpTestDate && labTestDate && cpTestDate > labTestDate) {
-      return { value: Number(cpResults.cp_watts), source: 'CP (test)' };
-    }
-    return { value: Number(labResults.vt2_power), source: 'VT2 (lab)' };
-  }
-
+  // Prioritize LT2 over VT2 since blood lactate measurement is more definitive
   if (labResults?.lt2_power) {
     // Check if CP is more recent than LT2
     if (cpResults?.cp_watts && cpTestDate && labTestDate && cpTestDate > labTestDate) {
       return { value: Number(cpResults.cp_watts), source: 'CP (test)' };
     }
-    return { value: Number(labResults.lt2_power), source: 'LT2 (lab)' };
+    return { value: Number(labResults.lt2_power), source: 'LT2' };
+  }
+
+  if (labResults?.vt2_power) {
+    // Check if CP is more recent than VT2
+    if (cpResults?.cp_watts && cpTestDate && labTestDate && cpTestDate > labTestDate) {
+      return { value: Number(cpResults.cp_watts), source: 'CP (test)' };
+    }
+    return { value: Number(labResults.vt2_power), source: 'VT2' };
   }
 
   // 3. Use CP from cp_results if available

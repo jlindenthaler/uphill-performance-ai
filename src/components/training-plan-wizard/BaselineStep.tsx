@@ -109,7 +109,7 @@ export function BaselineStep({ formData, setFormData }: BaselineStepProps) {
               {thresholdData && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Glycolytic Threshold ({thresholdData.source.includes('VT2') ? 'VT2' : thresholdData.source.includes('LT2') ? 'LT2' : 'GT'}):
+                    Glycolytic Threshold ({thresholdData.source.includes('VT2') ? 'VT2' : thresholdData.source.includes('LT2') ? 'LT2' : thresholdData.source.includes('CP') ? 'CP' : 'GT'}):
                   </span>
                   <span className="font-medium">
                     {Math.round(thresholdData.value)}W
