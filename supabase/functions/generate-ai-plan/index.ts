@@ -9,7 +9,7 @@ const corsHeaders = {
 // 🌐 Local LLM endpoint (must match ai-training-coach)
 const LLM_URL = "https://exactingly-brookless-krysta.ngrok-free.dev/v1/chat/completions";
 const LLM_API_KEY = Deno.env.get("LLM_API_KEY") || "placeholder_key";
-const LLM_MODEL = "mixtral-8x7b-instruct-v0.1";
+const LLM_MODEL = "gemma-3-4b-it";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
