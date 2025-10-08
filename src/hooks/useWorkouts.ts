@@ -100,19 +100,82 @@ export function useWorkouts(filterBySport: boolean = true) {
     await fetchWorkouts();
   };
 
-  const exportWorkout = (workout: Workout, format: 'json' | 'tcx' = 'json') => {
+  const exportWorkout = async (
+    workout: any, 
+    format: 'json' | 'zwo' | 'erg' | 'mrc' = 'json',
+    thresholds?: any
+  ) => {
+    let content: string;
+    let mimeType: string;
+    let fileExtension: string;
+
     if (format === 'json') {
-      const dataStr = JSON.stringify(workout, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${workout.name.replace(/\s+/g, '_')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      content = JSON.stringify(workout, null, 2);
+      mimeType = 'application/json';
+      fileExtension = 'json';
+    } else {
+      // For other formats, we need thresholds and the science-workouts package
+      if (!thresholds) {
+        // Fetch user thresholds if not provided
+        const { getThresholdsFromLabResults } = await import('@/utils/scienceWorkouts');
+        if (!user) throw new Error('User not authenticated');
+        thresholds = await getThresholdsFromLabResults(user.id, sportMode);
+      }
+
+      const { exportToZWO, exportToERG, exportToMRC } = await import('@/utils/scienceWorkouts');
+      
+      // Convert workout structure to package format if needed
+      const packageWorkout = workout.erg_schema ? workout : {
+        id: workout.id || 'custom',
+        title: workout.name,
+        zone: workout.sport_mode || sportMode,
+        protocol: workout.description || '',
+        reference: '',
+        doi: null,
+        outcome: '',
+        intensity: {
+          anchor: 'FTP',
+          fallback: ['CP', 'MAP'],
+          targets: { work: 1.0 }
+        },
+        erg_schema: workout.structure || {
+          warmup: { duration_min: 10, target: 0.6 },
+          sets: [],
+          cooldown: { duration_min: 10, target: 0.6 }
+        },
+        exportable_formats: ['zwo', 'erg', 'mrc']
+      };
+
+      switch (format) {
+        case 'zwo':
+          content = exportToZWO(packageWorkout, thresholds);
+          mimeType = 'application/xml';
+          fileExtension = 'zwo';
+          break;
+        case 'erg':
+          content = exportToERG(packageWorkout, thresholds);
+          mimeType = 'text/plain';
+          fileExtension = 'erg';
+          break;
+        case 'mrc':
+          content = exportToMRC(packageWorkout, thresholds);
+          mimeType = 'text/plain';
+          fileExtension = 'mrc';
+          break;
+        default:
+          throw new Error(`Unsupported format: ${format}`);
+      }
     }
+
+    const dataBlob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(workout.name || workout.title || 'workout').replace(/\s+/g, '_')}.${fileExtension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {

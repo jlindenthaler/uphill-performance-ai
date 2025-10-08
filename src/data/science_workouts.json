@@ -1,0 +1,579 @@
+[
+  {
+    "id": "z1_lsd_endurance",
+    "zone": "Z1",
+    "title": "Long Slow Distance (Endurance)",
+    "protocol": "2\u20134 h steady below AeT; monitor HR drift <5%",
+    "reference": "Seiler & T\u00f8nnessen (2009); Esteve-Lanao et al. (2007)",
+    "doi": null,
+    "outcome": "\u2191 mitochondrial biogenesis, \u2191 fat oxidation, improved durability",
+    "intensity": {
+      "anchor": "AeT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ],
+      "targets": {
+        "work": 0.95
+      }
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 1,
+          "on_sec": 7200,
+          "target_on": 0.9
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z1_fasted_endurance",
+    "zone": "Z1",
+    "title": "Fasted Endurance",
+    "protocol": "60\u2013120 min pre-breakfast at AeT\u221210 W (or ~0.9\u00d7AeT)",
+    "reference": "Hansen (2005); Van Proeyen (2011)",
+    "doi": null,
+    "outcome": "\u2191 fat oxidation, \u2191 glycogen resynthesis capacity",
+    "intensity": {
+      "anchor": "AeT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 1,
+          "on_sec": 5400,
+          "target_on": 0.9
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z1_cadence_variability",
+    "zone": "Z1",
+    "title": "Cadence Variability Endurance",
+    "protocol": "120\u2013180 min Z1 with 20-min cadence blocks (85 \u2194 65 rpm)",
+    "reference": "Hopker et al. (2010)",
+    "doi": null,
+    "outcome": "Neuromuscular efficiency without added metabolic stress",
+    "intensity": {
+      "anchor": "AeT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 1,
+          "on_sec": 7200,
+          "target_on": 0.95
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z1_aerobic_drift_test",
+    "zone": "Z1",
+    "title": "Aerobic Drift Endurance (Pa:HR Test)",
+    "protocol": "90\u2013120 min below AeT; aim HR drift <5% between halves",
+    "reference": "Achten & Jeukendrup (2003) concept of FatMax; Seiler (2010)",
+    "doi": null,
+    "outcome": "Determine durability and validate AeT placement",
+    "intensity": {
+      "anchor": "AeT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 1,
+          "on_sec": 5400,
+          "target_on": 0.95
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z2_extensive_tempo_2x40",
+    "zone": "Z2",
+    "title": "Extensive Tempo 2\u00d740 min",
+    "protocol": "2\u00d740 min at ~0.80\u20130.85 of GT with 10 min recovery",
+    "reference": "Mu\u00f1oz (2014); Seiler (2010)",
+    "doi": null,
+    "outcome": "\u2191 lactate clearance & aerobic enzyme activity",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 2,
+          "on_sec": 2400,
+          "off_sec": 600,
+          "target_on": 0.85,
+          "target_off": 0.6
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z2_sweetspot_3x20",
+    "zone": "Z2",
+    "title": "Sweet Spot 3\u00d720 min",
+    "protocol": "3\u00d720 min at 0.88\u20130.92 of GT with 5 min recovery",
+    "reference": "Ingham (2008); R\u00f8nnestad (2014)",
+    "doi": null,
+    "outcome": "\u2191 threshold power & fractional utilization of VO\u2082max",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 3,
+          "on_sec": 1200,
+          "off_sec": 300,
+          "target_on": 0.9,
+          "target_off": 0.6
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z2_flux_10x(4+2)",
+    "zone": "Z2",
+    "title": "Tempo\u2013Endurance Flux 10\u00d7(4+2)",
+    "protocol": "10\u00d7 (4 min Z2 @ ~0.85 GT + 2 min Z1 @ 0.6 GT)",
+    "reference": "Neal (2013) polarized comparison",
+    "doi": null,
+    "outcome": "Sustained aerobic stimulus with reduced monotony",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 10,
+          "on_sec": 240,
+          "off_sec": 120,
+          "target_on": 0.85,
+          "target_off": 0.6
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z3_4x4_vo2",
+    "zone": "Z3",
+    "title": "4\u00d74 min VO\u2082max",
+    "protocol": "4\u00d74 min @ ~1.05\u00d7GT (\u224890\u201395% VO\u2082max) with 3 min rec",
+    "reference": "Helgerud (2007); Seiler (2004)",
+    "doi": null,
+    "outcome": "\u2191 VO\u2082max, \u2191 stroke volume, \u2191 MAP",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 4,
+          "on_sec": 240,
+          "off_sec": 180,
+          "target_on": 1.05,
+          "target_off": 0.55
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z3_ronnestad_30_15",
+    "zone": "Z3",
+    "title": "R\u00f8nnestad 30/15s",
+    "protocol": "3\u00d713\u00d7(30 s @1.20\u00d7GT / 15 s @0.5\u00d7GT), 3 min set rec",
+    "reference": "R\u00f8nnestad et al. (2015)",
+    "doi": null,
+    "outcome": "\u2191 VO\u2082peak, \u2191 TTE; similar gains to 4\u00d74 with lower monotony",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 13,
+          "on_sec": 30,
+          "off_sec": 15,
+          "target_on": 1.2,
+          "target_off": 0.5,
+          "rec_sec": 180
+        },
+        {
+          "reps": 13,
+          "on_sec": 30,
+          "off_sec": 15,
+          "target_on": 1.2,
+          "target_off": 0.5,
+          "rec_sec": 180
+        },
+        {
+          "reps": 13,
+          "on_sec": 30,
+          "off_sec": 15,
+          "target_on": 1.2,
+          "target_off": 0.5
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z3_cluster_2+8x3",
+    "zone": "Z3",
+    "title": "Cluster: 3\u00d7(2' @1.2 + 8' @1.0 of GT)",
+    "protocol": "3\u00d7 (2 min @1.20\u00d7GT + 8 min @1.00\u00d7GT) with 4 min rec",
+    "reference": "R\u00f8nnestad (2020) mixed-intensity cluster work",
+    "doi": null,
+    "outcome": "Dual stimulus on VO\u2082 and threshold",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 10,
+        "target": 0.65
+      },
+      "sets": [
+        {
+          "reps": 1,
+          "on_sec": 120,
+          "off_sec": 0,
+          "target_on": 1.2
+        },
+        {
+          "reps": 1,
+          "on_sec": 480,
+          "off_sec": 240,
+          "target_on": 1.0,
+          "target_off": 0.55
+        },
+        {
+          "reps": 1,
+          "on_sec": 120,
+          "off_sec": 0,
+          "target_on": 1.2
+        },
+        {
+          "reps": 1,
+          "on_sec": 480,
+          "off_sec": 240,
+          "target_on": 1.0,
+          "target_off": 0.55
+        },
+        {
+          "reps": 1,
+          "on_sec": 120,
+          "off_sec": 0,
+          "target_on": 1.2
+        },
+        {
+          "reps": 1,
+          "on_sec": 480,
+          "target_on": 1.0
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z4_wingate_6x30",
+    "zone": "Z4",
+    "title": "Wingate-Style 6\u00d730 s",
+    "protocol": "6\u00d730 s all-out (target 1.75\u20132.0\u00d7GT) with 4 min recovery",
+    "reference": "Burgomaster (2008) sprint interval training",
+    "doi": null,
+    "outcome": "\u2191 anaerobic capacity and glycolytic enzymes",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 15,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 6,
+          "on_sec": 30,
+          "off_sec": 240,
+          "target_on": 1.9,
+          "target_off": 0.5
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z4_microburst_2x(20x15_15)",
+    "zone": "Z4",
+    "title": "Microburst 2\u00d7(20\u00d715/15)",
+    "protocol": "2\u00d7 (20\u00d7 15 s @1.4\u00d7GT / 15 s @0.5\u00d7GT), 5 min set rec",
+    "reference": "Laursen & Jenkins (2002) high-intensity interval training",
+    "doi": null,
+    "outcome": "\u2191 VO\u2082 kinetics and anaerobic capacity",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 12,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 20,
+          "on_sec": 15,
+          "off_sec": 15,
+          "target_on": 1.4,
+          "target_off": 0.5,
+          "rec_sec": 300
+        },
+        {
+          "reps": 20,
+          "on_sec": 15,
+          "off_sec": 15,
+          "target_on": 1.4,
+          "target_off": 0.5
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  },
+  {
+    "id": "z4_sprint_endurance_mixed",
+    "zone": "Z4",
+    "title": "Sprint-Endurance Mixed",
+    "protocol": "6\u00d710 s all-out (2 min Z1) + 6\u00d730 s @1.5\u00d7GT (3 min rec)",
+    "reference": "R\u00f8nnestad (2013) sprint-endurance adaptations",
+    "doi": null,
+    "outcome": "\u2191 neuromuscular recruitment and W\u2032 capacity",
+    "intensity": {
+      "anchor": "GT",
+      "fallback": [
+        "CP",
+        "FTP"
+      ]
+    },
+    "erg_schema": {
+      "warmup": {
+        "duration_min": 12,
+        "target": 0.6
+      },
+      "sets": [
+        {
+          "reps": 6,
+          "on_sec": 10,
+          "off_sec": 120,
+          "target_on": 1.8,
+          "target_off": 0.55,
+          "rec_sec": 180
+        },
+        {
+          "reps": 6,
+          "on_sec": 30,
+          "off_sec": 180,
+          "target_on": 1.5,
+          "target_off": 0.55
+        }
+      ],
+      "cooldown": {
+        "duration_min": 10,
+        "target": 0.6
+      }
+    },
+    "exportable_formats": [
+      "zwo",
+      "erg",
+      "mrc"
+    ]
+  }
+]
