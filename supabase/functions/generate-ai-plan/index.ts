@@ -2,9 +2,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
-// ────────────────────────────────────────────────
-// 🔐 CORS & Env
-// ────────────────────────────────────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -15,92 +12,69 @@ const LLM_API_KEY = Deno.env.get("LLM_API_KEY") || "placeholder_key";
 const LLM_MODEL = Deno.env.get("LLM_MODEL") || "gemma-3-4b-it";
 
 // ────────────────────────────────────────────────
-// 🧠 Helper: Generate structured block skeleton
+// 🧠 Helper — block structure with start/end dates
 // ────────────────────────────────────────────────
-function generateBlockStructure(totalWeeks: number) {
+function generateBlockTimeline(startDate: Date, totalWeeks: number) {
+  const blocks: { name: string; weeks: number; intent: string }[] = [];
   if (totalWeeks < 8) {
-    return [
-      { name: "Build", weeks: totalWeeks - 2, intent: "Build fitness and intensity tolerance" },
-      { name: "Taper", weeks: 2, intent: "Freshen and sharpen for event" },
-    ];
+    blocks.push({ name: "Build", weeks: totalWeeks - 2, intent: "Build fitness and intensity tolerance" });
+    blocks.push({ name: "Taper", weeks: 2, intent: "Freshen and sharpen for event" });
   } else if (totalWeeks < 16) {
-    return [
-      { name: "Base", weeks: Math.floor(totalWeeks * 0.3), intent: "Aerobic foundation and endurance" },
-      { name: "Build", weeks: Math.floor(totalWeeks * 0.5), intent: "Intensity and race-specific work" },
-      { name: "Taper", weeks: Math.ceil(totalWeeks * 0.2), intent: "Recovery and sharpening" },
-    ];
+    blocks.push({ name: "Base", weeks: Math.floor(totalWeeks * 0.3), intent: "Aerobic foundation and endurance" });
+    blocks.push({ name: "Build", weeks: Math.floor(totalWeeks * 0.5), intent: "Intensity and race-specific work" });
+    blocks.push({ name: "Taper", weeks: Math.ceil(totalWeeks * 0.2), intent: "Recovery and sharpening" });
   } else {
-    return [
-      { name: "Base", weeks: Math.floor(totalWeeks * 0.35), intent: "Aerobic foundation and muscular endurance" },
-      { name: "Build 1", weeks: Math.floor(totalWeeks * 0.25), intent: "Threshold and tempo work" },
-      { name: "Build 2", weeks: Math.floor(totalWeeks * 0.25), intent: "VO2max and race specificity" },
-      { name: "Taper", weeks: Math.ceil(totalWeeks * 0.15), intent: "Freshen and maintain sharpness" },
-    ];
+    blocks.push({ name: "Base", weeks: Math.floor(totalWeeks * 0.35), intent: "Aerobic foundation and muscular endurance" });
+    blocks.push({ name: "Build 1", weeks: Math.floor(totalWeeks * 0.25), intent: "Threshold and tempo work" });
+    blocks.push({ name: "Build 2", weeks: Math.floor(totalWeeks * 0.25), intent: "VO2max and race specificity" });
+    blocks.push({ name: "Taper", weeks: Math.ceil(totalWeeks * 0.15), intent: "Freshen and maintain sharpness" });
   }
+
+  // Add actual dates
+  let blockStart = new Date(startDate);
+  return blocks.map(b => {
+    const blockEnd = new Date(blockStart.getTime() + b.weeks * 7 * 86400 * 1000);
+    const out = { ...b, startISO: blockStart.toISOString(), endISO: blockEnd.toISOString() };
+    blockStart = blockEnd;
+    return out;
+  });
 }
 
 // ────────────────────────────────────────────────
-// 🧠 SYSTEM PROMPT — doctrine & schema rules
+// 🧠 SYSTEM PROMPT — now with no fences & ramp control
 // ────────────────────────────────────────────────
 const SYSTEM_PROMPT = `
 You are UpHill AI, a world-class endurance training plan architect.
 You must output a strictly valid JSON object conforming to the PlanAIOutput schema.
+Do NOT wrap your response in Markdown code fences or use \`\`\`json. Return a raw JSON object only.
 
 Zones follow the **Modified Seiler 4-Zone model**:
-- Z1: below Aerobic Threshold (AeT)
-- Z2: AeT → Glycolytic Threshold (GT)
+- Z1: below AeT
+- Z2: AeT → GT
 - Z3: GT → MAP
 - Z4: above MAP
 
 RULES:
 - If training model classification is unknown, DEFAULT to "polarized".
-- Respect the athlete's availability and event timeline.
-- Progress load conservatively (deload every 3–4 weeks).
+- Use the block start/end dates provided in the input — do not invent your own timeline.
+- Respect availability and target weekly TLI progression. Do not exceed maxWeeklyRampPct.
+- Progress load conservatively, insert recovery weeks every 3–4 weeks.
 - Match intensity distribution to the periodization style.
-- Do not invent data. If something is missing, fall back conservatively.
+- Do not invent lab data or power values.
 - Output ONLY valid JSON. No Markdown, no explanations.
 
 SCHEMA: PlanAIOutput
 {
-  "chosenTrainingModel": "polarized" | "pyramidal" | "threshold" | "timecrunched",
+  "chosenTrainingModel": string,
   "rationale": string,
-  "macrocycle": [
-    {
-      "block": string,
-      "startISO": string,
-      "endISO": string,
-      "intents": string[],
-      "targetWeeklyTLI": number[]
-    }
-  ],
-  "microcycles": [
-    {
-      "weekStartISO": string,
-      "targetTLI": number,
-      "sessionsPlanned": number,
-      "keyWorkouts": [
-        {
-          "name": string,
-          "zoneIntent": "Z1"|"Z2"|"Z3"|"Z4",
-          "prescription": string,
-          "export": {
-            "type": "ERG"|"ZWO"|"FITSTRUCT",
-            "payload": string
-          }
-        }
-      ]
-    }
-  ],
-  "adaptationPolicy": {
-    "tliTolerancePct": number,
-    "durationTolerancePct": number,
-    "triggers": string[]
-  }
+  "macrocycle": [...],
+  "microcycles": [...],
+  "adaptationPolicy": {...}
 }
 `;
 
 // ────────────────────────────────────────────────
-// 🚀 MAIN
+// 🚀 Main handler
 // ────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -112,8 +86,14 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -125,7 +105,7 @@ serve(async (req) => {
     const formData = await req.json();
     const sport = formData.sportMode || "cycling";
 
-    // ── Fetch latest lab results & 90-day training history
+    // ── Fetch lab + history
     const [labResult, history] = await Promise.all([
       supabase
         .from("lab_results")
@@ -147,14 +127,11 @@ serve(async (req) => {
     const lab = labResult.data || {};
     const recent = history.data || [];
 
-    // ── Compute baseline
-    const avgWeeklyTSS = recent.length > 0
-      ? recent.slice(0, 28).reduce((sum, d) => sum + (d.tss || 0), 0) / 4
-      : 0;
+    // ── Baseline
+    const avgWeeklyTSS = recent.slice(0, 28).reduce((sum, d) => sum + (d.tss || 0), 0) / 4 || 0;
     const recentCTL = recent[0]?.ctl || 0;
     const recentTSB = recent[0]?.tsb || 0;
 
-    // ── FTP estimation hierarchy
     let ftp = formData.primaryGoal?.targetPower || 250;
     if (lab.vt2_power) ftp = lab.vt2_power;
     else if (lab.lt2_power) ftp = lab.lt2_power;
@@ -167,18 +144,14 @@ serve(async (req) => {
       ? new Date(formData.primaryGoal.eventDate)
       : new Date(startDate.getTime() + 90 * 86400 * 1000);
     const totalWeeks = Math.ceil((eventDate.getTime() - startDate.getTime()) / (7 * 86400 * 1000));
-    const blocks = generateBlockStructure(totalWeeks);
+    const blocks = generateBlockTimeline(startDate, totalWeeks);
 
-    // ── Construct structured JSON prompt input
+    // ── Build structured input
     const aiInput = {
       athlete: {
         sport,
         ftp,
-        thresholds: {
-          aet: lab.aet || null,
-          gt: lab.gt || null,
-          map: lab.map_value || null,
-        },
+        thresholds: { aet: lab.aet || null, gt: lab.gt || null, map: lab.map_value || null },
         ctl: recentCTL,
         tsb: recentTSB,
         avgWeeklyTSS,
@@ -190,22 +163,27 @@ serve(async (req) => {
         target: formData.primaryGoal?.targetObjective,
       },
       availability: {
+        dailySchedule: formData.weeklySchedule || [
+          { day: "Monday", availableHours: 1 },
+          { day: "Tuesday", availableHours: 2 },
+          { day: "Wednesday", availableHours: 1 },
+          { day: "Thursday", availableHours: 2 },
+          { day: "Friday", availableHours: 1 },
+          { day: "Saturday", availableHours: 4 },
+          { day: "Sunday", availableHours: 2 }
+        ],
         weeklySessions: formData.sessionsPerWeek || 5,
         weeklyTLI: formData.weeklyTLI || 400,
-        longSessionDay: formData.longSessionDay || "Saturday",
-        dailySchedule: formData.weeklySchedule || null, // you can fill this in later
+        maxWeeklyRampPct: formData.maxWeeklyRampPct || 10
       },
-      planStructure: {
-        periodization: formData.periodizationStyle || "auto",
-        blocks,
-      },
+      planStructure: { periodization: formData.periodizationStyle || "auto", blocks },
       adaptation: {
-        tliTolerancePct: formData.deviationTolerance?.tli || 10,
-        durationTolerancePct: formData.deviationTolerance?.duration || 10,
-        feedbackSources: formData.feedbackSources || [],
+        tliTolerancePct: formData.deviationTolerance?.tli || 15,
+        durationTolerancePct: formData.deviationTolerance?.duration || 15,
+        feedbackSources: formData.feedbackSources || ["HRV", "RPE", "Z2 decoupling"]
       },
       historySummary: {
-        // You can extend this later with zone distributions or MMP curves
+        // MMP curves go here later
       }
     };
 
@@ -240,9 +218,8 @@ serve(async (req) => {
     const llmData = await response.json();
     let content = llmData.choices?.[0]?.message?.content?.trim() || "{}";
 
-    if (content.startsWith("```")) {
-      content = content.replace(/```json|```/g, "").trim();
-    }
+    // No more code fences expected, but just in case:
+    if (content.startsWith("```")) content = content.replace(/```json|```/g, "").trim();
 
     const aiPlan = JSON.parse(content);
     console.log("✅ Plan generated:", aiPlan.chosenTrainingModel, aiPlan.macrocycle?.length || 0, "blocks");
@@ -250,6 +227,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, aiPlan }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     console.error("❌ Edge Function Error:", err);
     return new Response(JSON.stringify({ error: err.message || "Unknown error" }), {
