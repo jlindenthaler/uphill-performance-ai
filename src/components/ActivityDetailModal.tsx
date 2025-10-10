@@ -298,8 +298,8 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
               <CardContent className="space-y-4">
                 {activity.tss && (
                   <div className="text-center">
-                    <span className="text-2xl font-bold">Training Load Index</span>
-                    <span className="text-sm text-muted-foreground">{activity.tss.toFixed(0)}</span>
+                    <span className="text-2xl font-bold">{activity.tss.toFixed(0)}</span>
+                    <span className="text-sm text-muted-foreground">Training Load Index</span>
                   </div>
                 )}
 
