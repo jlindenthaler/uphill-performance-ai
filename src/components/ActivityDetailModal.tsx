@@ -37,6 +37,7 @@ interface Activity {
   avg_power?: number;
   max_power?: number;
   normalized_power?: number;
+  avg_cadence?: number;
   tss?: number;
   intensity_factor?: number;
   variability_index?: number;
@@ -261,14 +262,21 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                   {activity.elevation_gain_meters && (
                     <div>
                       <div className="text-sm text-muted-foreground">Elevation Gain</div>
-                      <div className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)}m</div>
+                      <div className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</div>
+                    </div>
+                  )}
+
+                  {activity.avg_cadence && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">Average Cadence</div>
+                      <div className="text-lg font-semibold">{activity.avg_cadence} rpm</div>
                     </div>
                   )}
 
                   {activity.calories && (
                     <div>
                       <div className="text-sm text-muted-foreground">Calories</div>
-                      <div className="text-lg font-semibold">{activity.calories}</div>
+                      <div className="text-lg font-semibold">{activity.calories} kcal</div>
                     </div>
                   )}
                 </div>
