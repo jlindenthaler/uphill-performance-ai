@@ -510,19 +510,12 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       } else if (event.type === 'activity') {
         // Fetch full activity details
         const fullActivity = await fetchActivityDetails(event.data.id);
-        console.log('📊 Full Activity Data:', fullActivity);
-        console.log('📊 Activity Fields:', {
-          tss: fullActivity?.tss,
-          intensity_factor: fullActivity?.intensity_factor,
-          variability_index: fullActivity?.variability_index
-        });
         
         if (fullActivity) {
           setSelectedActivity(fullActivity);
           // Look up PMC data for this activity's date
           const activityDateStr = format(new Date(fullActivity.date), 'yyyy-MM-dd');
           const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
-          console.log('📊 PMC Data for', activityDateStr, ':', pmcForDate);
           
           if (pmcForDate) {
             setSelectedActivityPMC({

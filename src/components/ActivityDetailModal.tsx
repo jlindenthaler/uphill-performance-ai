@@ -44,6 +44,8 @@ interface Activity {
   elevation_gain_meters?: number;
   calories?: number;
   gps_data?: any;
+  lap_data?: any;
+  weather_conditions?: any;
   notes?: string;
   file_type?: string;
   original_filename?: string;
@@ -60,15 +62,6 @@ interface ActivityDetailModalProps {
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete, pmcData }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
-  
-  // Debug logging
-  console.log('🔍 ActivityDetailModal - activity:', activity);
-  console.log('🔍 ActivityDetailModal - pmcData:', pmcData);
-  console.log('🔍 ActivityDetailModal - Training Load fields:', {
-    tss: activity?.tss,
-    intensity_factor: activity?.intensity_factor,
-    variability_index: activity?.variability_index
-  });
   
   if (!activity) return null;
 
@@ -368,7 +361,56 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                 <CardTitle>Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">{activity.notes}</p>
+                <p className="text-sm whitespace-pre-wrap">{activity.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Weather Conditions */}
+          {activity.weather_conditions && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Weather Conditions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm">
+                  {typeof activity.weather_conditions === 'object' ? (
+                    <div className="space-y-2">
+                      {Object.entries(activity.weather_conditions).map(([key, value]) => (
+                        <div key={key} className="flex justify-between">
+                          <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="font-medium">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>{String(activity.weather_conditions)}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Lap Data */}
+          {activity.lap_data && Array.isArray(activity.lap_data) && activity.lap_data.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Lap Data ({activity.lap_data.length} laps)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm max-h-64 overflow-y-auto">
+                  {activity.lap_data.map((lap: any, index: number) => (
+                    <div key={index} className="border-b border-border pb-2 last:border-0">
+                      <div className="font-medium">Lap {index + 1}</div>
+                      <div className="grid grid-cols-2 gap-2 mt-1 text-muted-foreground">
+                        {lap.duration && <div>Duration: {Math.floor(lap.duration / 60)}:{(lap.duration % 60).toString().padStart(2, '0')}</div>}
+                        {lap.distance && <div>Distance: {(lap.distance / 1000).toFixed(2)} km</div>}
+                        {lap.avg_power && <div>Avg Power: {lap.avg_power}W</div>}
+                        {lap.avg_heart_rate && <div>Avg HR: {lap.avg_heart_rate} bpm</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
