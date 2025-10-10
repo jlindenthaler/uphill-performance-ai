@@ -14,6 +14,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { useCombinedTrainingHistory } from '@/hooks/useCombinedTrainingHistory';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
 import { ActivityDetailModal } from './ActivityDetailModal';
+import { supabase } from '@/integrations/supabase/client';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { formatDateInUserTimezone } from '@/utils/dateFormat';
 import { useWorkoutClipboard } from '@/hooks/useWorkoutClipboard';
@@ -55,8 +56,9 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts(false); // Show all sports
   const { activities, deleteActivity, fetchActivityDetails } = useActivities(false); // Show all sports
-  const { trainingHistory } = useCombinedTrainingHistory(90); // Extended range for infinite scroll, aggregates across all sports
+  const { trainingHistory } = useCombinedTrainingHistory(90); // For PMC projections
   const { timezone } = useUserTimezone();
+  const [pmcData, setPmcData] = useState<Map<string, { ctl: number; atl: number; tsb: number }>>(new Map());
   const { clipboardData, copyWorkout, hasClipboardData, clearClipboard } = useWorkoutClipboard();
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
   const isMobile = useIsMobile();
@@ -508,23 +510,39 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       if (event.type === 'workout') {
         setSelectedWorkout(event.data);
       } else if (event.type === 'activity') {
-        // Fetch full activity details
-        const fullActivity = await fetchActivityDetails(event.data.id);
-        
+        const activity = event.data;
+        const fullActivity = await fetchActivityDetails(activity.id);
         if (fullActivity) {
           setSelectedActivity(fullActivity);
-          // Look up PMC data for this activity's date
-          const activityDateStr = format(new Date(fullActivity.date), 'yyyy-MM-dd');
-          const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
           
-          if (pmcForDate) {
-            setSelectedActivityPMC({
-              ctl: pmcForDate.ctl || 0,
-              atl: pmcForDate.atl || 0,
-              tsb: pmcForDate.tsb || 0
-            });
+          // Fetch PMC data from database if not already cached
+          if (!pmcData.has(activity.id)) {
+            const { data: pmcRecord } = await supabase
+              .from('training_history')
+              .select('ctl, atl, tsb')
+              .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+              .eq('sport', activity.sport_mode)
+              .eq('date', new Date(activity.date).toISOString().split('T')[0])
+              .single();
+            
+            if (pmcRecord) {
+              setPmcData(prev => new Map(prev).set(activity.id, {
+                ctl: pmcRecord.ctl || 0,
+                atl: pmcRecord.atl || 0,
+                tsb: pmcRecord.tsb || 0
+              }));
+              setSelectedActivityPMC({
+                ctl: pmcRecord.ctl || 0,
+                atl: pmcRecord.atl || 0,
+                tsb: pmcRecord.tsb || 0
+              });
+            } else {
+              setSelectedActivityPMC(undefined);
+            }
           } else {
-            setSelectedActivityPMC(undefined);
+            // Use cached data
+            const cached = pmcData.get(activity.id);
+            setSelectedActivityPMC(cached);
           }
         }
       }
