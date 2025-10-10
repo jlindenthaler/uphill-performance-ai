@@ -3,21 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { 
-  Clock, 
-  MapPin, 
-  Zap, 
-  Target, 
-  Heart, 
-  Activity, 
-  TrendingUp, 
-  X,
-  Edit,
-  Trash2,
-  MoreHorizontal
-} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Clock, MapPin, Zap, Target, Heart, Activity, TrendingUp, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import { EnhancedMapView } from "./EnhancedMapView";
 import { formatActivityDateTime } from "@/utils/dateFormat";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -47,6 +50,9 @@ interface Activity {
   notes?: string;
   file_type?: string;
   original_filename?: string;
+  ltl?: number;
+  stl?: number;
+  fi?: number;
 }
 
 interface ActivityDetailModalProps {
@@ -59,18 +65,18 @@ interface ActivityDetailModalProps {
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
-  
+
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
   const formatDistance = (meters: number) => {
@@ -81,30 +87,30 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
   };
 
   const formatSpeed = (kmh: number) => `${kmh.toFixed(1)} km/h`;
-  
+
   const formatPace = (pacePerKm: number) => {
     const minutes = Math.floor(pacePerKm);
     const seconds = Math.round((pacePerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')} /km`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
   };
 
   const formatPower = (watts: number) => `${watts.toFixed(0)}W`;
 
   const getSportIcon = (sport: string) => {
     switch (sport.toLowerCase()) {
-      case 'cycling':
-        return '🚴';
-      case 'running':
-        return '🏃';
-      case 'swimming':
-        return '🏊';
+      case "cycling":
+        return "🚴";
+      case "running":
+        return "🏃";
+      case "swimming":
+        return "🏊";
       default:
-        return '💪';
+        return "💪";
     }
   };
 
-  const isCycling = activity.sport_mode === 'cycling';
-  const isRunning = activity.sport_mode === 'running';
+  const isCycling = activity.sport_mode === "cycling";
+  const isRunning = activity.sport_mode === "running";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -131,7 +137,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 <DropdownMenuContent align="end" className="bg-popover border border-border">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-destructive focus:text-destructive cursor-pointer"
                         onSelect={(e) => e.preventDefault()}
                       >
@@ -148,7 +154,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           onClick={() => {
                             onDelete?.(activity.id!);
@@ -214,7 +220,13 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
           <Separator />
 
           {/* Performance Metrics */}
-          {(activity.avg_power || activity.avg_pace_per_km) && (
+          {(activity.avg_power ||
+            activity.max_power ||
+            activity.normalized_power ||
+            activity.max_heart_rate ||
+            activity.elevation_gain_meters ||
+            activity.avg_cadence ||
+            activity.calories) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -244,7 +256,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                       )}
                     </>
                   )}
-                  
+
                   {isRunning && activity.avg_pace_per_km && (
                     <div>
                       <div className="text-sm text-muted-foreground">Average Pace</div>
@@ -314,11 +326,8 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                     </div>
                   )}
                 </div>
-                
-                <AISessionFeedback 
-                  activity={activity}
-                  workout={undefined}
-                />
+
+                <AISessionFeedback activity={activity} workout={undefined} />
               </CardContent>
             </Card>
           )}
@@ -333,10 +342,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EnhancedMapView 
-                  gpsData={activity.gps_data} 
-                  className="h-[340px] rounded-lg"
-                />
+                <EnhancedMapView gpsData={activity.gps_data} className="h-[340px] rounded-lg" />
               </CardContent>
             </Card>
           )}
@@ -372,21 +378,13 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
           {(onEdit || onDelete) && (
             <div className="flex justify-end gap-2">
               {onEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onEdit(activity)}
-                >
+                <Button variant="outline" size="sm" onClick={() => onEdit(activity)}>
                   <Edit className="w-3 h-3 mr-1" />
                   Edit
                 </Button>
               )}
               {onDelete && activity.id && (
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => onDelete(activity.id!)}
-                >
+                <Button variant="destructive" size="sm" onClick={() => onDelete(activity.id!)}>
                   <Trash2 className="w-3 h-3 mr-1" />
                   Delete
                 </Button>
