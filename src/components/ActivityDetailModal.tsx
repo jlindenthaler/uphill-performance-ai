@@ -282,7 +282,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
           </Card>
 
           {/* Training Load */}
-          {(activity.tss || activity.intensity_factor || activity.variability_index) && (
+          {(activity.tss || activity.intensity_factor || activity.variability_index || pmcData) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -310,12 +310,8 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                       <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
                     </div>
                   )}
-                </div>
-                
-                {pmcData && (
-                  <>
-                    <Separator className="my-4" />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {pmcData && (
+                    <>
                       <div>
                         <div className="text-sm text-muted-foreground">LTL</div>
                         <div className="text-lg font-semibold text-ltl">{pmcData.ctl.toFixed(1)}</div>
@@ -328,9 +324,9 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                         <div className="text-sm text-muted-foreground">FI</div>
                         <div className="text-lg font-semibold text-fi">{pmcData.tsb.toFixed(1)}</div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
                 
                 <AISessionFeedback 
                   activity={activity}
