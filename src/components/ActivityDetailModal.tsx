@@ -301,8 +301,6 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                     <div className="text-2xl font-bold">{activity.tss.toFixed(0)}</div>
                     <div className="text-sm text-muted-foreground">Training Load Index</div>
                   </div>
-                )}
-
                 {pmcData && (
                   <div className="grid grid-cols-3 gap-4 py-2">
                     <div className="text-center">
