@@ -151,7 +151,7 @@ async function fetchStravaActivityStreams(
   };
 }
 
-function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
+function mapStravaActivityToDatabase(activity: StravaActivity, userId: string, userFTP?: number) {
   // Map Strava activity types to our sport modes
   const typeMap: Record<string, string> = {
     'ride': 'cycling',
@@ -167,6 +167,15 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
   
   const activityType = (activity.sport_type || activity.type || '').toLowerCase();
   const sportMode = typeMap[activityType] || null;
+  
+  // Calculate TSS if we have power data and FTP
+  let tss: number | null = null;
+  if (activity.average_watts && userFTP && userFTP > 0) {
+    const durationHours = (activity.moving_time || activity.elapsed_time) / 3600;
+    const normalizedPower = activity.weighted_average_watts || activity.average_watts;
+    const intensityFactor = normalizedPower / userFTP;
+    tss = Math.round(durationHours * normalizedPower * intensityFactor * 100 / userFTP);
+  }
   
   return {
     user_id: userId,
@@ -186,6 +195,7 @@ function mapStravaActivityToDatabase(activity: StravaActivity, userId: string) {
     normalized_power: activity.weighted_average_watts || null,
     avg_cadence: activity.average_cadence ? Math.round(activity.average_cadence) : null,
     calories: activity.kilojoules ? Math.round(activity.kilojoules) : null,
+    tss: tss,
   };
 }
 
@@ -200,6 +210,19 @@ async function processBackfillJob(supabase: any, job: any) {
       .eq('id', job.id);
 
     const accessToken = await getValidAccessToken(supabase, job.user_id);
+    
+    // Fetch user's FTP for TSS calculation
+    const { data: labData } = await supabase
+      .from('lab_results')
+      .select('vt2_power, lt2_power, critical_power, gt')
+      .eq('user_id', job.user_id)
+      .eq('sport_mode', 'cycling')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    const userFTP = labData?.vt2_power || labData?.lt2_power || labData?.critical_power || labData?.gt || null;
+    console.log(`User FTP for TSS calculation: ${userFTP}W`);
     
     let beforeTimestamp = Math.floor(new Date(job.end_date).getTime() / 1000);
     const afterTimestamp = Math.floor(new Date(job.start_date).getTime() / 1000);
@@ -253,7 +276,7 @@ async function processBackfillJob(supabase: any, job: any) {
       if (newActivities.length > 0) {
         // Map and filter activities
         const mappedActivities = newActivities
-          .map(a => mapStravaActivityToDatabase(a, job.user_id))
+          .map(a => mapStravaActivityToDatabase(a, job.user_id, userFTP))
           .filter(a => a.sport_mode !== null); // Only keep supported activity types
 
         console.log(`Filtered to ${mappedActivities.length} supported activities out of ${newActivities.length}`);
