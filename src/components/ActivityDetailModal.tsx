@@ -50,9 +50,6 @@ interface Activity {
   notes?: string;
   file_type?: string;
   original_filename?: string;
-  ltl?: number;
-  stl?: number;
-  fi?: number;
 }
 
 interface ActivityDetailModalProps {
@@ -220,13 +217,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
           <Separator />
 
           {/* Performance Metrics */}
-          {(activity.avg_power ||
-            activity.max_power ||
-            activity.normalized_power ||
-            activity.max_heart_rate ||
-            activity.elevation_gain_meters ||
-            activity.avg_cadence ||
-            activity.calories) && (
+          {(activity.avg_power || activity.avg_pace_per_km) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -323,6 +314,28 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                     <div>
                       <div className="text-sm text-muted-foreground">Effort Ratio</div>
                       <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
+                    </div>
+                  )}
+                  {activity.ltl !== undefined && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">LTL</div>
+                      <div className="text-lg font-semibold text-blue-400">{activity.ltl.toFixed(1)}</div>
+                    </div>
+                  )}
+                  {activity.stl !== undefined && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">STL</div>
+                      <div className="text-lg font-semibold text-pink-400">{activity.stl.toFixed(1)}</div>
+                    </div>
+                  )}
+                  {activity.fi !== undefined && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">FI</div>
+                      <div
+                        className={`text-lg font-semibold ${activity.fi >= 0 ? "text-green-400" : "text-yellow-400"}`}
+                      >
+                        {activity.fi.toFixed(1)}
+                      </div>
                     </div>
                   )}
                 </div>
