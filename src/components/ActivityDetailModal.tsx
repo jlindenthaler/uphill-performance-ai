@@ -55,9 +55,10 @@ interface ActivityDetailModalProps {
   onClose: () => void;
   onEdit?: (activity: Activity) => void;
   onDelete?: (activityId: string) => void;
+  pmcData?: { ctl: number; atl: number; tsb: number };
 }
 
-export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete }: ActivityDetailModalProps) {
+export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete, pmcData }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
   
   if (!activity) return null;
@@ -314,6 +315,26 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                     </div>
                   )}
                 </div>
+                
+                {pmcData && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">LTL</div>
+                        <div className="text-lg font-semibold text-ltl">{pmcData.ctl.toFixed(1)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">STL</div>
+                        <div className="text-lg font-semibold text-stl">{pmcData.atl.toFixed(1)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">FI</div>
+                        <div className="text-lg font-semibold text-fi">{pmcData.tsb.toFixed(1)}</div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 
                 <AISessionFeedback 
                   activity={activity}

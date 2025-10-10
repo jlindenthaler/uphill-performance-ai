@@ -46,6 +46,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const [weeks, setWeeks] = useState<Date[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [selectedActivityPMC, setSelectedActivityPMC] = useState<{ ctl: number; atl: number; tsb: number } | undefined>(undefined);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentWeekRef = useRef<HTMLDivElement>(null);
@@ -508,6 +509,18 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         setSelectedWorkout(event.data);
       } else if (event.type === 'activity') {
         setSelectedActivity(event.data);
+        // Look up PMC data for this activity's date
+        const activityDateStr = format(new Date(event.data.date), 'yyyy-MM-dd');
+        const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
+        if (pmcForDate) {
+          setSelectedActivityPMC({
+            ctl: pmcForDate.ctl || 0,
+            atl: pmcForDate.atl || 0,
+            tsb: pmcForDate.tsb || 0
+          });
+        } else {
+          setSelectedActivityPMC(undefined);
+        }
       }
       // For plan_session, we could open a detail modal in the future
     };
@@ -863,7 +876,11 @@ export const InfiniteTrainingCalendar: React.FC = () => {
       <ActivityDetailModal
         activity={selectedActivity}
         open={!!selectedActivity}
-        onClose={() => setSelectedActivity(null)}
+        onClose={() => {
+          setSelectedActivity(null);
+          setSelectedActivityPMC(undefined);
+        }}
+        pmcData={selectedActivityPMC}
       />
 
       {/* AI Training Plan Wizard */}
