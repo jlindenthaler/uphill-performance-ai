@@ -292,29 +292,31 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                   Training Load
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {activity.tss && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Training Load Index</span>
                     <span className="font-semibold">{activity.tss.toFixed(0)}</span>
                   </div>
                 )}
+                
                 {pmcData && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">LTL</span>
-                      <span className="font-semibold text-ltl">{pmcData.ctl.toFixed(1)}</span>
+                  <div className="grid grid-cols-3 gap-4 py-2">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-ltl">{pmcData.ctl.toFixed(1)}</div>
+                      <div className="text-sm text-muted-foreground">LTL (Fitness)</div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">STL</span>
-                      <span className="font-semibold text-stl">{pmcData.atl.toFixed(1)}</span>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-stl">{pmcData.atl.toFixed(1)}</div>
+                      <div className="text-sm text-muted-foreground">STL (Fatigue)</div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">FI</span>
-                      <span className="font-semibold text-fi">{pmcData.tsb.toFixed(1)}</span>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-fi">{pmcData.tsb.toFixed(1)}</div>
+                      <div className="text-sm text-muted-foreground">FI (Form)</div>
                     </div>
-                  </>
+                  </div>
                 )}
+                
                 {activity.intensity_factor && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Intensity Index</span>
