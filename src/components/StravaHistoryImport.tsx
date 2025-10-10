@@ -76,13 +76,17 @@ export function StravaHistoryImport() {
         return;
       }
 
+      // Set end date to end of day (23:59:59) to capture all activities
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
       const { data, error } = await supabase
         .from('strava_backfill_jobs')
         .insert({
           user_id: user.id,
           strava_athlete_id: String(stravaToken.athlete_id),
           start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          end_date: endOfDay.toISOString(),
           status: 'pending' as const,
           user_selected: true
         })
@@ -94,6 +98,54 @@ export function StravaHistoryImport() {
       toast.success("Import job created! Your activities will be synced in the background.");
       setStartDate(undefined);
       setEndDate(undefined);
+    } catch (error) {
+      console.error("Import error:", error);
+      toast.error("Failed to create import job");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleImportToday = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    setImporting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: stravaToken } = await supabase
+        .from('strava_tokens')
+        .select('athlete_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!stravaToken) {
+        toast.error("Strava not connected");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('strava_backfill_jobs')
+        .insert({
+          user_id: user.id,
+          strava_athlete_id: String(stravaToken.athlete_id),
+          start_date: today.toISOString(),
+          end_date: endOfToday.toISOString(),
+          status: 'pending' as const,
+          user_selected: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Importing today's activities! Note: Strava can take 10-30 min to process new uploads.");
+      await refreshJobs();
     } catch (error) {
       console.error("Import error:", error);
       toast.error("Failed to create import job");
@@ -200,14 +252,26 @@ export function StravaHistoryImport() {
           </div>
         </div>
 
-        <Button
-          onClick={handleImport}
-          disabled={!startDate || !endDate || importing || !!activeJob}
-          className="w-full bg-orange-600 hover:bg-orange-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {importing ? "Creating Import Job..." : "Import History"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleImportToday}
+            disabled={importing || !!activeJob}
+            variant="secondary"
+            className="flex-1"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Import Today
+          </Button>
+          
+          <Button
+            onClick={handleImport}
+            disabled={!startDate || !endDate || importing || !!activeJob}
+            className="flex-1 bg-orange-600 hover:bg-orange-700"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {importing ? "Creating Import Job..." : "Import Date Range"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
