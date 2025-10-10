@@ -3,13 +3,34 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const LLM_URL = "https://exactingly-brookless-krysta.ngrok-free.dev/v1/chat/completions";
 const LLM_API_KEY = Deno.env.get("LLM_API_KEY") || "placeholder_key";
 const LLM_MODEL = "gemma-3-4b-it";
+
+const SYSTEM_PROMPT = `You are a world-class endurance training plan architect with expertise in periodization, exercise physiology, and training load management.
+
+ZONE DEFINITIONS (4-Zone Model):
+- Z1 (Recovery): <70% FTP, conversational pace, aerobic adaptation
+- Z2 (Endurance): 70-85% FTP, sustainable aerobic effort
+- Z3 (Tempo/Threshold): 85-95% FTP, moderate lactate accumulation
+- Z4 (VO2max/Anaerobic): 95-120% FTP, high intensity, limited duration
+
+OUTPUT REQUIREMENTS:
+1. Output ONLY valid JSON. No markdown code fences, no commentary, no preamble.
+2. Use ONLY these day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+3. Every session MUST have: name, day, duration (minutes), tss, structure, intent
+4. Session durations must respect daily availability limits provided in the prompt
+5. Structure must include "intervals" array with duration, target, zone
+6. Do not invent extra fields like "sessionTemplate" or "microcycles"
+
+PLANNING PRINCIPLES:
+- Progressive overload: gradually increase weekly TSS
+- Recovery weeks: every 3-4 weeks reduce load by 30-50%
+- Taper: 2-week taper before event (60% then 40% of peak load)
+- Specificity: align intensity with event demands`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -35,7 +56,14 @@ serve(async (req) => {
     }
 
     const formData = await req.json();
+    
     console.log("🧠 Generating plan for user:", user.id);
+    console.log("📊 Request params:", {
+      sportMode: formData.sportMode,
+      eventDate: formData.primaryGoal?.eventDate,
+      periodizationStyle: formData.periodizationStyle,
+      sessionsPerWeek: formData.sessionsPerWeek
+    });
 
     // 1️⃣ Fetch athlete baseline data
     const [labResults, trainingHistory] = await Promise.all([
@@ -63,10 +91,10 @@ serve(async (req) => {
     const recentTSB = recentHistory.length > 0 ? recentHistory[0].tsb || 0 : 0;
     const avgWeeklyTSS =
       recentHistory.length > 0
-        ? recentHistory
-            .slice(0, 28)
-            .reduce((sum, d) => sum + (d.tss || 0), 0) / 4
+        ? recentHistory.slice(0, 28).reduce((sum, d) => sum + (d.tss || 0), 0) / 4
         : 0;
+
+    console.log("📈 Athlete baseline:", { recentCTL, recentTSB, avgWeeklyTSS });
 
     // 2️⃣ Determine FTP/Threshold
     let ftp = formData.primaryGoal.targetPower || 250;
@@ -97,92 +125,89 @@ serve(async (req) => {
       (eventDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
     );
 
-    // 4️⃣ Analyze history (NEW)
-    const historicalAnalysis = analyzeTrainingHistory(recentHistory, lab);
+    console.log("📅 Plan timeline:", { 
+      startDate: startDate.toISOString().split("T")[0], 
+      eventDate: eventDate.toISOString().split("T")[0], 
+      totalWeeks 
+    });
 
-    // 5️⃣ Build prompt sections
+    // 4️⃣ Build prompt sections
     const athleteContext = `
-Athlete Context:
+ATHLETE CONTEXT:
 - Sport: ${formData.sportMode || "cycling"}
 - FTP: ${ftp}W (${ftpSource})
 - AeT: ${lab?.aet || "N/A"}W, GT: ${lab?.gt || "N/A"}W, MAP: ${lab?.map_value || "N/A"}W
 - VO2max: ${lab?.vo2max || "N/A"}
-- CTL: ${recentCTL.toFixed(1)}, TSB: ${recentTSB.toFixed(1)}, Weekly TSS: ${avgWeeklyTSS.toFixed(0)}
+- Current CTL: ${recentCTL.toFixed(1)}, TSB: ${recentTSB.toFixed(1)}
+- Average Weekly TSS (last 4 weeks): ${avgWeeklyTSS.toFixed(0)}
 `;
 
-    const weeklyScheduleString = (formData.weeklySchedule || []).map(day => {
-      return `${day.day}: ${day.availableHours}h`;
-    }).join("\n");
-
+    // Parse weekly availability correctly
+    const weeklyAvailability = formData.weeklyAvailability || {};
+    const totalWeeklyHours = Object.values(weeklyAvailability).reduce(
+      (sum: number, day: any) => sum + (day.training_hours || 0), 0
+    );
+    
+    const weeklyScheduleString = Object.entries(weeklyAvailability)
+      .map(([day, data]: [string, any]) => {
+        const hours = data.training_hours || 1;
+        const times = data.preferred_training_times?.join(", ") || "flexible";
+        return `- ${day.charAt(0).toUpperCase() + day.slice(1)}: ${hours}h (${times})`;
+      })
+      .join("\n");
+    
     const availabilityContext = `
-Weekly Availability:
+WEEKLY AVAILABILITY SCHEDULE:
 ${weeklyScheduleString}
 
+Total Weekly Training Hours: ${totalWeeklyHours.toFixed(1)}h
 Long Session Day: ${formData.longSessionDay || "Saturday"}
 Target Weekly Sessions: ${formData.sessionsPerWeek || "Auto"}
 Target Weekly TLI: ${formData.weeklyTLI || "Auto"}
+
+⚠️ IMPORTANT: Respect these daily hour limits when scheduling sessions.
 `;
 
     const courseContext = formData.courseMeta
       ? `
-Course:
+COURSE DETAILS:
 - Distance: ${formData.courseMeta.distance_km || "?"} km
 - Elevation: ${formData.courseMeta.elevation_m || "?"} m
 - Avg Gradient: ${formData.courseMeta.avgGradient || "?"}%
-- CdA: ${formData.courseMeta.cda_m2 || "?"} m²
-- Weight: ${formData.courseMeta.weight_kg || "?"} kg
-- Drivetrain Loss: ${formData.courseMeta.drivetrain_loss_pct || "?"}%
 - Target Performance: ${formData.primaryGoal.targetObjective || "N/A"}
 `
       : "";
 
-    const historyContext = `
-Historical Training Pattern:
-- Dominant Model: ${historicalAnalysis.dominantModel}
-- Z1: ${historicalAnalysis.z1Pct?.toFixed(1) || 0}%
-- Z2: ${historicalAnalysis.z2Pct?.toFixed(1) || 0}%
-- Z3: ${historicalAnalysis.z3Pct?.toFixed(1) || 0}%
-- Z4: ${historicalAnalysis.z4Pct?.toFixed(1) || 0}%
-- Evidence: ${historicalAnalysis.evidence}
-- Blocks: ${historicalAnalysis.blockStructure.map(b => `${b.type} (${b.weeks}w)`).join(", ") || "N/A"}
-`;
-
     const periodizationContext = `
-Plan Structure:
-- Style: ${formData.periodizationStyle || "auto"}
+PLAN STRUCTURE:
+- Periodization Style: ${formData.periodizationStyle || "auto"}
 - Block Length: ${formData.blockLength || "auto"} weeks
 - Start Date: ${startDate.toISOString().split("T")[0]}
 - Event Date: ${eventDate.toISOString().split("T")[0]}
 - Total Weeks: ${totalWeeks}
-Adaptation Policy:
+
+ADAPTATION POLICY:
 - TLI Tolerance: ±${formData.deviationTolerance?.tli || 20}%
 - Duration Tolerance: ±${formData.deviationTolerance?.duration || 20}%
 `;
 
-    const prompt = `
-You are a world-class endurance training plan architect.
-Generate a structured ${totalWeeks}-week plan for the athlete.
+    const prompt = `Generate a ${totalWeeks}-week training plan for the following athlete:
 
 ${athleteContext}
 ${availabilityContext}
 ${courseContext}
-${historyContext}
 ${periodizationContext}
 
-Requirements:
-1. Use historical model as a bias if clear, else choose based on goal.
-2. Respect availability and tolerances.
-3. Progressive overload, appropriate recovery & taper.
-4. Output only valid JSON in the following format:
+REQUIRED OUTPUT FORMAT:
 {
   "blocks": [
     {
-      "name": "Base",
+      "name": "Base Build",
       "weeks": 4,
-      "intent": "Aerobic development",
+      "intent": "Build aerobic capacity and endurance",
       "sessions": [
         {
-          "name": "Long Endurance",
+          "name": "Long Endurance Ride",
           "day": "Sunday",
           "duration": 180,
           "tss": 150,
@@ -191,15 +216,22 @@ Requirements:
               { "duration": 180, "target": "65%", "zone": "Z2" }
             ]
           },
-          "intent": "Build aerobic base"
+          "intent": "Sustained aerobic work"
         }
       ]
     }
   ]
 }
-`;
 
-    // 6️⃣ Call LLM
+Generate the complete plan now.`;
+    
+    console.log("📝 Prompt length:", prompt.length, "chars");
+    console.log("🎯 LLM Config:", { url: LLM_URL, model: LLM_MODEL });
+
+    // 5️⃣ Call LLM
+    const llmStartTime = Date.now();
+    console.log("🤖 Calling LLM...");
+    
     const aiResult = await fetch(LLM_URL, {
       method: "POST",
       headers: {
@@ -209,11 +241,7 @@ Requirements:
       body: JSON.stringify({
         model: LLM_MODEL,
         messages: [
-          {
-            role: "system",
-            content:
-              "You are a world-class endurance training plan architect. Output only valid JSON. No markdown, no commentary.",
-          },
+          { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
         temperature: 0.7,
@@ -222,9 +250,19 @@ Requirements:
       }),
     });
 
+    const llmDuration = Date.now() - llmStartTime;
+    console.log(`✅ LLM responded in ${llmDuration}ms with status ${aiResult.status}`);
+
     if (!aiResult.ok) {
       const errorText = await aiResult.text();
-      console.error("❌ LLM Error:", errorText);
+      console.error("❌ LLM Error:", {
+        status: aiResult.status,
+        statusText: aiResult.statusText,
+        body: errorText.substring(0, 500),
+        duration: llmDuration,
+        userId: user.id,
+        sportMode: formData.sportMode
+      });
       return new Response(
         JSON.stringify({ error: "AI service unavailable" }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -236,10 +274,16 @@ Requirements:
     content = content.replace(/```json|```/g, "").trim();
     const aiResponse = JSON.parse(content);
 
-    console.log("✅ AI Plan Generated. Blocks:", aiResponse.blocks?.length || 0);
-
-    // 7️⃣ Store in DB (same as your previous logic)
+    const totalSessions = aiResponse.blocks?.reduce((sum: number, b: any) => sum + (b.sessions?.length || 0), 0) || 0;
     const planName = `${formData.primaryGoal.eventName || "Training Plan"} - ${eventDate.toLocaleDateString()}`;
+    
+    console.log("✅ AI Plan Generated:", {
+      blockCount: aiResponse.blocks?.length || 0,
+      totalSessions,
+      planName
+    });
+
+    // 6️⃣ Store in DB
     const { data: plan, error: planError } = await supabase
       .from("training_plans")
       .insert({
@@ -288,6 +332,13 @@ Requirements:
 
       for (let week = 0; week < (block.weeks || 3); week++) {
         for (const session of block.sessions || []) {
+          // Validate session before insertion
+          const validation = validateSession(session, Object.keys(weeklyAvailability));
+          if (!validation.valid) {
+            console.warn(`⚠️ Invalid session skipped:`, validation.errors, session);
+            continue;
+          }
+
           const sessionDate = new Date(blockStartDate);
           const dayMap: Record<string, number> = {
             Monday: 1,
@@ -346,73 +397,30 @@ Requirements:
   }
 });
 
-/** 🧠 Analyze training history to classify training model & block structure */
-function analyzeTrainingHistory(recentHistory: any[], lab: any) {
-  if (!recentHistory || recentHistory.length === 0) {
-    return { dominantModel: "auto", evidence: "No history", blockStructure: [] };
+/** Validate session data before DB insertion */
+function validateSession(session: any, availableDays: string[]): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  
+  if (!session.name || typeof session.name !== 'string') {
+    errors.push("Missing or invalid session name");
   }
-
-  let totalZ1 = 0, totalZ2 = 0, totalZ3 = 0, totalZ4 = 0;
-  for (const s of recentHistory) {
-    totalZ1 += s.z1_tli || 0;
-    totalZ2 += s.z2_tli || 0;
-    totalZ3 += s.z3_tli || 0;
-    totalZ4 += s.z4_tli || 0;
+  
+  if (!session.day || !validDays.includes(session.day)) {
+    errors.push(`Invalid day: ${session.day}. Must be one of: ${validDays.join(", ")}`);
   }
-
-  const total = totalZ1 + totalZ2 + totalZ3 + totalZ4;
-  if (total === 0) return { dominantModel: "auto", evidence: "No TLI data", blockStructure: [] };
-
-  const z1Pct = (totalZ1 / total) * 100;
-  const z2Pct = (totalZ2 / total) * 100;
-  const z3Pct = (totalZ3 / total) * 100;
-  const z4Pct = (totalZ4 / total) * 100;
-
-  let dominantModel = "auto", evidence = "";
-  if (z1Pct >= 70 && (z3Pct + z4Pct) >= 10 && z2Pct < 20) {
-    dominantModel = "polarized";
-    evidence = `Z1 ${z1Pct.toFixed(1)}%, Z3+4 ${(z3Pct+z4Pct).toFixed(1)}%`;
-  } else if (z1Pct >= 50 && z2Pct >= 25 && z3Pct + z4Pct <= 25) {
-    dominantModel = "pyramidal";
-    evidence = `Z1 ${z1Pct.toFixed(1)}%, Z2 ${z2Pct.toFixed(1)}%`;
-  } else if (z2Pct >= 40) {
-    dominantModel = "threshold";
-    evidence = `Z2 ${z2Pct.toFixed(1)}%`;
+  
+  if (!session.duration || session.duration < 1 || session.duration > 720) {
+    errors.push(`Invalid duration: ${session.duration}. Must be between 1-720 minutes`);
   }
-
-  // simple TSS trend
-  const sorted = [...recentHistory].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-  const weeks: number[] = [];
-  let currentWeekKey = "";
-  let tssSum = 0;
-
-  for (const s of sorted) {
-    const d = new Date(s.date);
-    const key = `${d.getFullYear()}-W${Math.ceil((d.getDate() + (d.getDay()||7))/7)}`;
-    if (currentWeekKey && key !== currentWeekKey) {
-      weeks.push(tssSum);
-      tssSum = 0;
-    }
-    tssSum += s.tss || 0;
-    currentWeekKey = key;
+  
+  if (!session.tss || session.tss < 1) {
+    errors.push(`Invalid TSS: ${session.tss}`);
   }
-  if (tssSum > 0) weeks.push(tssSum);
-
-  const blockStructure: { type: string; weeks: number }[] = [];
-  if (weeks.length >= 6) {
-    const avgFirst = avg(weeks.slice(0, Math.floor(weeks.length/3)));
-    const avgMid = avg(weeks.slice(Math.floor(weeks.length/3), Math.floor(2*weeks.length/3)));
-    const avgLast = avg(weeks.slice(Math.floor(2*weeks.length/3)));
-
-    if (avgMid > avgFirst * 1.2) blockStructure.push({ type: "Base→Build", weeks: Math.floor(weeks.length * 2/3) });
-    if (avgLast < avgMid * 0.85) blockStructure.push({ type: "Taper", weeks: Math.floor(weeks.length/3) });
+  
+  if (!session.structure || !session.structure.intervals || !Array.isArray(session.structure.intervals)) {
+    errors.push("Missing or invalid structure.intervals");
   }
-
-  return { dominantModel, evidence, z1Pct, z2Pct, z3Pct, z4Pct, blockStructure };
-}
-
-function avg(arr: number[]) {
-  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  
+  return { valid: errors.length === 0, errors };
 }
