@@ -299,43 +299,41 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                   Training Load
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {activity.tss && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Training Load Index</div>
-                      <div className="text-lg font-semibold">{activity.tss.toFixed(0)}</div>
+              <CardContent className="space-y-3">
+                {activity.tss && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Training Load Index</span>
+                    <span className="font-semibold">{activity.tss.toFixed(0)}</span>
+                  </div>
+                )}
+                {pmcData && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">LTL</span>
+                      <span className="font-semibold text-ltl">{pmcData.ctl.toFixed(1)}</span>
                     </div>
-                  )}
-                  {activity.intensity_factor && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Intensity Index</div>
-                      <div className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">STL</span>
+                      <span className="font-semibold text-stl">{pmcData.atl.toFixed(1)}</span>
                     </div>
-                  )}
-                  {activity.variability_index && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Effort Ratio</div>
-                      <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">FI</span>
+                      <span className="font-semibold text-fi">{pmcData.tsb.toFixed(1)}</span>
                     </div>
-                  )}
-                  {pmcData && (
-                    <>
-                      <div>
-                        <div className="text-sm text-muted-foreground">LTL</div>
-                        <div className="text-lg font-semibold text-ltl">{pmcData.ctl.toFixed(1)}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">STL</div>
-                        <div className="text-lg font-semibold text-stl">{pmcData.atl.toFixed(1)}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">FI</div>
-                        <div className="text-lg font-semibold text-fi">{pmcData.tsb.toFixed(1)}</div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                  </>
+                )}
+                {activity.intensity_factor && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Intensity Index</span>
+                    <span className="font-semibold">{activity.intensity_factor.toFixed(2)}</span>
+                  </div>
+                )}
+                {activity.variability_index && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Effort Ratio</span>
+                    <span className="font-semibold">{activity.variability_index.toFixed(2)}</span>
+                  </div>
+                )}
                 
                 <AISessionFeedback 
                   activity={activity}
