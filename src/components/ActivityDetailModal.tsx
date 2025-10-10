@@ -61,6 +61,15 @@ interface ActivityDetailModalProps {
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete, pmcData }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
   
+  // Debug logging
+  console.log('🔍 ActivityDetailModal - activity:', activity);
+  console.log('🔍 ActivityDetailModal - pmcData:', pmcData);
+  console.log('🔍 ActivityDetailModal - Training Load fields:', {
+    tss: activity?.tss,
+    intensity_factor: activity?.intensity_factor,
+    variability_index: activity?.variability_index
+  });
+  
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
