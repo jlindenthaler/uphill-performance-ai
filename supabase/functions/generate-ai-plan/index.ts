@@ -296,7 +296,6 @@ Generate the complete plan now.`;
             console.warn(`⚠️ Invalid session skipped:`, validation.errors, session);
             continue;
           }
-          const sessionDate = new Date(blockStartDate);
           const dayMap = {
             Monday: 1,
             Tuesday: 2,
@@ -307,11 +306,11 @@ Generate the complete plan now.`;
             Sunday: 0
           };
           // Always start block on Monday and map sessions relative to that
-      const targetDayIndex = dayMap[session.day] ?? 1;
-      const weekOffset = week * 7;
-      const dayOffset = (targetDayIndex - 1 + 7) % 7; // Monday = 1 baseline
-      const sessionDate = new Date(blockStartDate);
-      sessionDate.setDate(sessionDate.getDate() + weekOffset + dayOffset);
+          const targetDayIndex = dayMap[session.day] ?? 1;
+          const weekOffset = week * 7;
+          const dayOffset = (targetDayIndex - 1 + 7) % 7; // Monday = 1 baseline
+          const sessionDate = new Date(blockStartDate);
+          sessionDate.setDate(sessionDate.getDate() + weekOffset + dayOffset);
 
           const { error: sessionError } = await supabase.from("plan_sessions").insert({
             block_id: dbBlock.id,
