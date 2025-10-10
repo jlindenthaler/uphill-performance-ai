@@ -215,7 +215,9 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
           <Separator />
 
           {/* Performance Metrics */}
-          {(activity.avg_power || activity.avg_pace_per_km) && (
+          {(activity.avg_power || activity.max_power || activity.normalized_power || 
+            activity.avg_pace_per_km || activity.max_heart_rate || activity.elevation_gain_meters || 
+            activity.avg_cadence || activity.calories) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
