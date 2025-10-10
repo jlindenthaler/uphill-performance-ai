@@ -215,77 +215,73 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
           <Separator />
 
           {/* Performance Metrics */}
-          {(activity.avg_power || activity.max_power || activity.normalized_power || 
-            activity.avg_pace_per_km || activity.max_heart_rate || activity.elevation_gain_meters || 
-            activity.avg_cadence || activity.calories) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Performance Metrics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {isCycling && activity.avg_power && (
-                    <>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Average Power</div>
-                        <div className="text-lg font-semibold">{formatPower(activity.avg_power)}</div>
-                      </div>
-                      {activity.max_power && (
-                        <div>
-                          <div className="text-sm text-muted-foreground">Max Power</div>
-                          <div className="text-lg font-semibold">{formatPower(activity.max_power)}</div>
-                        </div>
-                      )}
-                      {activity.normalized_power && (
-                        <div>
-                          <div className="text-sm text-muted-foreground">Normalized Power</div>
-                          <div className="text-lg font-semibold">{formatPower(activity.normalized_power)}</div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  
-                  {isRunning && activity.avg_pace_per_km && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Average Pace</div>
-                      <div className="text-lg font-semibold">{formatPace(activity.avg_pace_per_km)}</div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Performance Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isCycling && (
+                <>
+                  {activity.avg_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Average Power</span>
+                      <span className="font-medium">{formatPower(activity.avg_power)}</span>
                     </div>
                   )}
-
-                  {activity.max_heart_rate && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Max Heart Rate</div>
-                      <div className="text-lg font-semibold">{activity.max_heart_rate} bpm</div>
+                  {activity.max_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Max Power</span>
+                      <span className="font-medium">{formatPower(activity.max_power)}</span>
                     </div>
                   )}
-
-                  {activity.elevation_gain_meters && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Elevation Gain</div>
-                      <div className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</div>
+                  {activity.normalized_power && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Normalized Power</span>
+                      <span className="font-medium">{formatPower(activity.normalized_power)}</span>
                     </div>
                   )}
-
-                  {activity.avg_cadence && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Average Cadence</div>
-                      <div className="text-lg font-semibold">{activity.avg_cadence} rpm</div>
-                    </div>
-                  )}
-
-                  {activity.calories && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Calories</div>
-                      <div className="text-lg font-semibold">{activity.calories} kcal</div>
-                    </div>
-                  )}
+                </>
+              )}
+              
+              {isRunning && activity.avg_pace_per_km && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Average Pace</span>
+                  <span className="font-medium">{formatPace(activity.avg_pace_per_km)}</span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+              
+              {activity.max_heart_rate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Max Heart Rate</span>
+                  <span className="font-medium">{activity.max_heart_rate} bpm</span>
+                </div>
+              )}
+              
+              {activity.elevation_gain_meters && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Elevation Gain</span>
+                  <span className="font-medium">{Math.round(activity.elevation_gain_meters)} m</span>
+                </div>
+              )}
+              
+              {activity.avg_cadence && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Average Cadence</span>
+                  <span className="font-medium">{activity.avg_cadence} rpm</span>
+                </div>
+              )}
+              
+              {activity.calories && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Calories</span>
+                  <span className="font-medium">{activity.calories} kcal</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Training Load */}
           {(activity.tss || activity.intensity_factor || activity.variability_index) && (
