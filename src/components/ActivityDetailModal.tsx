@@ -3,21 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { 
-  Clock, 
-  MapPin, 
-  Zap, 
-  Target, 
-  Heart, 
-  Activity, 
-  TrendingUp, 
-  X,
-  Edit,
-  Trash2,
-  MoreHorizontal
-} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Clock, MapPin, Zap, Target, Heart, Activity, TrendingUp, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import { EnhancedMapView } from "./EnhancedMapView";
 import { formatActivityDateTime } from "@/utils/dateFormat";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -62,18 +65,18 @@ interface ActivityDetailModalProps {
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete, pmcData }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
-  
+
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
   const formatDistance = (meters: number) => {
@@ -84,30 +87,30 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
   };
 
   const formatSpeed = (kmh: number) => `${kmh.toFixed(1)} km/h`;
-  
+
   const formatPace = (pacePerKm: number) => {
     const minutes = Math.floor(pacePerKm);
     const seconds = Math.round((pacePerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')} /km`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
   };
 
   const formatPower = (watts: number) => `${watts.toFixed(0)}W`;
 
   const getSportIcon = (sport: string) => {
     switch (sport.toLowerCase()) {
-      case 'cycling':
-        return '🚴';
-      case 'running':
-        return '🏃';
-      case 'swimming':
-        return '🏊';
+      case "cycling":
+        return "🚴";
+      case "running":
+        return "🏃";
+      case "swimming":
+        return "🏊";
       default:
-        return '💪';
+        return "💪";
     }
   };
 
-  const isCycling = activity.sport_mode === 'cycling';
-  const isRunning = activity.sport_mode === 'running';
+  const isCycling = activity.sport_mode === "cycling";
+  const isRunning = activity.sport_mode === "running";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -134,7 +137,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                 <DropdownMenuContent align="end" className="bg-popover border border-border">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-destructive focus:text-destructive cursor-pointer"
                         onSelect={(e) => e.preventDefault()}
                       >
@@ -151,7 +154,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           onClick={() => {
                             onDelete?.(activity.id!);
@@ -244,35 +247,35 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                     <div className="text-lg font-semibold">{formatPower(activity.normalized_power)}</div>
                   </div>
                 )}
-                
+
                 {isRunning && activity.avg_pace_per_km && (
                   <div>
                     <div className="text-sm text-muted-foreground">Average Pace</div>
                     <div className="text-lg font-semibold">{formatPace(activity.avg_pace_per_km)}</div>
                   </div>
                 )}
-                
+
                 {activity.max_heart_rate && (
                   <div>
                     <div className="text-sm text-muted-foreground">Max Heart Rate</div>
                     <div className="text-lg font-semibold">{activity.max_heart_rate} bpm</div>
                   </div>
                 )}
-                
+
                 {activity.elevation_gain_meters && (
                   <div>
                     <div className="text-sm text-muted-foreground">Elevation Gain</div>
                     <div className="text-lg font-semibold">{Math.round(activity.elevation_gain_meters)} m</div>
                   </div>
                 )}
-                
+
                 {activity.avg_cadence && (
                   <div>
                     <div className="text-sm text-muted-foreground">Average Cadence</div>
                     <div className="text-lg font-semibold">{activity.avg_cadence} rpm</div>
                   </div>
                 )}
-                
+
                 {activity.calories && (
                   <div>
                     <div className="text-sm text-muted-foreground">Calories</div>
@@ -294,12 +297,12 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
               </CardHeader>
               <CardContent className="space-y-4">
                 {activity.tss && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Training Load Index</span>
-                    <span className="font-semibold">{activity.tss.toFixed(0)}</span>
+                  <div className="text-center">
+                    <span className="text-2xl font-bold">Training Load Index</span>
+                    <span className="text-sm text-muted-foreground">{activity.tss.toFixed(0)}</span>
                   </div>
                 )}
-                
+
                 {pmcData && (
                   <div className="grid grid-cols-3 gap-4 py-2">
                     <div className="text-center">
@@ -316,7 +319,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                     </div>
                   </div>
                 )}
-                
+
                 {activity.intensity_factor && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Intensity Index</span>
@@ -329,11 +332,8 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                     <span className="font-semibold">{activity.variability_index.toFixed(2)}</span>
                   </div>
                 )}
-                
-                <AISessionFeedback 
-                  activity={activity}
-                  workout={undefined}
-                />
+
+                <AISessionFeedback activity={activity} workout={undefined} />
               </CardContent>
             </Card>
           )}
@@ -348,10 +348,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EnhancedMapView 
-                  gpsData={activity.gps_data} 
-                  className="h-[340px] rounded-lg"
-                />
+                <EnhancedMapView gpsData={activity.gps_data} className="h-[340px] rounded-lg" />
               </CardContent>
             </Card>
           )}
@@ -376,11 +373,11 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
               </CardHeader>
               <CardContent>
                 <div className="text-sm">
-                  {typeof activity.weather_conditions === 'object' ? (
+                  {typeof activity.weather_conditions === "object" ? (
                     <div className="space-y-2">
                       {Object.entries(activity.weather_conditions).map(([key, value]) => (
                         <div key={key} className="flex justify-between">
-                          <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}</span>
                           <span className="font-medium">{String(value)}</span>
                         </div>
                       ))}
@@ -405,7 +402,11 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                     <div key={index} className="border-b border-border pb-2 last:border-0">
                       <div className="font-medium">Lap {index + 1}</div>
                       <div className="grid grid-cols-2 gap-2 mt-1 text-muted-foreground">
-                        {lap.duration && <div>Duration: {Math.floor(lap.duration / 60)}:{(lap.duration % 60).toString().padStart(2, '0')}</div>}
+                        {lap.duration && (
+                          <div>
+                            Duration: {Math.floor(lap.duration / 60)}:{(lap.duration % 60).toString().padStart(2, "0")}
+                          </div>
+                        )}
                         {lap.distance && <div>Distance: {(lap.distance / 1000).toFixed(2)} km</div>}
                         {lap.avg_power && <div>Avg Power: {lap.avg_power}W</div>}
                         {lap.avg_heart_rate && <div>Avg HR: {lap.avg_heart_rate} bpm</div>}
@@ -436,21 +437,13 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
           {(onEdit || onDelete) && (
             <div className="flex justify-end gap-2">
               {onEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onEdit(activity)}
-                >
+                <Button variant="outline" size="sm" onClick={() => onEdit(activity)}>
                   <Edit className="w-3 h-3 mr-1" />
                   Edit
                 </Button>
               )}
               {onDelete && activity.id && (
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => onDelete(activity.id!)}
-                >
+                <Button variant="destructive" size="sm" onClick={() => onDelete(activity.id!)}>
                   <Trash2 className="w-3 h-3 mr-1" />
                   Delete
                 </Button>
