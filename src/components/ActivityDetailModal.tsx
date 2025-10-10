@@ -3,24 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Clock, MapPin, Zap, Target, Heart, Activity, TrendingUp, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { 
+  Clock, 
+  MapPin, 
+  Zap, 
+  Target, 
+  Heart, 
+  Activity, 
+  TrendingUp, 
+  X,
+  Edit,
+  Trash2,
+  MoreHorizontal
+} from "lucide-react";
 import { EnhancedMapView } from "./EnhancedMapView";
 import { formatActivityDateTime } from "@/utils/dateFormat";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -62,18 +59,18 @@ interface ActivityDetailModalProps {
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
-
+  
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
+    
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   const formatDistance = (meters: number) => {
@@ -84,30 +81,30 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
   };
 
   const formatSpeed = (kmh: number) => `${kmh.toFixed(1)} km/h`;
-
+  
   const formatPace = (pacePerKm: number) => {
     const minutes = Math.floor(pacePerKm);
     const seconds = Math.round((pacePerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')} /km`;
   };
 
   const formatPower = (watts: number) => `${watts.toFixed(0)}W`;
 
   const getSportIcon = (sport: string) => {
     switch (sport.toLowerCase()) {
-      case "cycling":
-        return "🚴";
-      case "running":
-        return "🏃";
-      case "swimming":
-        return "🏊";
+      case 'cycling':
+        return '🚴';
+      case 'running':
+        return '🏃';
+      case 'swimming':
+        return '🏊';
       default:
-        return "💪";
+        return '💪';
     }
   };
 
-  const isCycling = activity.sport_mode === "cycling";
-  const isRunning = activity.sport_mode === "running";
+  const isCycling = activity.sport_mode === 'cycling';
+  const isRunning = activity.sport_mode === 'running';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -134,7 +131,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 <DropdownMenuContent align="end" className="bg-popover border border-border">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem
+                      <DropdownMenuItem 
                         className="text-destructive focus:text-destructive cursor-pointer"
                         onSelect={(e) => e.preventDefault()}
                       >
@@ -151,7 +148,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
+                        <AlertDialogAction 
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           onClick={() => {
                             onDelete?.(activity.id!);
@@ -226,49 +223,60 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-row flex-wrap justify-center gap-x-10 gap-y-6 text-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {isCycling && activity.avg_power && (
                     <>
-                      <div className="flex flex-col items-center min-w-[100px]">
-                        <span className="text-sm text-muted-foreground">Avg Power</span>
-                        <span className="text-lg font-semibold">{formatPower(activity.avg_power)}</span>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Average Power</div>
+                        <div className="text-lg font-semibold">{formatPower(activity.avg_power)}</div>
                       </div>
                       {activity.max_power && (
-                        <div className="flex flex-col items-center min-w-[100px]">
-                          <span className="text-sm text-muted-foreground">Max Power</span>
-                          <span className="text-lg font-semibold">{formatPower(activity.max_power)}</span>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Max Power</div>
+                          <div className="text-lg font-semibold">{formatPower(activity.max_power)}</div>
                         </div>
                       )}
                       {activity.normalized_power && (
-                        <div className="flex flex-col items-center min-w-[120px]">
-                          <span className="text-sm text-muted-foreground">Normalized Power</span>
-                          <span className="text-lg font-semibold">{formatPower(activity.normalized_power)}</span>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Normalized Power</div>
+                          <div className="text-lg font-semibold">{formatPower(activity.normalized_power)}</div>
                         </div>
                       )}
                     </>
                   )}
+                  
+                  {isRunning && activity.avg_pace_per_km && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">Average Pace</div>
+                      <div className="text-lg font-semibold">{formatPace(activity.avg_pace_per_km)}</div>
+                    </div>
+                  )}
+
                   {activity.max_heart_rate && (
-                    <div className="flex flex-col items-center min-w-[100px]">
-                      <span className="text-sm text-muted-foreground">Max HR</span>
-                      <span className="text-lg font-semibold">{activity.max_heart_rate} bpm</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Max Heart Rate</div>
+                      <div className="text-lg font-semibold">{activity.max_heart_rate} bpm</div>
                     </div>
                   )}
+
                   {activity.elevation_gain_meters && (
-                    <div className="flex flex-col items-center min-w-[100px]">
-                      <span className="text-sm text-muted-foreground">Elevation</span>
-                      <span className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Elevation Gain</div>
+                      <div className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</div>
                     </div>
                   )}
+
                   {activity.avg_cadence && (
-                    <div className="flex flex-col items-center min-w-[100px]">
-                      <span className="text-sm text-muted-foreground">Cadence</span>
-                      <span className="text-lg font-semibold">{activity.avg_cadence} rpm</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Average Cadence</div>
+                      <div className="text-lg font-semibold">{activity.avg_cadence} rpm</div>
                     </div>
                   )}
+
                   {activity.calories && (
-                    <div className="flex flex-col items-center min-w-[100px]">
-                      <span className="text-sm text-muted-foreground">Calories</span>
-                      <span className="text-lg font-semibold">{activity.calories} kcal</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Calories</div>
+                      <div className="text-lg font-semibold">{activity.calories} kcal</div>
                     </div>
                   )}
                 </div>
@@ -286,28 +294,31 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-row flex-wrap justify-center gap-x-10 gap-y-6 text-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {activity.tss && (
-                    <div className="flex flex-col items-center min-w-[120px]">
-                      <span className="text-sm text-muted-foreground">Training Load Index</span>
-                      <span className="text-lg font-semibold">{activity.tss.toFixed(0)}</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Training Load Index</div>
+                      <div className="text-lg font-semibold">{activity.tss.toFixed(0)}</div>
                     </div>
                   )}
                   {activity.intensity_factor && (
-                    <div className="flex flex-col items-center min-w-[120px]">
-                      <span className="text-sm text-muted-foreground">Intensity Index</span>
-                      <span className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Intensity Index</div>
+                      <div className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</div>
                     </div>
                   )}
                   {activity.variability_index && (
-                    <div className="flex flex-col items-center min-w-[120px]">
-                      <span className="text-sm text-muted-foreground">Effort Ratio</span>
-                      <span className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</span>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Effort Ratio</div>
+                      <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
                     </div>
                   )}
                 </div>
-
-                <AISessionFeedback activity={activity} workout={undefined} />
+                
+                <AISessionFeedback 
+                  activity={activity}
+                  workout={undefined}
+                />
               </CardContent>
             </Card>
           )}
@@ -322,7 +333,10 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EnhancedMapView gpsData={activity.gps_data} className="h-[340px] rounded-lg" />
+                <EnhancedMapView 
+                  gpsData={activity.gps_data} 
+                  className="h-[340px] rounded-lg"
+                />
               </CardContent>
             </Card>
           )}
@@ -358,13 +372,21 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
           {(onEdit || onDelete) && (
             <div className="flex justify-end gap-2">
               {onEdit && (
-                <Button variant="outline" size="sm" onClick={() => onEdit(activity)}>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onEdit(activity)}
+                >
                   <Edit className="w-3 h-3 mr-1" />
                   Edit
                 </Button>
               )}
               {onDelete && activity.id && (
-                <Button variant="destructive" size="sm" onClick={() => onDelete(activity.id!)}>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => onDelete(activity.id!)}
+                >
                   <Trash2 className="w-3 h-3 mr-1" />
                   Delete
                 </Button>
