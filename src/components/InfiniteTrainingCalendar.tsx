@@ -54,7 +54,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const isManualSelectionRef = useRef(false);
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts(false); // Show all sports
-  const { activities, deleteActivity } = useActivities(false); // Show all sports
+  const { activities, deleteActivity, fetchActivityDetails } = useActivities(false); // Show all sports
   const { trainingHistory } = useTrainingHistory(90); // Extended range for infinite scroll
   const { timezone } = useUserTimezone();
   const { clipboardData, copyWorkout, hasClipboardData, clearClipboard } = useWorkoutClipboard();
@@ -503,23 +503,27 @@ export const InfiniteTrainingCalendar: React.FC = () => {
         break;
     }
 
-    const handleEventClick = (e: React.MouseEvent) => {
+    const handleEventClick = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (event.type === 'workout') {
         setSelectedWorkout(event.data);
       } else if (event.type === 'activity') {
-        setSelectedActivity(event.data);
-        // Look up PMC data for this activity's date
-        const activityDateStr = format(new Date(event.data.date), 'yyyy-MM-dd');
-        const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
-        if (pmcForDate) {
-          setSelectedActivityPMC({
-            ctl: pmcForDate.ctl || 0,
-            atl: pmcForDate.atl || 0,
-            tsb: pmcForDate.tsb || 0
-          });
-        } else {
-          setSelectedActivityPMC(undefined);
+        // Fetch full activity details
+        const fullActivity = await fetchActivityDetails(event.data.id);
+        if (fullActivity) {
+          setSelectedActivity(fullActivity);
+          // Look up PMC data for this activity's date
+          const activityDateStr = format(new Date(fullActivity.date), 'yyyy-MM-dd');
+          const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
+          if (pmcForDate) {
+            setSelectedActivityPMC({
+              ctl: pmcForDate.ctl || 0,
+              atl: pmcForDate.atl || 0,
+              tsb: pmcForDate.tsb || 0
+            });
+          } else {
+            setSelectedActivityPMC(undefined);
+          }
         }
       }
       // For plan_session, we could open a detail modal in the future
