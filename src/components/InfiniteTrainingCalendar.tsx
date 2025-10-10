@@ -11,7 +11,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks,
 import { useGoals } from '@/hooks/useGoals';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useActivities } from '@/hooks/useActivities';
-import { useTrainingHistory } from '@/hooks/useTrainingHistory';
+import { useCombinedTrainingHistory } from '@/hooks/useCombinedTrainingHistory';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
 import { ActivityDetailModal } from './ActivityDetailModal';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
@@ -55,7 +55,7 @@ export const InfiniteTrainingCalendar: React.FC = () => {
   const { goals } = useGoals();
   const { workouts, deleteWorkout, saveWorkout } = useWorkouts(false); // Show all sports
   const { activities, deleteActivity, fetchActivityDetails } = useActivities(false); // Show all sports
-  const { trainingHistory } = useTrainingHistory(90); // Extended range for infinite scroll
+  const { trainingHistory } = useCombinedTrainingHistory(90); // Extended range for infinite scroll, aggregates across all sports
   const { timezone } = useUserTimezone();
   const { clipboardData, copyWorkout, hasClipboardData, clearClipboard } = useWorkoutClipboard();
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useWorkoutDragAndDrop();
@@ -515,22 +515,15 @@ export const InfiniteTrainingCalendar: React.FC = () => {
           setSelectedActivity(fullActivity);
           // Look up PMC data for this activity's date
           const activityDateStr = format(new Date(fullActivity.date), 'yyyy-MM-dd');
-          console.log('🔍 Looking for PMC data for date:', activityDateStr);
-          console.log('🔍 Available training history dates:', trainingHistory.map(h => h.date));
-          console.log('🔍 Full training history:', trainingHistory);
           const pmcForDate = trainingHistory.find(h => h.date === activityDateStr);
-          console.log('🔍 Found PMC data:', pmcForDate);
           
           if (pmcForDate) {
-            const pmcData = {
+            setSelectedActivityPMC({
               ctl: pmcForDate.ctl || 0,
               atl: pmcForDate.atl || 0,
               tsb: pmcForDate.tsb || 0
-            };
-            console.log('🔍 Setting PMC data:', pmcData);
-            setSelectedActivityPMC(pmcData);
+            });
           } else {
-            console.log('❌ No PMC data found for date:', activityDateStr);
             setSelectedActivityPMC(undefined);
           }
         }
