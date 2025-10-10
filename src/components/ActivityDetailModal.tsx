@@ -296,8 +296,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete,
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {activity.tss ||
-                  (pmcData && (
+                {activity.tss || pmcData && (
                     <div className="grid grid-cols-4 gap-4 py-2">
                       <div className="text-center">
                         <div className="text-2xl font-bold">{activity.tss.toFixed(0)}</div>
