@@ -201,8 +201,16 @@ async function processBackfillJob(supabase: any, job: any) {
 
     const accessToken = await getValidAccessToken(supabase, job.user_id);
     
-    const beforeTimestamp = Math.floor(new Date(job.end_date).getTime() / 1000);
+    let beforeTimestamp = Math.floor(new Date(job.end_date).getTime() / 1000);
     const afterTimestamp = Math.floor(new Date(job.start_date).getTime() / 1000);
+    
+    // Fix: If start and end dates are the same, add 1 day to end to create a valid range
+    if (beforeTimestamp === afterTimestamp) {
+      console.log(`⚠️  Start and end dates are identical. Adding 1 day to end date for valid range.`);
+      beforeTimestamp = beforeTimestamp + 86400; // Add 24 hours in seconds
+    }
+    
+    console.log(`Date range: ${new Date(afterTimestamp * 1000).toISOString()} to ${new Date(beforeTimestamp * 1000).toISOString()}`);
     
     let currentPage = job.current_page || 1;
     let totalSynced = job.activities_synced || 0;
