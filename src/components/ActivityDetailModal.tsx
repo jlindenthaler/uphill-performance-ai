@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Clock, MapPin, Target, Heart, Activity, TrendingUp, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import { Clock, MapPin, Zap, Target, Heart, Activity, TrendingUp, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import { EnhancedMapView } from "./EnhancedMapView";
 import { formatActivityDateTime } from "@/utils/dateFormat";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -62,26 +62,35 @@ interface ActivityDetailModalProps {
 
 export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete }: ActivityDetailModalProps) {
   const { timezone } = useUserTimezone();
+
   if (!activity) return null;
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return hours > 0
-      ? `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-      : `${minutes}:${secs.toString().padStart(2, "0")}`;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const formatDistance = (meters: number) =>
-    meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters.toFixed(0)} m`;
+  const formatDistance = (meters: number) => {
+    if (meters >= 1000) {
+      return `${(meters / 1000).toFixed(2)} km`;
+    }
+    return `${meters.toFixed(0)} m`;
+  };
 
   const formatSpeed = (kmh: number) => `${kmh.toFixed(1)} km/h`;
+
   const formatPace = (pacePerKm: number) => {
     const minutes = Math.floor(pacePerKm);
     const seconds = Math.round((pacePerKm - minutes) * 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
   };
+
   const formatPower = (watts: number) => `${watts.toFixed(0)}W`;
 
   const getSportIcon = (sport: string) => {
@@ -137,7 +146,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete the activity "{activity.name}".
+                          This action cannot be undone. This will permanently delete the activity "{activity.name}".
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -164,30 +173,41 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* --- Key Metrics --- */}
+          {/* Key Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+              <div className="flex items-center justify-center mb-1">
+                <Clock className="w-4 h-4 text-muted-foreground mr-1" />
+              </div>
               <div className="text-2xl font-bold">{formatDuration(activity.duration_seconds)}</div>
               <div className="text-sm text-muted-foreground">Duration</div>
             </div>
+
             {activity.distance_meters && (
               <div className="text-center">
-                <MapPin className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                <div className="flex items-center justify-center mb-1">
+                  <MapPin className="w-4 h-4 text-muted-foreground mr-1" />
+                </div>
                 <div className="text-2xl font-bold">{formatDistance(activity.distance_meters)}</div>
                 <div className="text-sm text-muted-foreground">Distance</div>
               </div>
             )}
+
             {activity.avg_speed_kmh && (
               <div className="text-center">
-                <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                <div className="flex items-center justify-center mb-1">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground mr-1" />
+                </div>
                 <div className="text-2xl font-bold">{formatSpeed(activity.avg_speed_kmh)}</div>
                 <div className="text-sm text-muted-foreground">Avg Speed</div>
               </div>
             )}
+
             {activity.avg_heart_rate && (
               <div className="text-center">
-                <Heart className="w-4 h-4 mx-auto mb-1 text-red-500" />
+                <div className="flex items-center justify-center mb-1">
+                  <Heart className="w-4 h-4 text-red-500 mr-1" />
+                </div>
                 <div className="text-2xl font-bold">{activity.avg_heart_rate}</div>
                 <div className="text-sm text-muted-foreground">Avg HR</div>
               </div>
@@ -196,64 +216,59 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
 
           <Separator />
 
-          {/* --- Performance Metrics --- */}
-          {(activity.avg_power ||
-            activity.max_power ||
-            activity.normalized_power ||
-            activity.max_heart_rate ||
-            activity.elevation_gain_meters ||
-            activity.avg_cadence ||
-            activity.calories) && (
+          {/* Performance Metrics */}
+          {(activity.avg_power || activity.avg_pace_per_km) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" /> Performance Metrics
+                  <Activity className="w-5 h-5" />
+                  Performance Metrics
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-nowrap items-start justify-evenly text-center gap-8 overflow-x-auto">
+                <div className="flex flex-row flex-wrap justify-center gap-x-10 gap-y-6 text-center">
                   {isCycling && activity.avg_power && (
                     <>
-                      <div className="flex flex-col min-w-[120px]">
-                        <div className="text-sm text-muted-foreground">Avg Power</div>
-                        <div className="text-lg font-semibold">{formatPower(activity.avg_power)}</div>
+                      <div className="flex flex-col items-center min-w-[100px]">
+                        <span className="text-sm text-muted-foreground">Avg Power</span>
+                        <span className="text-lg font-semibold">{formatPower(activity.avg_power)}</span>
                       </div>
                       {activity.max_power && (
-                        <div className="flex flex-col min-w-[120px]">
-                          <div className="text-sm text-muted-foreground">Max Power</div>
-                          <div className="text-lg font-semibold">{formatPower(activity.max_power)}</div>
+                        <div className="flex flex-col items-center min-w-[100px]">
+                          <span className="text-sm text-muted-foreground">Max Power</span>
+                          <span className="text-lg font-semibold">{formatPower(activity.max_power)}</span>
                         </div>
                       )}
                       {activity.normalized_power && (
-                        <div className="flex flex-col min-w-[140px]">
-                          <div className="text-sm text-muted-foreground">Normalized Power</div>
-                          <div className="text-lg font-semibold">{formatPower(activity.normalized_power)}</div>
+                        <div className="flex flex-col items-center min-w-[120px]">
+                          <span className="text-sm text-muted-foreground">Normalized Power</span>
+                          <span className="text-lg font-semibold">{formatPower(activity.normalized_power)}</span>
                         </div>
                       )}
                     </>
                   )}
                   {activity.max_heart_rate && (
-                    <div className="flex flex-col min-w-[110px]">
-                      <div className="text-sm text-muted-foreground">Max HR</div>
-                      <div className="text-lg font-semibold">{activity.max_heart_rate} bpm</div>
+                    <div className="flex flex-col items-center min-w-[100px]">
+                      <span className="text-sm text-muted-foreground">Max HR</span>
+                      <span className="text-lg font-semibold">{activity.max_heart_rate} bpm</span>
                     </div>
                   )}
                   {activity.elevation_gain_meters && (
-                    <div className="flex flex-col min-w-[110px]">
-                      <div className="text-sm text-muted-foreground">Elevation</div>
-                      <div className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</div>
+                    <div className="flex flex-col items-center min-w-[100px]">
+                      <span className="text-sm text-muted-foreground">Elevation</span>
+                      <span className="text-lg font-semibold">{activity.elevation_gain_meters.toFixed(0)} m</span>
                     </div>
                   )}
                   {activity.avg_cadence && (
-                    <div className="flex flex-col min-w-[110px]">
-                      <div className="text-sm text-muted-foreground">Cadence</div>
-                      <div className="text-lg font-semibold">{activity.avg_cadence} rpm</div>
+                    <div className="flex flex-col items-center min-w-[100px]">
+                      <span className="text-sm text-muted-foreground">Cadence</span>
+                      <span className="text-lg font-semibold">{activity.avg_cadence} rpm</span>
                     </div>
                   )}
                   {activity.calories && (
-                    <div className="flex flex-col min-w-[110px]">
-                      <div className="text-sm text-muted-foreground">Calories</div>
-                      <div className="text-lg font-semibold">{activity.calories} kcal</div>
+                    <div className="flex flex-col items-center min-w-[100px]">
+                      <span className="text-sm text-muted-foreground">Calories</span>
+                      <span className="text-lg font-semibold">{activity.calories} kcal</span>
                     </div>
                   )}
                 </div>
@@ -261,46 +276,49 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
             </Card>
           )}
 
-          {/* --- Training Load --- */}
+          {/* Training Load */}
           {(activity.tss || activity.intensity_factor || activity.variability_index) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5" /> Training Load
+                  <Target className="w-5 h-5" />
+                  Training Load
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-nowrap items-start justify-evenly text-center gap-8 overflow-x-auto">
+                <div className="flex flex-row flex-wrap justify-center gap-x-10 gap-y-6 text-center">
                   {activity.tss && (
-                    <div className="flex flex-col min-w-[140px]">
-                      <div className="text-sm text-muted-foreground">Training Load Index</div>
-                      <div className="text-lg font-semibold">{activity.tss.toFixed(0)}</div>
+                    <div className="flex flex-col items-center min-w-[120px]">
+                      <span className="text-sm text-muted-foreground">Training Load Index</span>
+                      <span className="text-lg font-semibold">{activity.tss.toFixed(0)}</span>
                     </div>
                   )}
                   {activity.intensity_factor && (
-                    <div className="flex flex-col min-w-[140px]">
-                      <div className="text-sm text-muted-foreground">Intensity Index</div>
-                      <div className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</div>
+                    <div className="flex flex-col items-center min-w-[120px]">
+                      <span className="text-sm text-muted-foreground">Intensity Index</span>
+                      <span className="text-lg font-semibold">{activity.intensity_factor.toFixed(2)}</span>
                     </div>
                   )}
                   {activity.variability_index && (
-                    <div className="flex flex-col min-w-[140px]">
-                      <div className="text-sm text-muted-foreground">Effort Ratio</div>
-                      <div className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</div>
+                    <div className="flex flex-col items-center min-w-[120px]">
+                      <span className="text-sm text-muted-foreground">Effort Ratio</span>
+                      <span className="text-lg font-semibold">{activity.variability_index.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
+
                 <AISessionFeedback activity={activity} workout={undefined} />
               </CardContent>
             </Card>
           )}
 
-          {/* --- GPS Route --- */}
+          {/* GPS Route */}
           {activity.gps_data && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" /> GPS Route
+                  <MapPin className="w-5 h-5" />
+                  GPS Route
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -309,7 +327,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
             </Card>
           )}
 
-          {/* --- Notes --- */}
+          {/* Notes */}
           {activity.notes && (
             <Card>
               <CardHeader>
@@ -321,7 +339,7 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
             </Card>
           )}
 
-          {/* --- File Info --- */}
+          {/* File Information */}
           {activity.original_filename && (
             <Card>
               <CardHeader>
@@ -336,17 +354,19 @@ export function ActivityDetailModal({ activity, open, onClose, onEdit, onDelete 
             </Card>
           )}
 
-          {/* --- Actions --- */}
+          {/* Action Buttons */}
           {(onEdit || onDelete) && (
             <div className="flex justify-end gap-2">
               {onEdit && (
                 <Button variant="outline" size="sm" onClick={() => onEdit(activity)}>
-                  <Edit className="w-3 h-3 mr-1" /> Edit
+                  <Edit className="w-3 h-3 mr-1" />
+                  Edit
                 </Button>
               )}
               {onDelete && activity.id && (
                 <Button variant="destructive" size="sm" onClick={() => onDelete(activity.id!)}>
-                  <Trash2 className="w-3 h-3 mr-1" /> Delete
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Delete
                 </Button>
               )}
             </div>
