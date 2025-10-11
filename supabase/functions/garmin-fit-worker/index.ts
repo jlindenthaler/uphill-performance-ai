@@ -145,7 +145,7 @@ serve(async (req) => {
             console.log(`Decoded FIT file, found ${Object.keys(messages).length} message types`);
 
             // Extract record messages (time series data)
-            const records = messages.recordMesgs || [];
+            const records = (messages as any).recordMesgs || [];
             console.log(`Found ${records.length} record messages`);
 
             // Convert FIT records to sample format matching activityDetails

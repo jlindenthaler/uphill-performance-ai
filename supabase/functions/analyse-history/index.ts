@@ -171,6 +171,6 @@ serve(async (req) => {
 
   } catch (err) {
     console.error("Analysis Error:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500 });
   }
 });

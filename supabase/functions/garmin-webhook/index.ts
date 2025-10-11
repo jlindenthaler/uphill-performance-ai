@@ -297,7 +297,7 @@ serve(async (req)=>{
     status: 405
   });
 });
-function mapGarminSportType(activityType) {
+function mapGarminSportType(activityType: string) {
   if (!activityType) return null;
   const t = activityType.toLowerCase();
   if (t.includes('bike') || t.includes('cycling')) return 'cycling';

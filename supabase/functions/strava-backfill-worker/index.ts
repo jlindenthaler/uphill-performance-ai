@@ -352,7 +352,7 @@ async function processBackfillJob(supabase: any, job: any) {
                         temperature: streams.temp?.[index] || null,
                       }));
                       
-                      gpsData.trackPoints = trackPoints;
+                      (gpsData as any).trackPoints = trackPoints;
                     }
                   }
                   

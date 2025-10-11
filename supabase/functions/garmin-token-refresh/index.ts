@@ -2,8 +2,8 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // --- Load Secrets ---
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GARMIN_CLIENT_ID = Deno.env.get("GARMIN_CLIENT_ID");
 const GARMIN_CLIENT_SECRET = Deno.env.get("GARMIN_CLIENT_SECRET");
 const TOKEN_URL = "https://connect.garmin.com/oauth2/token";
@@ -79,7 +79,7 @@ serve(async ()=>{
   } catch (e) {
     console.error("Token refresh job failed:", e);
     return new Response(JSON.stringify({
-      error: e.message
+      error: e instanceof Error ? e.message : "Unknown error"
     }), {
       status: 500
     });

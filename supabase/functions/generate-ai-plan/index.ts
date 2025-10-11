@@ -38,8 +38,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -100,7 +100,7 @@ ATHLETE CONTEXT:
 
     const weeklyAvailability = formData.weeklyAvailability || {};
     const totalWeeklyHours = Object.values(weeklyAvailability).reduce(
-      (sum, d: any) => sum + (d.training_hours || 0),
+      (sum: number, d: any) => sum + (d.training_hours || 0),
       0
     );
     const availabilityContext = Object.entries(weeklyAvailability)
@@ -110,7 +110,7 @@ ATHLETE CONTEXT:
     const availabilityBlock = `
 WEEKLY AVAILABILITY:
 ${availabilityContext}
-Total Weekly Hours: ${totalWeeklyHours.toFixed(1)}h
+Total Weekly Hours: ${(totalWeeklyHours as number).toFixed(1)}h
 Long Ride Day: ${formData.longSessionDay || "Saturday"}
 Sessions/Week: ${formData.sessionsPerWeek || "Auto"}
 `;
@@ -184,7 +184,7 @@ Use DeepSeek-derived thresholds and phenotype to shape block focus.
 
   } catch (error) {
     console.error("❌ generate-ai-plan error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
