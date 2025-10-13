@@ -227,24 +227,16 @@ export function EnhancedPowerProfileChart({
                   type="number"
                   scale="log"
                   domain={['auto', 'auto']}
-                  ticks={[1, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200, 10800]}
                   tickFormatter={(value) => {
-                    if (value === 1) return '1s';
-                    if (value === 5) return '5s';
-                    if (value === 10) return '10s';
-                    if (value === 15) return '15s';
-                    if (value === 30) return '30s';
-                    if (value === 60) return '1m';
-                    if (value === 120) return '2m';
-                    if (value === 300) return '5m';
-                    if (value === 600) return '10m';
-                    if (value === 1200) return '20m';
-                    if (value === 1800) return '30m';
-                    if (value === 3600) return '1h';
-                    if (value === 5400) return '1h30m';
-                    if (value === 7200) return '2h';
-                    if (value === 10800) return '3h';
-                    return `${value}s`;
+                    const seconds = Math.round(value);
+                    if (seconds < 60) return `${seconds}s`;
+                    if (seconds < 3600) {
+                      const mins = Math.round(seconds / 60);
+                      return `${mins}m`;
+                    }
+                    const hours = Math.floor(seconds / 3600);
+                    const remainingMins = Math.round((seconds % 3600) / 60);
+                    return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
                   }}
                   label={{ value: 'Duration (log scale)', position: 'insideBottom', offset: -5 }}
                 />
