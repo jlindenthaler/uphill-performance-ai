@@ -89,10 +89,30 @@ export function usePowerProfile(timeWindow: string = '90-day', excludeActivityId
         }
       });
 
-      console.log(`[Power Profile] Processed ${windowMap.size} ${timeWindow} durations, ${allTimeMap.size} all-time durations`);
+      // Filter all-time data by date for rolling windows (client-side fallback)
+      const filteredAllTimeMap = new Map();
+      if (timeWindow !== 'all-time') {
+        allTimeData?.forEach(record => {
+          const recordDate = new Date(record.date_achieved);
+          if (recordDate >= cutoffDate) {
+            const durationSeconds = record.duration_seconds;
+            const existing = filteredAllTimeMap.get(durationSeconds);
+            const value = isRunning ? record.pace_per_km : record.power_watts;
+            
+            if (value && (!existing || (isRunning ? value < existing : value > existing))) {
+              filteredAllTimeMap.set(durationSeconds, value);
+            }
+          }
+        });
+      }
+
+      console.log(`[Power Profile] Processed ${windowMap.size} ${timeWindow} durations, ${allTimeMap.size} all-time durations, ${filteredAllTimeMap.size} filtered all-time durations`);
+
+      // If no window-specific data, use filtered all-time data as fallback
+      const effectiveWindowMap = windowMap.size > 0 ? windowMap : filteredAllTimeMap;
 
       // Create profile for display (selected time window)
-      const displayProfile = Array.from(windowMap.entries()).map(([durationSeconds, value]) => ({
+      const displayProfile = Array.from(effectiveWindowMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds: durationSeconds,
         current: value,
@@ -101,20 +121,20 @@ export function usePowerProfile(timeWindow: string = '90-day', excludeActivityId
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
-      // Create all-time profile (kept for background/reference)
-      const allTimeProfile = Array.from(allTimeMap.entries()).map(([durationSeconds, value]) => ({
+      // Create filtered profile for recalculated view (date-filtered data)
+      const filteredProfile = Array.from(filteredAllTimeMap.entries()).map(([durationSeconds, value]) => ({
         duration: formatDuration(durationSeconds),
         durationSeconds: durationSeconds,
         current: value,
-        best: value,
+        best: allTimeMap.get(durationSeconds) || value,
         date: new Date().toISOString(),
         unit: isRunning ? 'min/km' : 'W'
       })).sort((a, b) => a.durationSeconds - b.durationSeconds);
 
-      // Set selected window as primary display, all-time as reference
+      // Set selected window as primary display, filtered data for recalculated view
       setPowerProfile(displayProfile);
-      setRecalculatedProfile(allTimeProfile);
-      console.log(`[Power Profile] Updated: ${displayProfile.length} ${timeWindow} points, ${allTimeProfile.length} all-time points`);
+      setRecalculatedProfile(timeWindow === 'all-time' ? displayProfile : filteredProfile);
+      console.log(`[Power Profile] Updated: ${displayProfile.length} ${timeWindow} points, ${filteredProfile.length} filtered points`);
     } catch (error) {
       console.error('Error fetching power profile:', error);
     } finally {
