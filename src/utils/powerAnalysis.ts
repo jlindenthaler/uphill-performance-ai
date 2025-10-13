@@ -98,9 +98,7 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
     if (activityData.speed_time_series && Array.isArray(activityData.speed_time_series)) {
       dataArray = activityData.speed_time_series.filter((s: any) => s !== null && s !== undefined);
       console.log('📊 Using speed_time_series', { 
-        originalLength: activityData.speed_time_series.length,
         filteredLength: dataArray.length,
-        nonZeroCount: dataArray.filter(s => s > 0).length,
         firstTenValues: dataArray.slice(0, 10)
       });
     } else if (activityData.gps_data?.trackPoints) {
@@ -112,91 +110,75 @@ export function extractPowerProfileFromActivity(activityData: any, sportMode: st
   }
 
   if (dataArray.length === 0) {
-    console.log(`❌ No ${isRunning ? 'speed' : 'power'} data found for activity`);
-    return [];
+    console.log('⚠️ No power/speed data found in activity');
+    return powerProfile;
   }
 
-  console.log(`✅ Found ${dataArray.length} ${isRunning ? 'speed' : 'power'} data points`);
+  console.log(`📊 Analyzing ${dataArray.length} data points for ${sportMode}`);
 
-  // Helper to calculate rolling maximum average
-  const calculateMaxAvg = (data: number[], duration: number): number | null => {
-    if (data.length < duration) return null;
+  // Define duration ranges to analyze (WKO5 style - comprehensive)
+  const durations = [
+    // Sub-minute: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 30, 40, 50 seconds
+    ...Array.from({ length: 10 }, (_, i) => i + 1),
+    12, 15, 20, 30, 40, 50,
+    // 1-5 minutes: every 5 seconds
+    ...Array.from({ length: 49 }, (_, i) => 60 + (i * 5)),
+    // 5-20 minutes: every 30 seconds
+    ...Array.from({ length: 31 }, (_, i) => 300 + (i * 30)),
+    // 20-60 minutes: every 1 minute
+    ...Array.from({ length: 41 }, (_, i) => 1200 + (i * 60)),
+    // 1-3 hours: every 5 minutes
+    ...Array.from({ length: 25 }, (_, i) => 3600 + (i * 300)),
+  ];
+
+  console.log('🎯 Analyzing durations:', { 
+    count: durations.length,
+    shortest: durations[0],
+    longest: durations[durations.length - 1],
+    samples: durations.slice(0, 10)
+  });
+
+  // Calculate mean maximal value for each duration
+  for (const duration of durations) {
+    if (duration > dataArray.length) {
+      console.log(`⏩ Skipping duration ${duration}s (exceeds data length ${dataArray.length})`);
+      continue;
+    }
+
+    let maxValue = 0;
     
-    let maxAvg = 0;
-    for (let i = 0; i <= data.length - duration; i++) {
-      const window = data.slice(i, i + duration);
+    // Calculate rolling average for this duration
+    for (let i = 0; i <= dataArray.length - duration; i++) {
+      const window = dataArray.slice(i, i + duration);
       const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
-      maxAvg = Math.max(maxAvg, avg);
+      maxValue = Math.max(maxValue, avg);
     }
-    
-    return maxAvg > 0 ? maxAvg : null;
-  };
 
-  // Convert speed to pace for running (min/km)
-  const convertToPace = (speedMps: number): number => {
-    if (speedMps <= 0) return 0;
-    return 1000 / (speedMps * 60); // Convert m/s to min/km
-  };
-
-  // Calculate mean max for every second up to 60s
-  for (let duration = 1; duration <= 60; duration++) {
-    const avgValue = calculateMaxAvg(dataArray, duration);
-    if (avgValue !== null && avgValue > 0) {
-      const value = isRunning ? convertToPace(avgValue) : avgValue;
-      powerProfile.push({ durationSeconds: duration, value });
-    }
-  }
-
-  // Then every 5 seconds from 65s to 300s (5 minutes)
-  for (let duration = 65; duration <= 300; duration += 5) {
-    const avgValue = calculateMaxAvg(dataArray, duration);
-    if (avgValue !== null && avgValue > 0) {
-      const value = isRunning ? convertToPace(avgValue) : avgValue;
-      powerProfile.push({ durationSeconds: duration, value });
-    }
-  }
-
-  // Then every 30 seconds from 330s to 1200s (20 minutes)
-  for (let duration = 330; duration <= 1200; duration += 30) {
-    const avgValue = calculateMaxAvg(dataArray, duration);
-    if (avgValue !== null && avgValue > 0) {
-      const value = isRunning ? convertToPace(avgValue) : avgValue;
-      powerProfile.push({ durationSeconds: duration, value });
-    }
-  }
-
-  // Then every 60 seconds from 1260s to 3600s (1 hour)
-  for (let duration = 1260; duration <= 3600; duration += 60) {
-    const avgValue = calculateMaxAvg(dataArray, duration);
-    if (avgValue !== null && avgValue > 0) {
-      const value = isRunning ? convertToPace(avgValue) : avgValue;
-      powerProfile.push({ durationSeconds: duration, value });
-    }
-  }
-
-  // Then every 5 minutes beyond 1 hour if activity is that long
-  const maxDuration = dataArray.length;
-  if (maxDuration > 3600) {
-    for (let duration = 3900; duration <= maxDuration; duration += 300) {
-      const avgValue = calculateMaxAvg(dataArray, duration);
-      if (avgValue !== null && avgValue > 0) {
-        const value = isRunning ? convertToPace(avgValue) : avgValue;
-        powerProfile.push({ durationSeconds: duration, value });
+    if (maxValue > 0) {
+      // For running, convert m/s to min/km
+      if (isRunning) {
+        const kmhSpeed = maxValue * 3.6;
+        const minPerKm = 60 / kmhSpeed;
+        powerProfile.push({ durationSeconds: duration, value: minPerKm });
+      } else {
+        powerProfile.push({ durationSeconds: duration, value: maxValue });
       }
     }
   }
 
-  console.log('📈 Power profile extraction COMPLETE', {
-    totalEntries: powerProfile.length,
-    firstDuration: powerProfile[0]?.durationSeconds,
-    lastDuration: powerProfile[powerProfile.length-1]?.durationSeconds,
-    sampleValues: powerProfile.slice(0, 5).map(p => ({ dur: p.durationSeconds, val: p.value }))
+  console.log('✅ extractPowerProfileFromActivity COMPLETE', {
+    dataPointsFound: powerProfile.length,
+    firstFive: powerProfile.slice(0, 5),
+    lastFive: powerProfile.slice(-5)
   });
-  
+
   return powerProfile;
 }
 
-// Populate power profile data for an activity
+
+// ============================================================================
+// POPULATE POWER PROFILE FOR SINGLE ACTIVITY
+// ============================================================================
 export async function populatePowerProfileForActivity(
   userId: string,
   activityId: string,
@@ -204,50 +186,27 @@ export async function populatePowerProfileForActivity(
   sportMode: string,
   activityDate: string
 ): Promise<void> {
-  console.log('🚀 populatePowerProfileForActivity START', { 
-    activityId, 
+  console.log('🚀 Starting populatePowerProfileForActivity', {
+    userId,
+    activityId,
     sportMode,
-    hasPowerTimeSeries: !!activityData.power_time_series,
-    powerLength: Array.isArray(activityData.power_time_series) ? activityData.power_time_series.length : 0
+    activityDate
   });
-  
-  const powerProfile = extractPowerProfileFromActivity(activityData, sportMode);
-  const isRunning = sportMode === 'running';
 
-  if (powerProfile.length === 0) {
-    console.log(`⚠️ No power profile data extracted for activity ${activityId}`);
-    console.log('Activity data keys:', Object.keys(activityData));
-    console.log('Has power_time_series:', !!activityData.power_time_series, 
-                'Length:', Array.isArray(activityData.power_time_series) ? activityData.power_time_series.length : 'N/A',
-                'Type:', typeof activityData.power_time_series);
-    console.log('Has speed_time_series:', !!activityData.speed_time_series,
-                'Length:', Array.isArray(activityData.speed_time_series) ? activityData.speed_time_series.length : 'N/A');
-    if (activityData.power_time_series && Array.isArray(activityData.power_time_series) && activityData.power_time_series.length > 0) {
-      console.log('Sample power values:', activityData.power_time_series.slice(0, 20));
-      console.log('Sample power values (end):', activityData.power_time_series.slice(-20));
-    }
+  // Extract the power/pace profile from this activity
+  const profileData = extractPowerProfileFromActivity(activityData, sportMode);
+
+  if (profileData.length === 0) {
+    console.log('⚠️ No power profile data extracted, skipping population');
     return;
   }
-  
-  console.log(`✅ Extracted ${powerProfile.length} entries for activity ${activityId}`, {
-    maxDuration: Math.max(...powerProfile.map(p => p.durationSeconds)),
-    minDuration: Math.min(...powerProfile.map(p => p.durationSeconds))
-  });
 
-  // Define all rolling time windows (in days) with cutoff dates
-  const rollingWindows = [
-    { days: 7, key: '7-day' },
-    { days: 14, key: '14-day' },
-    { days: 30, key: '30-day' },
-    { days: 60, key: '60-day' },
-    { days: 90, key: '90-day' },
-    { days: 365, key: '365-day' },
-  ];
+  console.log(`📊 Extracted ${profileData.length} power profile data points`);
 
-  // Fetch existing records for ALL time windows in ONE query
-  const { data: existingRecords, error: fetchError } = await supabase
+  // Fetch existing power profile data for this user and sport
+  const { data: existingData, error: fetchError } = await supabase
     .from('power_profile')
-    .select('duration_seconds, power_watts, pace_per_km, time_window')
+    .select('duration_seconds, power_watts, pace_per_km, time_window, date_achieved')
     .eq('user_id', userId)
     .eq('sport', sportMode);
 
@@ -256,208 +215,306 @@ export async function populatePowerProfileForActivity(
     return;
   }
 
-  // Build maps for each time window: duration -> best existing value
-  const timeWindowMaps = new Map<string, Map<number, number>>();
-  timeWindowMaps.set('all-time', new Map());
-  rollingWindows.forEach(window => {
-    timeWindowMaps.set(window.key, new Map());
-  });
-  
-  existingRecords?.forEach(record => {
-    const value = isRunning ? record.pace_per_km : record.power_watts;
-    if (!value) return;
-    
-    const targetMap = timeWindowMaps.get(record.time_window);
-    if (!targetMap) return;
-    
-    const existing = targetMap.get(record.duration_seconds);
-    if (!existing || (isRunning ? value < existing : value > existing)) {
-      targetMap.set(record.duration_seconds, value);
+  console.log(`📥 Fetched ${existingData?.length || 0} existing power profile records`);
+
+  // Build a map of existing best values for each duration and time window
+  const existingBests = new Map<string, { value: number; date: Date }>();
+  existingData?.forEach(record => {
+    const key = `${record.duration_seconds}-${record.time_window}`;
+    const value = sportMode === 'running' ? record.pace_per_km : record.power_watts;
+    if (value) {
+      existingBests.set(key, {
+        value,
+        date: new Date(record.date_achieved)
+      });
     }
   });
 
-  // Helper to check if new value is better
-  const isNewBetter = (newValue: number, existingValue: number | undefined): boolean => {
-    if (!existingValue) return true;
-    return isRunning ? newValue < existingValue : newValue > existingValue;
-  };
-
-  // Prepare records for insertion/update
-  const recordsToInsert: any[] = [];
+  // Prepare records to upsert
+  const recordsToUpsert: any[] = [];
   const activityDateObj = new Date(activityDate);
 
-  powerProfile.forEach(profile => {
-    const baseData = {
-      user_id: userId,
-      activity_id: activityId,
-      duration_seconds: profile.durationSeconds,
-      sport: sportMode,
-      date_achieved: activityDate,
-      ...(isRunning 
-        ? { pace_per_km: profile.value } 
-        : { power_watts: profile.value }
-      )
-    };
+  // Define rolling time windows in days (7, 14, 30, 90, 365)
+  const timeWindows = [
+    { name: '7-day', days: 7 },
+    { name: '14-day', days: 14 },
+    { name: '30-day', days: 30 },
+    { name: '90-day', days: 90 },
+    { name: '365-day', days: 365 }
+  ];
 
-    // Check if this is a new all-time best
-    const allTimeMap = timeWindowMaps.get('all-time')!;
-    const allTimeBest = allTimeMap.get(profile.durationSeconds);
-    if (isNewBetter(profile.value, allTimeBest)) {
-      recordsToInsert.push({
-        ...baseData,
-        time_window: 'all-time'
+  // Check each duration in the extracted profile
+  for (const { durationSeconds, value } of profileData) {
+    // 1. Check/update all-time best
+    const allTimeKey = `${durationSeconds}-all-time`;
+    const existingAllTime = existingBests.get(allTimeKey);
+    
+    const isNewAllTimeBest = !existingAllTime || 
+      (sportMode === 'running' ? value < existingAllTime.value : value > existingAllTime.value);
+
+    if (isNewAllTimeBest) {
+      recordsToUpsert.push({
+        user_id: userId,
+        sport: sportMode,
+        duration_seconds: durationSeconds,
+        time_window: 'all-time',
+        [sportMode === 'running' ? 'pace_per_km' : 'power_watts']: value,
+        date_achieved: activityDate,
+        activity_id: activityId
       });
     }
 
-    // Check each rolling window
-    rollingWindows.forEach(window => {
+    // 2. Check/update rolling window bests
+    for (const window of timeWindows) {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - window.days);
+      
+      // Check if this activity is within the rolling window
       const isWithinWindow = activityDateObj >= cutoffDate;
       
       if (isWithinWindow) {
-        const windowMap = timeWindowMaps.get(window.key)!;
-        const windowBest = windowMap.get(profile.durationSeconds);
-        if (isNewBetter(profile.value, windowBest)) {
-          recordsToInsert.push({
-            ...baseData,
-            time_window: window.key
+        const windowKey = `${durationSeconds}-${window.name}`;
+        const existingWindow = existingBests.get(windowKey);
+        
+        const isNewWindowBest = !existingWindow || 
+          (sportMode === 'running' ? value < existingWindow.value : value > existingWindow.value);
+
+        if (isNewWindowBest) {
+          recordsToUpsert.push({
+            user_id: userId,
+            sport: sportMode,
+            duration_seconds: durationSeconds,
+            time_window: window.name,
+            [sportMode === 'running' ? 'pace_per_km' : 'power_watts']: value,
+            date_achieved: activityDate,
+            activity_id: activityId
           });
         }
       }
-    });
-  });
-
-  if (recordsToInsert.length === 0) {
-    console.log(`No new best efforts found for activity ${activityId}`);
-    return;
+    }
   }
 
-  console.log(`💾 Attempting to upsert ${recordsToInsert.length} records (all-time + 90-day)...`);
-  
-  const { error: insertError } = await supabase
-    .from('power_profile')
-    .upsert(recordsToInsert, {
-      onConflict: 'user_id,duration_seconds,sport,time_window',
-      ignoreDuplicates: false // Update existing records with new values
-    });
+  console.log(`💾 Upserting ${recordsToUpsert.length} power profile records`);
 
-  if (insertError) {
-    console.error(`❌ Error inserting power profile for activity ${activityId}:`, insertError);
-    console.error('Failed insert data sample:', recordsToInsert.slice(0, 2));
-  } else {
-    console.log(`✅ Successfully inserted ${recordsToInsert.length} power profile records for activity ${activityId}`);
+  if (recordsToUpsert.length > 0) {
+    const { error: upsertError } = await supabase
+      .from('power_profile')
+      .upsert(recordsToUpsert, {
+        onConflict: 'user_id,sport,duration_seconds,time_window',
+        ignoreDuplicates: false
+      });
+
+    if (upsertError) {
+      console.error('Error upserting power profile:', upsertError);
+    } else {
+      console.log('✅ Power profile data upserted successfully');
+    }
   }
 }
 
-// Backfill power profile data for existing activities
+
+// ============================================================================
+// BACKFILL POWER PROFILE FOR ALL ACTIVITIES (LEGACY)
+// ============================================================================
 export async function backfillPowerProfileData(
   userId: string,
   onProgress?: (current: number, total: number, activityName: string) => void
 ): Promise<void> {
-  console.log('🚀 Starting power profile backfill for user:', userId);
-  
-  const BATCH_SIZE = 10; // Process 10 activities at a time to avoid performance issues
-  let offset = 0;
-  let successCount = 0;
-  let errorCount = 0;
-  let totalProcessed = 0;
+  console.log('🎯 Starting power profile backfill for user:', userId);
 
-  console.log(`📅 Processing ALL activities for dual time-window power profile (all-time + 90-day)`);
-
-  // First, get the total count (ALL activities)
-  const { count: totalCount, error: countError } = await supabase
-    .from('activities')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId);
-
-  if (countError) {
-    console.error('❌ Error counting activities:', countError);
-    throw countError;
-  }
-
-  const totalActivities = totalCount || 0;
-  console.log(`📊 Found ${totalActivities} total activities to process`);
-
-  if (totalActivities === 0) {
-    console.log('ℹ️ No activities found for backfill');
-    return;
-  }
-
-  // Process in batches to avoid timeout
-  while (totalProcessed < totalActivities) {
-    console.log(`📦 Fetching batch: offset ${offset}, limit ${BATCH_SIZE}`);
-    
+  try {
+    // Fetch all activities with power or speed data
     const { data: activities, error } = await supabase
       .from('activities')
-      .select('id, gps_data, power_time_series, speed_time_series, sport_mode, date, name, duration_seconds')
+      .select('id, name, sport_mode, date, power_time_series, speed_time_series, gps_data')
       .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .range(offset, offset + BATCH_SIZE - 1);
+      .order('date', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching activities batch:', error);
+      console.error('Error fetching activities for backfill:', error);
       throw error;
     }
 
     if (!activities || activities.length === 0) {
-      break;
+      console.log('No activities found for backfill');
+      return;
     }
 
-    console.log(`🔄 Processing batch of ${activities.length} activities`);
+    console.log(`📊 Found ${activities.length} activities to process`);
 
-    // Process each activity in this batch
-    for (let i = 0; i < activities.length; i++) {
-      const activity = activities[i];
-      
-      // Skip activities without any data - properly check for empty arrays
-      const hasPowerData = Array.isArray(activity.power_time_series) && activity.power_time_series.length > 0;
-      const hasSpeedData = Array.isArray(activity.speed_time_series) && activity.speed_time_series.length > 0;
-      const hasGpsData = activity.gps_data && 
-        typeof activity.gps_data === 'object' && 
-        'trackPoints' in activity.gps_data && 
-        Array.isArray((activity.gps_data as any).trackPoints) &&
-        (activity.gps_data as any).trackPoints.length > 0;
-      
-      if (!hasPowerData && !hasSpeedData && !hasGpsData) {
-        console.log(`⏭️ Skipping ${activity.name} - no power/speed data`);
-        totalProcessed++;
+    // Process in batches of 10 to avoid overwhelming the database
+    const BATCH_SIZE = 10;
+    const batches = Math.ceil(activities.length / BATCH_SIZE);
+
+    for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
+      const startIdx = batchIndex * BATCH_SIZE;
+      const endIdx = Math.min(startIdx + BATCH_SIZE, activities.length);
+      const batch = activities.slice(startIdx, endIdx);
+
+      console.log(`🔄 Processing batch ${batchIndex + 1}/${batches} (${batch.length} activities)`);
+
+      // Process activities in parallel within each batch
+      await Promise.all(
+        batch.map(async (activity, idx) => {
+          const globalIdx = startIdx + idx;
+          
+          try {
+            onProgress?.(globalIdx + 1, activities.length, activity.name);
+
+            // Check if activity has any power/speed data
+            const hasData = activity.power_time_series || 
+                          activity.speed_time_series || 
+                          activity.gps_data;
+
+            if (!hasData) {
+              console.log(`⏩ Skipping activity ${activity.id} (no power/speed data)`);
+              return;
+            }
+
+            await populatePowerProfileForActivity(
+              userId,
+              activity.id,
+              activity,
+              activity.sport_mode,
+              activity.date
+            );
+          } catch (activityError) {
+            console.error(`❌ Error processing activity ${activity.id}:`, activityError);
+          }
+        })
+      );
+
+      // Small delay between batches to be gentle on the database
+      if (batchIndex < batches - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log('✅ Power profile backfill completed successfully');
+  } catch (error) {
+    console.error('❌ Error in backfillPowerProfileData:', error);
+    throw error;
+  }
+}
+
+
+// ============================================================================
+// BACKFILL ROLLING WINDOW POWER PROFILE (NEW AGGREGATED APPROACH)
+// ============================================================================
+export async function backfillRollingWindowPowerProfile(
+  userId: string,
+  sportMode: string,
+  onProgress?: (windowName: string, current: number, total: number) => void
+): Promise<void> {
+  console.log('🎯 Starting rolling window power profile backfill', { userId, sportMode });
+
+  const timeWindows = [
+    { name: '7-day', days: 7 },
+    { name: '14-day', days: 14 },
+    { name: '30-day', days: 30 },
+    { name: '90-day', days: 90 },
+    { name: '365-day', days: 365 }
+  ];
+
+  try {
+    for (let windowIdx = 0; windowIdx < timeWindows.length; windowIdx++) {
+      const window = timeWindows[windowIdx];
+      console.log(`\n🔄 Processing ${window.name} window...`);
+      onProgress?.(window.name, windowIdx, timeWindows.length);
+
+      // Calculate date range for this window
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - window.days);
+
+      console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+      // Fetch all activities within this time window with power/speed data
+      const { data: activities, error } = await supabase
+        .from('activities')
+        .select('id, name, date, sport_mode, power_time_series, speed_time_series, gps_data')
+        .eq('user_id', userId)
+        .eq('sport_mode', sportMode)
+        .gte('date', startDate.toISOString())
+        .lte('date', endDate.toISOString())
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error(`Error fetching activities for ${window.name}:`, error);
         continue;
       }
-      
-      try {
-        console.log(`🔄 [${totalProcessed + 1}/${totalActivities}] Processing: ${activity.name}`);
-        const powerPoints = Array.isArray(activity.power_time_series) ? activity.power_time_series.length : 0;
-        console.log(`   Power points: ${powerPoints}, Duration: ${activity.duration_seconds}s`);
-        
-        // Pass the full activity object with power_time_series
-        await populatePowerProfileForActivity(
-          userId,
-          activity.id,
-          activity,
-          activity.sport_mode,
-          activity.date
-        );
-        
-        successCount++;
-        
-        // Call progress callback
-        if (onProgress) {
-          onProgress(totalProcessed + 1, totalActivities, activity.name);
-        }
-      } catch (error) {
-        console.error(`❌ Error processing activity ${activity.name}:`, error);
-        errorCount++;
+
+      if (!activities || activities.length === 0) {
+        console.log(`No activities found in ${window.name} window`);
+        continue;
       }
-      
-      totalProcessed++;
-      
-      // Add small delay between activities to prevent "getting too hot" performance issues
-      await new Promise(resolve => setTimeout(resolve, 50));
+
+      console.log(`📊 Found ${activities.length} activities in ${window.name} window`);
+
+      // Map to store best values for each duration: duration -> { value, activityId, date }
+      const bestsByDuration = new Map<number, { value: number; activityId: string; date: string }>();
+
+      // Extract power profiles from all activities and aggregate
+      for (const activity of activities) {
+        const hasData = activity.power_time_series || 
+                       activity.speed_time_series || 
+                       activity.gps_data;
+
+        if (!hasData) continue;
+
+        const profileData = extractPowerProfileFromActivity(activity, sportMode);
+
+        for (const { durationSeconds, value } of profileData) {
+          const existing = bestsByDuration.get(durationSeconds);
+          
+          const isBetter = !existing || 
+            (sportMode === 'running' ? value < existing.value : value > existing.value);
+
+          if (isBetter) {
+            bestsByDuration.set(durationSeconds, {
+              value,
+              activityId: activity.id,
+              date: activity.date
+            });
+          }
+        }
+      }
+
+      console.log(`✨ Aggregated ${bestsByDuration.size} unique durations for ${window.name}`);
+
+      // Prepare records to upsert
+      const recordsToUpsert = Array.from(bestsByDuration.entries()).map(([duration, best]) => ({
+        user_id: userId,
+        sport: sportMode,
+        duration_seconds: duration,
+        time_window: window.name,
+        [sportMode === 'running' ? 'pace_per_km' : 'power_watts']: best.value,
+        date_achieved: best.date,
+        activity_id: best.activityId
+      }));
+
+      if (recordsToUpsert.length > 0) {
+        console.log(`💾 Upserting ${recordsToUpsert.length} records for ${window.name}`);
+
+        const { error: upsertError } = await supabase
+          .from('power_profile')
+          .upsert(recordsToUpsert, {
+            onConflict: 'user_id,sport,duration_seconds,time_window',
+            ignoreDuplicates: false
+          });
+
+        if (upsertError) {
+          console.error(`Error upserting ${window.name} data:`, upsertError);
+        } else {
+          console.log(`✅ ${window.name} data upserted successfully`);
+        }
+      }
     }
 
-    offset += BATCH_SIZE;
+    console.log('✅ Rolling window backfill completed successfully');
+    onProgress?.('complete', timeWindows.length, timeWindows.length);
+  } catch (error) {
+    console.error('❌ Error in backfillRollingWindowPowerProfile:', error);
+    throw error;
   }
-
-  console.log(`✅ Power profile backfill completed! Success: ${successCount}, Errors: ${errorCount}, Total: ${totalProcessed}`);
 }

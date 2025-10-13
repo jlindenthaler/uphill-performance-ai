@@ -4,13 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useActivities } from '@/hooks/useActivities';
 import { useToast } from '@/hooks/use-toast';
+import { useSportMode } from '@/contexts/SportModeContext';
 import { Loader2, X } from 'lucide-react';
 
 export function PowerProfileBackfill() {
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [isBackfillingWindows, setIsBackfillingWindows] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, activityName: '' });
+  const [windowProgress, setWindowProgress] = useState({ windowName: '', current: 0, total: 5 });
   const [showProgress, setShowProgress] = useState(false);
-  const { backfillPowerProfile } = useActivities();
+  const [showWindowProgress, setShowWindowProgress] = useState(false);
+  const { backfillPowerProfile, backfillRollingWindows } = useActivities();
+  const { sportMode } = useSportMode();
   const { toast } = useToast();
 
   const handleBackfill = async () => {
@@ -60,10 +65,70 @@ export function PowerProfileBackfill() {
     }
   };
 
+  const handleRollingWindowBackfill = async () => {
+    if (!backfillRollingWindows) return;
+
+    setIsBackfillingWindows(true);
+    setShowWindowProgress(true);
+    setWindowProgress({ windowName: 'Starting...', current: 0, total: 5 });
+
+    try {
+      await backfillRollingWindows((windowName, current, total) => {
+        setWindowProgress({ windowName, current, total });
+      });
+
+      toast({
+        title: "Rolling Windows Updated",
+        description: `Power profile recalculated for all time windows (7-day, 14-day, 30-day, 90-day, 365-day).`,
+      });
+
+      setTimeout(() => setShowWindowProgress(false), 3000);
+    } catch (error) {
+      toast({
+        title: "Recalculation Failed",
+        description: error instanceof Error ? error.message : "Failed to recalculate rolling windows",
+        variant: "destructive",
+      });
+      setShowWindowProgress(false);
+    } finally {
+      setIsBackfillingWindows(false);
+    }
+  };
+
   const percentage = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  const windowPercentage = windowProgress.total > 0 ? Math.round((windowProgress.current / windowProgress.total) * 100) : 0;
 
   return (
     <>
+      {showWindowProgress && (
+        <Card className="mb-4 border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <CardTitle className="text-base">Recalculating Rolling Windows</CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-primary">
+                  {isBackfillingWindows ? 'In Progress' : 'Complete'}
+                </span>
+                {!isBackfillingWindows && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowWindowProgress(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <CardDescription className="text-xs">
+              {windowProgress.windowName}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Progress value={windowPercentage} className="h-2" />
+          </CardContent>
+        </Card>
+      )}
+
       {showProgress && (
         <Card className="mb-4 border-primary/20 bg-primary/5">
           <CardHeader className="pb-3">

@@ -498,19 +498,32 @@ export function useActivities(filterBySport: boolean = true) {
       await backfillPowerProfileData(user.id, onProgress);
       
       // Refresh activities to show updated data
-      await fetchActivities(true);
-      
-      // Trigger event to refresh power profile charts
-      window.dispatchEvent(new Event('activity-uploaded'));
-      
-      console.log('✅ Power profile backfill completed successfully');
     } catch (error) {
       console.error('❌ Error during power profile backfill:', error);
-      toast({
-        title: "Backfill Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const backfillRollingWindows = async (onProgress?: (windowName: string, current: number, total: number) => void) => {
+    if (!user) return;
+    
+    setLoading(true);
+    console.log('🎯 Starting rolling window power profile backfill...');
+    
+    try {
+      const { backfillRollingWindowPowerProfile } = await import('@/utils/powerAnalysis');
+      await backfillRollingWindowPowerProfile(user.id, sportMode, onProgress);
+      
+      // Dispatch event to notify power profile components
+      window.dispatchEvent(new CustomEvent('powerProfileUpdated', {
+        detail: { userId: user.id, sportMode }
+      }));
+      
+      console.log('✅ Rolling window backfill completed');
+    } catch (error) {
+      console.error('❌ Error during rolling window backfill:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -786,6 +799,7 @@ export function useActivities(filterBySport: boolean = true) {
     deleteActivity,
     updateActivity,
     backfillPowerProfile,
+    backfillRollingWindows,
     reprocessActivityTimestamps,
     recalculateTSSForAllActivities,
     recalculateTLIBasedOnLabResults
