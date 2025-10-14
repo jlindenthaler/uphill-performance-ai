@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { useActivities } from '@/hooks/useActivities';
 import { useToast } from '@/hooks/use-toast';
 import { useSportMode } from '@/contexts/SportModeContext';
+import { useAuth } from '@/hooks/useSupabase';
 import { Loader2, X } from 'lucide-react';
 
 export function PowerProfileBackfill() {
@@ -16,6 +17,7 @@ export function PowerProfileBackfill() {
   const [showWindowProgress, setShowWindowProgress] = useState(false);
   const { backfillPowerProfile, backfillRollingWindows } = useActivities();
   const { sportMode } = useSportMode();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const handleBackfill = async () => {
@@ -72,21 +74,32 @@ export function PowerProfileBackfill() {
     setShowWindowProgress(true);
     setWindowProgress({ windowName: 'Starting...', current: 0, total: 5 });
 
+    console.log('🚀 Starting rolling window backfill from UI...');
+
     try {
       await backfillRollingWindows((windowName, current, total) => {
+        console.log(`📊 Progress: ${windowName} (${current}/${total})`);
         setWindowProgress({ windowName, current, total });
       });
 
+      console.log('✅ Rolling window backfill completed successfully');
+
       toast({
         title: "Rolling Windows Updated",
-        description: `Power profile recalculated for all time windows (7-day, 14-day, 30-day, 90-day, 365-day).`,
+        description: `Power profile recalculated for all time windows (7-day, 14-day, 30-day, 90-day, 365-day). Check console for details.`,
       });
 
-      setTimeout(() => setShowWindowProgress(false), 3000);
+      // Dispatch event to refresh power profile chart
+      window.dispatchEvent(new CustomEvent('powerProfileUpdated', {
+        detail: { userId: user?.id, sportMode }
+      }));
+
+      setTimeout(() => setShowWindowProgress(false), 5000);
     } catch (error) {
+      console.error('❌ Rolling window backfill error:', error);
       toast({
         title: "Recalculation Failed",
-        description: error instanceof Error ? error.message : "Failed to recalculate rolling windows",
+        description: error instanceof Error ? error.message : "Failed to recalculate rolling windows. Check console for details.",
         variant: "destructive",
       });
       setShowWindowProgress(false);

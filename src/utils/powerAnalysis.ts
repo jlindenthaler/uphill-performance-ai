@@ -416,104 +416,118 @@ export async function backfillRollingWindowPowerProfile(
     { name: '365-day', days: 365 }
   ];
 
+  const results: Array<{ window: string; success: boolean; activities: number; records: number; error?: string }> = [];
+
   try {
     for (let windowIdx = 0; windowIdx < timeWindows.length; windowIdx++) {
       const window = timeWindows[windowIdx];
-      console.log(`\n🔄 Processing ${window.name} window...`);
+      console.log(`\n🔄 Processing ${window.name} window (${windowIdx + 1}/${timeWindows.length})...`);
       onProgress?.(window.name, windowIdx, timeWindows.length);
 
-      // Calculate date range for this window
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - window.days);
+      try {
+        // Calculate date range for this window
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - window.days);
 
-      console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+        console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Fetch activities in batches for large windows (365-day) to avoid timeout
-      let activities: any[] = [];
-      const batchSize = 100;
-      let currentBatch = 0;
-      let hasMore = true;
+        // Fetch activities in batches for large windows (365-day) to avoid timeout
+        let activities: any[] = [];
+        const fetchBatchSize = window.days > 90 ? 50 : 100; // Smaller batches for large windows
+        let currentBatch = 0;
+        let hasMore = true;
 
-      while (hasMore) {
-        const { data: batchData, error } = await supabase
-          .from('activities')
-          .select('id, name, date, sport_mode, power_time_series, speed_time_series, gps_data')
-          .eq('user_id', userId)
-          .eq('sport_mode', sportMode)
-          .gte('date', startDate.toISOString())
-          .lte('date', endDate.toISOString())
-          .order('date', { ascending: false })
-          .range(currentBatch * batchSize, (currentBatch + 1) * batchSize - 1);
+        while (hasMore) {
+          const { data: batchData, error } = await supabase
+            .from('activities')
+            .select('id, name, date, sport_mode, power_time_series, speed_time_series, gps_data')
+            .eq('user_id', userId)
+            .eq('sport_mode', sportMode)
+            .gte('date', startDate.toISOString())
+            .lte('date', endDate.toISOString())
+            .order('date', { ascending: false })
+            .range(currentBatch * fetchBatchSize, (currentBatch + 1) * fetchBatchSize - 1);
 
-        if (error) {
-          console.error(`Error fetching activities for ${window.name}:`, error);
-          break;
-        }
+          if (error) {
+            console.error(`❌ Error fetching batch ${currentBatch} for ${window.name}:`, error);
+            throw error;
+          }
 
-        if (batchData && batchData.length > 0) {
-          activities = activities.concat(batchData);
-          currentBatch++;
-          hasMore = batchData.length === batchSize;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      if (!activities || activities.length === 0) {
-        console.log(`No activities found in ${window.name} window`);
-        continue;
-      }
-
-      console.log(`📊 Found ${activities.length} activities in ${window.name} window`);
-
-      // Map to store best values for each duration: duration -> { value, activityId, date }
-      const bestsByDuration = new Map<number, { value: number; activityId: string; date: string }>();
-
-      // Extract power profiles from all activities and aggregate
-      for (const activity of activities) {
-        const hasData = activity.power_time_series || 
-                       activity.speed_time_series || 
-                       activity.gps_data;
-
-        if (!hasData) continue;
-
-        const profileData = extractPowerProfileFromActivity(activity, sportMode);
-
-        for (const { durationSeconds, value } of profileData) {
-          const existing = bestsByDuration.get(durationSeconds);
-          
-          const isBetter = !existing || 
-            (sportMode === 'running' ? value < existing.value : value > existing.value);
-
-          if (isBetter) {
-            bestsByDuration.set(durationSeconds, {
-              value,
-              activityId: activity.id,
-              date: activity.date
-            });
+          if (batchData && batchData.length > 0) {
+            activities = activities.concat(batchData);
+            currentBatch++;
+            hasMore = batchData.length === fetchBatchSize;
+            console.log(`  📦 Fetched batch ${currentBatch}: ${batchData.length} activities (total: ${activities.length})`);
+          } else {
+            hasMore = false;
           }
         }
-      }
 
-      console.log(`✨ Aggregated ${bestsByDuration.size} unique durations for ${window.name}`);
+        if (!activities || activities.length === 0) {
+          console.log(`⚠️ No activities found in ${window.name} window - skipping`);
+          results.push({ window: window.name, success: true, activities: 0, records: 0 });
+          continue;
+        }
 
-      // Prepare records to upsert
-      const recordsToUpsert = Array.from(bestsByDuration.entries()).map(([duration, best]) => ({
-        user_id: userId,
-        sport: sportMode,
-        duration_seconds: duration,
-        time_window: window.name,
-        [sportMode === 'running' ? 'pace_per_km' : 'power_watts']: best.value,
-        date_achieved: best.date,
-        activity_id: best.activityId
-      }));
+        console.log(`📊 Found ${activities.length} total activities in ${window.name} window`);
 
-      if (recordsToUpsert.length > 0) {
+        // Map to store best values for each duration: duration -> { value, activityId, date }
+        const bestsByDuration = new Map<number, { value: number; activityId: string; date: string }>();
+        let activitiesWithData = 0;
+
+        // Extract power profiles from all activities and aggregate
+        for (const activity of activities) {
+          const hasData = activity.power_time_series || 
+                         activity.speed_time_series || 
+                         activity.gps_data;
+
+          if (!hasData) continue;
+          activitiesWithData++;
+
+          const profileData = extractPowerProfileFromActivity(activity, sportMode);
+
+          for (const { durationSeconds, value } of profileData) {
+            const existing = bestsByDuration.get(durationSeconds);
+            
+            const isBetter = !existing || 
+              (sportMode === 'running' ? value < existing.value : value > existing.value);
+
+            if (isBetter) {
+              bestsByDuration.set(durationSeconds, {
+                value,
+                activityId: activity.id,
+                date: activity.date
+              });
+            }
+          }
+        }
+
+        console.log(`✨ Aggregated ${bestsByDuration.size} unique durations from ${activitiesWithData} activities with power/pace data`);
+
+        if (bestsByDuration.size === 0) {
+          console.log(`⚠️ No power/pace data found in ${window.name} activities - skipping`);
+          results.push({ window: window.name, success: true, activities: activities.length, records: 0 });
+          continue;
+        }
+
+        // Prepare records to upsert
+        const recordsToUpsert = Array.from(bestsByDuration.entries()).map(([duration, best]) => ({
+          user_id: userId,
+          sport: sportMode,
+          duration_seconds: duration,
+          time_window: window.name,
+          [sportMode === 'running' ? 'pace_per_km' : 'power_watts']: best.value,
+          date_achieved: best.date,
+          activity_id: best.activityId
+        }));
+
         console.log(`💾 Upserting ${recordsToUpsert.length} records for ${window.name}`);
 
         // Batch upsert to avoid timeouts on large datasets
-        const upsertBatchSize = 50;
+        const upsertBatchSize = window.days > 90 ? 30 : 50; // Smaller batches for 365-day
+        let totalUpserted = 0;
+        
         for (let i = 0; i < recordsToUpsert.length; i += upsertBatchSize) {
           const batch = recordsToUpsert.slice(i, i + upsertBatchSize);
           
@@ -524,18 +538,53 @@ export async function backfillRollingWindowPowerProfile(
             });
 
           if (upsertError) {
-            console.error(`Error upserting batch ${i / upsertBatchSize + 1} for ${window.name}:`, upsertError);
-          } else {
-            console.log(`✅ Batch ${i / upsertBatchSize + 1} upserted (${batch.length} records)`);
+            console.error(`❌ Error upserting batch ${Math.floor(i / upsertBatchSize) + 1} for ${window.name}:`, upsertError);
+            throw upsertError;
           }
+          
+          totalUpserted += batch.length;
+          console.log(`  ✅ Batch ${Math.floor(i / upsertBatchSize) + 1}/${Math.ceil(recordsToUpsert.length / upsertBatchSize)} upserted (${batch.length} records, ${totalUpserted} total)`);
         }
         
-        console.log(`✅ ${window.name} data upserted successfully`);
+        console.log(`✅ ${window.name} complete: ${activities.length} activities, ${totalUpserted} records upserted`);
+        results.push({ window: window.name, success: true, activities: activities.length, records: totalUpserted });
+
+      } catch (windowError) {
+        console.error(`❌ Error processing ${window.name} window:`, windowError);
+        results.push({ 
+          window: window.name, 
+          success: false, 
+          activities: 0, 
+          records: 0, 
+          error: windowError instanceof Error ? windowError.message : 'Unknown error'
+        });
+        // Continue with next window instead of failing completely
       }
     }
 
-    console.log('✅ Rolling window backfill completed successfully');
+    console.log('\n📈 Rolling Window Backfill Summary:');
+    results.forEach(r => {
+      const status = r.success ? '✅' : '❌';
+      const details = r.success 
+        ? `${r.activities} activities → ${r.records} records`
+        : `Failed: ${r.error}`;
+      console.log(`  ${status} ${r.window}: ${details}`);
+    });
+
+    const successCount = results.filter(r => r.success).length;
+    const totalRecords = results.reduce((sum, r) => sum + r.records, 0);
+    
+    console.log(`\n✅ Rolling window backfill completed: ${successCount}/${timeWindows.length} windows successful, ${totalRecords} total records`);
+    
     onProgress?.('complete', timeWindows.length, timeWindows.length);
+
+    // If any windows failed, throw error with details
+    const failedWindows = results.filter(r => !r.success);
+    if (failedWindows.length > 0) {
+      const errorMsg = `Failed to process ${failedWindows.length} windows: ${failedWindows.map(w => w.window).join(', ')}`;
+      throw new Error(errorMsg);
+    }
+
   } catch (error) {
     console.error('❌ Error in backfillRollingWindowPowerProfile:', error);
     throw error;
