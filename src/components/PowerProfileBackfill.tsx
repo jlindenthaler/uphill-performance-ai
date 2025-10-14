@@ -198,6 +198,22 @@ export function PowerProfileBackfill() {
               'Analyze Existing Activities'
             )}
           </Button>
+
+          <Button 
+            onClick={handleRollingWindowBackfill}
+            disabled={isBackfillingWindows}
+            variant="secondary"
+            className="w-full"
+          >
+            {isBackfillingWindows ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Recalculating Rolling Windows...
+              </>
+            ) : (
+              'Recalculate Rolling Windows (7d, 14d, 30d, 90d)'
+            )}
+          </Button>
           
           {progress.total > 0 && !isBackfilling && (
             <div className="rounded-lg border bg-muted/50 p-3">
