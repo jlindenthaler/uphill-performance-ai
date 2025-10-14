@@ -40,6 +40,7 @@ import { LabResults } from './LabResults';
 import { AICoachRecommendation } from './AICoachRecommendation';
 import { AIChatBox } from './AIChatBox';
 import { EnhancedPowerProfileChart } from './EnhancedPowerProfileChart';
+import { PowerProfileBackfill } from './PowerProfileBackfill';
 import { useRecoveryTools } from '@/hooks/useRecoveryTools';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useAuth } from '@/hooks/useSupabase';
@@ -436,11 +437,14 @@ export function NewDashboard({ onNavigate }: DashboardProps) {
 
       {/* 90-Day Mean Max Power Chart and AI Chat */}
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardContent className="pt-6">
-            <EnhancedPowerProfileChart />
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2 space-y-6">
+          <PowerProfileBackfill />
+          <Card>
+            <CardContent className="pt-6">
+              <EnhancedPowerProfileChart />
+            </CardContent>
+          </Card>
+        </div>
         
         <AIChatBox />
       </div>
