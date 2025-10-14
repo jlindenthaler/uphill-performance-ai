@@ -429,19 +429,35 @@ export async function backfillRollingWindowPowerProfile(
 
       console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Fetch all activities within this time window with power/speed data
-      const { data: activities, error } = await supabase
-        .from('activities')
-        .select('id, name, date, sport_mode, power_time_series, speed_time_series, gps_data')
-        .eq('user_id', userId)
-        .eq('sport_mode', sportMode)
-        .gte('date', startDate.toISOString())
-        .lte('date', endDate.toISOString())
-        .order('date', { ascending: false });
+      // Fetch activities in batches for large windows (365-day) to avoid timeout
+      let activities: any[] = [];
+      const batchSize = 100;
+      let currentBatch = 0;
+      let hasMore = true;
 
-      if (error) {
-        console.error(`Error fetching activities for ${window.name}:`, error);
-        continue;
+      while (hasMore) {
+        const { data: batchData, error } = await supabase
+          .from('activities')
+          .select('id, name, date, sport_mode, power_time_series, speed_time_series, gps_data')
+          .eq('user_id', userId)
+          .eq('sport_mode', sportMode)
+          .gte('date', startDate.toISOString())
+          .lte('date', endDate.toISOString())
+          .order('date', { ascending: false })
+          .range(currentBatch * batchSize, (currentBatch + 1) * batchSize - 1);
+
+        if (error) {
+          console.error(`Error fetching activities for ${window.name}:`, error);
+          break;
+        }
+
+        if (batchData && batchData.length > 0) {
+          activities = activities.concat(batchData);
+          currentBatch++;
+          hasMore = batchData.length === batchSize;
+        } else {
+          hasMore = false;
+        }
       }
 
       if (!activities || activities.length === 0) {
@@ -496,18 +512,25 @@ export async function backfillRollingWindowPowerProfile(
       if (recordsToUpsert.length > 0) {
         console.log(`💾 Upserting ${recordsToUpsert.length} records for ${window.name}`);
 
-        const { error: upsertError } = await supabase
-          .from('power_profile')
-          .upsert(recordsToUpsert, {
-            onConflict: 'user_id,sport,duration_seconds,time_window',
-            ignoreDuplicates: false
-          });
+        // Batch upsert to avoid timeouts on large datasets
+        const upsertBatchSize = 50;
+        for (let i = 0; i < recordsToUpsert.length; i += upsertBatchSize) {
+          const batch = recordsToUpsert.slice(i, i + upsertBatchSize);
+          
+          const { error: upsertError } = await supabase
+            .from('power_profile')
+            .upsert(batch, {
+              onConflict: 'user_id,sport,duration_seconds,time_window'
+            });
 
-        if (upsertError) {
-          console.error(`Error upserting ${window.name} data:`, upsertError);
-        } else {
-          console.log(`✅ ${window.name} data upserted successfully`);
+          if (upsertError) {
+            console.error(`Error upserting batch ${i / upsertBatchSize + 1} for ${window.name}:`, upsertError);
+          } else {
+            console.log(`✅ Batch ${i / upsertBatchSize + 1} upserted (${batch.length} records)`);
+          }
         }
+        
+        console.log(`✅ ${window.name} data upserted successfully`);
       }
     }
 
