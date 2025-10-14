@@ -520,7 +520,7 @@ export async function backfillRollingWindowPowerProfile(
           const { error: upsertError } = await supabase
             .from('power_profile')
             .upsert(batch, {
-              onConflict: 'user_id,sport,duration_seconds,time_window'
+              onConflict: 'user_id,duration_seconds,sport,time_window'
             });
 
           if (upsertError) {
