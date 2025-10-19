@@ -52,7 +52,7 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Coming Soon Banner */}
-      <div className="w-full bg-primary text-primary-foreground py-3 px-4 text-center font-semibold">
+      <div className="fixed top-12 -right-32 w-[500px] bg-primary text-primary-foreground py-3 px-4 text-center font-semibold rotate-45 z-50 shadow-lg">
         Coming Soon
       </div>
       
